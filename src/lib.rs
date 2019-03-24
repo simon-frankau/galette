@@ -10,53 +10,62 @@ pub struct Config {
     gen_chip: i16,
     gen_pin: i16,
     jedec_sec_bit: i16,
-    jedec_fuse_chk: i16
+    jedec_fuse_chk: i16,
 }
 
 #[no_mangle]
-pub extern "C" fn call_from_c(file_name: *const c_char, gal_type: i32, config: *const Config, gal: *const u8,
-    gal_xor: *const u8, gals1: *const u8, gal_sig: *const u8, gal_ac1: *const u8, gal_pt: *const u8, gal_syn: u8, gal_ac0: u8) {
+pub extern "C" fn write_jedec_c(
+    file_name: *const c_char,
+    gal_type: i32,
+    config: *const Config,
+    gal_fuses: *const u8,
+    gal_xor: *const u8,
+    gal_s1: *const u8,
+    gal_sig: *const u8,
+    gal_ac1: *const u8,
+    gal_pt: *const u8,
+    gal_syn: u8,
+    gal_ac0: u8,
+) {
     unsafe {
+        let file_name_rs = CStr::from_ptr(file_name);
 
-        let slice = CStr::from_ptr(file_name);
-        println!("Just called a Rust function from C! {:?} {} {:?}", slice.to_str().unwrap(), gal_type, *config);
-
-        let str = make_jedec(gal_type, &(*config),
-            std::slice::from_raw_parts(gal, 5808),
+        let str = make_jedec(
+            gal_type,
+            &(*config),
+            std::slice::from_raw_parts(gal_fuses, 5808),
             std::slice::from_raw_parts(gal_xor, 10),
-            std::slice::from_raw_parts(gals1, 10),
+            std::slice::from_raw_parts(gal_s1, 10),
             std::slice::from_raw_parts(gal_sig, SIG_SIZE),
             std::slice::from_raw_parts(gal_ac1, AC1_SIZE),
             std::slice::from_raw_parts(gal_pt, PT_SIZE),
-            gal_syn, gal_ac0
+            gal_syn,
+            gal_ac0,
         );
-        println!("{}", str);
 
-       let mut name = slice.to_str().unwrap().to_string();
-       name.push('2');
-       let mut file = File::create(name).unwrap();
-       file.write_all(str.as_bytes());
+        let mut file = File::create(file_name_rs.to_str().unwrap()).unwrap();
+        file.write_all(str.as_bytes());
     }
 }
 
-const GAL16V8: i32   = 1;
-const GAL20V8: i32   = 2;
-const GAL22V10: i32  = 3;
+const GAL16V8: i32 = 1;
+const GAL20V8: i32 = 2;
+const GAL22V10: i32 = 3;
 const GAL20RA10: i32 = 4;
 
-const ROW_SIZE_16V8: i32   = 64;
-const ROW_SIZE_20V8: i32  = 64;
-const ROW_SIZE_22V10: i32  = 132;
+const ROW_SIZE_16V8: i32 = 64;
+const ROW_SIZE_20V8: i32 = 64;
+const ROW_SIZE_22V10: i32 = 132;
 const ROW_SIZE_20RA10: i32 = 80;
 
-const MAX_FUSE_ADR16: i32         =  31;
-const MAX_FUSE_ADR20: i32         =  39;
-const MAX_FUSE_ADR22V10: i32      =  43;
-const MAX_FUSE_ADR20RA10: i32     =  39;
+const MAX_FUSE_ADR16: i32 = 31;
+const MAX_FUSE_ADR20: i32 = 39;
+const MAX_FUSE_ADR22V10: i32 = 43;
+const MAX_FUSE_ADR20RA10: i32 = 39;
 
-const SIG_SIZE: usize       = 64;
-const AC1_SIZE: usize       = 8;
-const PT_SIZE: usize        = 64;
+const SIG_SIZE: usize = 64;
+const AC1_SIZE: usize = 8;
+const PT_SIZE: usize = 64;
 
 struct CheckSummer {
     bit_num: u8,
@@ -69,7 +78,7 @@ impl CheckSummer {
         CheckSummer {
             bit_num: 0,
             byte: 0,
-            sum: 0
+            sum: 0,
         }
     }
 
@@ -90,8 +99,18 @@ impl CheckSummer {
     }
 }
 
-fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
-        gal_xor: &[u8], gals1: &[u8], gal_sig: &[u8], gal_ac1: &[u8], gal_pt: &[u8], gal_syn: u8, gal_ac0: u8 ) -> String {
+fn make_jedec(
+    gal_type: i32,
+    config: &Config,
+    gal_fuses: &[u8],
+    gal_xor: &[u8],
+    gal_s1: &[u8],
+    gal_sig: &[u8],
+    gal_ac1: &[u8],
+    gal_pt: &[u8],
+    gal_syn: u8,
+    gal_ac0: u8,
+) -> String {
     let (max_fuse_addr, row_size, xor_size) = match gal_type {
         GAL16V8 => (MAX_FUSE_ADR16, ROW_SIZE_16V8, 8),
         GAL20V8 => (MAX_FUSE_ADR20, ROW_SIZE_20V8, 8),
@@ -114,7 +133,7 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
         GAL20RA10 => "Device:         GAL20RA10\n\n",
         _ => panic!("Nope"),
     });
-    // Default value of fuses
+    // Default value of gal_fuses
     buf.push_str("*F0\n");
     buf.push_str(if config.jedec_sec_bit != 0 {
         "*G1\n"
@@ -129,19 +148,19 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
         _ => panic!("Nope"),
     });
 
-
     // Construct fuse matrix.
     let mut bitnum = 0;
     let mut bitnum2 = 0;
     let mut flag = 0;
+    let mut checksum = CheckSummer::new();
 
     for m in 0..row_size {
         flag = 0;
         bitnum2 = bitnum;
 
         // Find the first non-zero bit.
-        for n in 0..max_fuse_addr+1 {
-            if fuses[bitnum2] != 0 {
+        for n in 0..max_fuse_addr + 1 {
+            if gal_fuses[bitnum2] != 0 {
                 flag = 1;
                 break;
             }
@@ -151,8 +170,8 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
         if flag != 0 {
             buf.push_str(&format!("*L{:04} ", bitnum));
 
-            for n in 0..max_fuse_addr+1 {
-                buf.push_str(if fuses[bitnum] != 0 { "1" } else { "0" });
+            for n in 0..max_fuse_addr + 1 {
+                buf.push_str(if gal_fuses[bitnum] != 0 { "1" } else { "0" });
                 bitnum += 1;
             }
 
@@ -166,16 +185,22 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
         bitnum = bitnum2;
     }
 
+    for n in 0..(((max_fuse_addr + 1) * row_size) as usize) {
+        checksum.add(gal_fuses[n]);
+    }
+
     // XOR bits
     buf.push_str(&format!("*L{:04} ", bitnum));
 
     for n in 0..xor_size {
         buf.push_str(if gal_xor[n] != 0 { "1" } else { "0" });
+        checksum.add(gal_xor[n]);
         bitnum += 1;
 
         if gal_type == GAL22V10 {
             // S1 of 22V10
-            buf.push_str(if gals1[n] != 0 { "1" } else { "0" });
+            buf.push_str(if gal_s1[n] != 0 { "1" } else { "0" });
+            checksum.add(gal_s1[n]);
             bitnum += 1;
         }
     }
@@ -185,16 +210,17 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
     buf.push_str(&format!("*L{:04} ", bitnum));
     for n in 0..SIG_SIZE {
         buf.push_str(if gal_sig[n] != 0 { "1" } else { "0" });
+        checksum.add(gal_sig[n]);
         bitnum += 1;
     }
     buf.push('\n');
 
-    if (gal_type == GAL16V8) || (gal_type == GAL20V8)
-    {
+    if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
         // AC1 bits
         buf.push_str(&format!("*L{:04} ", bitnum));
         for n in 0..AC1_SIZE {
             buf.push_str(if gal_ac1[n] != 0 { "1" } else { "0" });
+            checksum.add(gal_ac1[n]);
             bitnum += 1;
         }
         buf.push('\n');
@@ -203,6 +229,7 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
         buf.push_str(&format!("*L{:04} ", bitnum));
         for n in 0..PT_SIZE {
             buf.push_str(if gal_pt[n] != 0 { "1" } else { "0" });
+            checksum.add(gal_pt[n]);
             bitnum += 1;
         }
         buf.push('\n');
@@ -210,50 +237,29 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
         // SYN bit
         buf.push_str(&format!("*L{:04} ", bitnum));
         buf.push_str(if gal_syn != 0 { "1" } else { "0" });
+        checksum.add(gal_syn);
         buf.push('\n');
         bitnum += 1;
-
 
         // AC0 bit
         buf.push_str(&format!("*L{:04} ", bitnum));
         buf.push_str(if gal_ac0 != 0 { "1" } else { "0" });
+        checksum.add(gal_ac0);
         buf.push('\n');
     }
 
-    // Fuse checksum
-    let checksum = match gal_type {
-        GAL16V8 => {
-            let mut check_sum = CheckSummer::new();
-            for n in 0..2048 {
-                check_sum.add(fuses[n]);
-            }
-            for n in 2048..2056 {
-                check_sum.add(gal_xor[n-2048]);
-            }
-            for n in 2056..2120 {
-                check_sum.add(gal_sig[n-2056]);
-            }
-            for n in 2120..2128 {
-                check_sum.add(gal_ac1[n-2120]);
-            }
-            for n in 2128..2192 {
-                check_sum.add(gal_pt[n-2128]);
-            }
-            check_sum.add(gal_syn);
-            check_sum.add(gal_ac0);
-            check_sum.get()
-        }
-        _ => 0,
-    };
-    buf.push_str(&format!("*C{:04x}\n", checksum));
+    buf.push_str(&format!("*C{:04x}\n", checksum.get()));
 
     // Closing asterisk
     buf.push_str("*\n");
 
     buf.push('\x03');
 
+    // TODO: This should be a 16-bit checksum, but galasm does *not*
+    // do that. Standard says modulo 65535, a la TCP/IP, need to check
+    // what reading tools do.
     let file_checksum = buf.as_bytes().iter().map(|c| *c as u32).sum::<u32>();
-    buf.push_str(&format!("{:04x}\n", file_checksum & 0xffff));
+    buf.push_str(&format!("{:04x}\n", file_checksum));
 
     return buf;
 }
