@@ -22,27 +22,6 @@ const AC1_SIZE: usize = 8;
 const PT_SIZE: usize = 64;
 
 
-#[no_mangle]
-pub extern "C" fn write_chip_c(
-    file_name: *const c_char,
-    gal_type: i32,
-    pin_names: *const * const c_char,
-) {
-    unsafe {
-        let file_name_rs = CStr::from_ptr(file_name);
-
-        let num_pins = if gal_type == GAL16V8 { 20 } else { 24 };
-
-        let cstrs = std::slice::from_raw_parts(pin_names, num_pins);
-        let pin_names = cstrs.iter().map(|x| CStr::from_ptr(*x).to_str().unwrap()).collect::<Vec<_>>();
-
-        let str = make_chip(gal_type, &pin_names);
-
-        let mut file = File::create(file_name_rs.to_str().unwrap()).unwrap();
-        file.write_all(str.as_bytes());
-    }
-}
-
 fn make_spaces(buf: &mut String, n: usize) {
     for _i in 0..n {
         buf.push(' ');
@@ -112,30 +91,6 @@ fn pin_to_olmc(gal_type: i32, pin: usize) -> usize {
         GAL22V10 => 14,
         GAL20RA10 => 14,
         _ => panic!("Nope")
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn write_pin_c(
-    file_name: *const c_char,
-    gal_type: i32,
-    pin_names: *const * const c_char,
-    mode: i32,
-    olmc_pin_types: *const i32
-) {
-    unsafe {
-        let file_name_rs = CStr::from_ptr(file_name);
-
-        let num_pins = if gal_type == GAL16V8 { 20 } else { 24 };
-
-        let cstrs = std::slice::from_raw_parts(pin_names, num_pins);
-        let pin_names = cstrs.iter().map(|x| CStr::from_ptr(*x).to_str().unwrap()).collect::<Vec<_>>();
-        let olmc_pin_types_slice = std::slice::from_raw_parts(olmc_pin_types, 12);
-
-        let str = make_pin(gal_type, &pin_names, mode, olmc_pin_types_slice);
-
-        let mut file = File::create(file_name_rs.to_str().unwrap()).unwrap();
-        file.write_all(str.as_bytes());
     }
 }
 
@@ -252,51 +207,6 @@ const ROW_COUNT_16V8: usize = 64;
 const ROW_COUNT_20V8: usize = 64;
 const ROW_COUNT_22V10: usize = 132;
 const ROW_COUNT_20RA10: usize = 80;
-
-#[no_mangle]
-pub extern "C" fn write_fuse_c(
-    file_name: *const c_char,
-    gal_type: i32,
-    pin_names: *const * const c_char,
-    gal_fuses: *const u8,
-    gal_xor: *const u8,
-    gal_ac1: *const u8,
-    gal_s1: *const u8,
-) {
-    let xor_size = match gal_type {
-        GAL16V8 => 8,
-        GAL20V8 => 8,
-        GAL22V10 => 10,
-        GAL20RA10 => 10,
-        _ => panic!("Nope"),
-    };
-
-    let fuse_size = match gal_type {
-        GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
-        GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
-        GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
-        GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
-        _ => panic!("Nope"),
-    };
-
-    unsafe {
-        let file_name_rs = CStr::from_ptr(file_name);
-
-        let num_pins = if gal_type == GAL16V8 { 20 } else { 24 };
-
-        let cstrs = std::slice::from_raw_parts(pin_names, num_pins);
-        let pin_names = cstrs.iter().map(|x| CStr::from_ptr(*x).to_str().unwrap()).collect::<Vec<_>>();
-
-        let str = make_fuse(gal_type, &pin_names,
-            std::slice::from_raw_parts(gal_fuses, fuse_size),
-            std::slice::from_raw_parts(gal_xor, xor_size),
-            std::slice::from_raw_parts(gal_ac1, AC1_SIZE),
-            std::slice::from_raw_parts(gal_s1, 10));
-
-        let mut file = File::create(file_name_rs.to_str().unwrap()).unwrap();
-        file.write_all(str.as_bytes());
-    }
-}
 
 fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[u8], gal_xor: &[u8], gal_ac1: &[u8], gal_s1: &[u8]) -> String {
     let mut buf = String::new();
