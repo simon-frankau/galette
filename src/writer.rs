@@ -1,6 +1,7 @@
 use std::ffi::CStr;
 use std::fs::File;
 use std::os::raw::c_char;
+use std::path::PathBuf;
 use std::io::Write;
 
 // IDs used in C.
@@ -14,6 +15,12 @@ const MODE2: i32 = 2;
 const MODE3: i32 = 3;
 
 const INPUT: i32 = 2;
+
+// Size of various other fields.
+const SIG_SIZE: usize = 64;
+const AC1_SIZE: usize = 8;
+const PT_SIZE: usize = 64;
+
 
 #[no_mangle]
 pub extern "C" fn write_chip_c(
@@ -246,8 +253,6 @@ const ROW_COUNT_20V8: usize = 64;
 const ROW_COUNT_22V10: usize = 132;
 const ROW_COUNT_20RA10: usize = 80;
 
-const AC1_SIZE: usize = 8;
-
 #[no_mangle]
 pub extern "C" fn write_fuse_c(
     file_name: *const c_char,
@@ -365,4 +370,104 @@ fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[u8], gal_xor: &[u8],
 
     buf.push_str("\n\n");
     return buf;
+}
+
+fn write_files(file_name: &str,
+               config: &::jedec_writer::Config,
+               gal_type: i32,
+               mode: i32,
+               pin_names: &[&str],
+               olmc_pin_types: &[i32],
+               gal_fuses: &[u8],
+               gal_xor: &[u8],
+               gal_s1: &[u8],
+               gal_sig: &[u8],
+               gal_ac1: &[u8],
+               gal_pt: &[u8],
+               gal_syn: u8,
+               gal_ac0: u8) {
+    let base = PathBuf::from(file_name);
+
+    {
+        let buf = ::jedec_writer::make_jedec(gal_type, config, gal_fuses, gal_xor, gal_s1, gal_sig, gal_ac1, gal_pt, gal_syn, gal_ac0);
+        let mut file = File::create(base.with_extension("jed").to_str().unwrap()).unwrap();
+        file.write_all(buf.as_bytes());
+    }
+
+    if config.gen_fuse != 0 {
+        let buf = make_fuse(gal_type, pin_names, gal_fuses, gal_xor, gal_ac1, gal_s1);
+        let mut file = File::create(base.with_extension("fus").to_str().unwrap()).unwrap();
+        file.write_all(buf.as_bytes());
+    }
+
+    if config.gen_pin != 0 {
+        let buf = make_pin(gal_type, pin_names, mode, olmc_pin_types);
+        let mut file = File::create(base.with_extension("pin").to_str().unwrap()).unwrap();
+        file.write_all(buf.as_bytes());
+    }
+
+    if config.gen_chip != 0 {
+        let buf = make_chip(gal_type, pin_names);
+        let mut file = File::create(base.with_extension("chp").to_str().unwrap()).unwrap();
+        file.write_all(buf.as_bytes());
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn write_files_c(
+    file_name: *const c_char,
+    config: *const ::jedec_writer::Config,
+    gal_type: i32,
+    mode: i32,
+    pin_names: *const * const c_char,
+    olmc_pin_types: *const i32,
+    gal_fuses: *const u8,
+    gal_xor: *const u8,
+    gal_s1: *const u8,
+    gal_sig: *const u8,
+    gal_ac1: *const u8,
+    gal_pt: *const u8,
+    gal_syn: u8,
+    gal_ac0: u8
+) {
+    let xor_size = match gal_type {
+        GAL16V8 => 8,
+        GAL20V8 => 8,
+        GAL22V10 => 10,
+        GAL20RA10 => 10,
+        _ => panic!("Nope"),
+    };
+
+    let fuse_size = match gal_type {
+        GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
+        GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
+        GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
+        GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
+        _ => panic!("Nope"),
+    };
+
+    unsafe {
+        let file_name = CStr::from_ptr(file_name);
+
+        let num_pins = if gal_type == GAL16V8 { 20 } else { 24 };
+        let cstrs = std::slice::from_raw_parts(pin_names, num_pins);
+        let pin_names = cstrs.iter().map(|x| CStr::from_ptr(*x).to_str().unwrap()).collect::<Vec<_>>();
+
+        write_files(
+            file_name.to_str().unwrap(),
+            &(*config),
+            gal_type,
+            mode,
+            &pin_names,
+            std::slice::from_raw_parts(olmc_pin_types, 12),
+            std::slice::from_raw_parts(gal_fuses, fuse_size),
+            std::slice::from_raw_parts(gal_xor, xor_size),
+            std::slice::from_raw_parts(gal_s1, 10),
+            std::slice::from_raw_parts(gal_sig, SIG_SIZE),
+            std::slice::from_raw_parts(gal_ac1, AC1_SIZE),
+            std::slice::from_raw_parts(gal_pt, PT_SIZE),
+            gal_syn,
+            gal_ac0,
+        );
+    }
 }

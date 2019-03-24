@@ -33,11 +33,11 @@ const PT_SIZE: usize = 64;
 #[repr(C)]
 #[derive(Debug)]
 pub struct Config {
-    gen_fuse: i16,
-    gen_chip: i16,
-    gen_pin: i16,
-    jedec_sec_bit: i16,
-    jedec_fuse_chk: i16,
+    pub gen_fuse: i16,
+    pub gen_chip: i16,
+    pub gen_pin: i16,
+    pub jedec_sec_bit: i16,
+    pub jedec_fuse_chk: i16,
 }
 
 #[no_mangle]
@@ -180,7 +180,7 @@ impl<'a> FuseBuilder<'a> {
 //
 // It's galasm-compatible.
 
-fn make_jedec(
+pub fn make_jedec(
     gal_type: i32,
     config: &Config,
     gal_fuses: &[u8],
