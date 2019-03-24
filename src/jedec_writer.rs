@@ -1,10 +1,6 @@
 extern crate itertools;
 
 use self::itertools::Itertools;
-use std::ffi::CStr;
-use std::fs::File;
-use std::io::Write;
-use std::os::raw::c_char;
 
 // IDs used in C.
 const GAL16V8: i32 = 1;
@@ -12,22 +8,11 @@ const GAL20V8: i32 = 2;
 const GAL22V10: i32 = 3;
 const GAL20RA10: i32 = 4;
 
-// Number of rows of fuses.
-const ROW_COUNT_16V8: usize = 64;
-const ROW_COUNT_20V8: usize = 64;
-const ROW_COUNT_22V10: usize = 132;
-const ROW_COUNT_20RA10: usize = 80;
-
 // Number of fuses per-row.
 const ROW_LEN_ADR16: usize = 32;
 const ROW_LEN_ADR20: usize = 40;
 const ROW_LEN_ADR22V10: usize = 44;
 const ROW_LEN_ADR20RA10: usize = 40;
-
-// Size of various other fields.
-const SIG_SIZE: usize = 64;
-const AC1_SIZE: usize = 8;
-const PT_SIZE: usize = 64;
 
 // Config use on the C side.
 #[repr(C)]
@@ -38,57 +23,6 @@ pub struct Config {
     pub gen_pin: i16,
     pub jedec_sec_bit: i16,
     pub jedec_fuse_chk: i16,
-}
-
-#[no_mangle]
-pub extern "C" fn write_jedec_c(
-    file_name: *const c_char,
-    gal_type: i32,
-    config: *const Config,
-    gal_fuses: *const u8,
-    gal_xor: *const u8,
-    gal_s1: *const u8,
-    gal_sig: *const u8,
-    gal_ac1: *const u8,
-    gal_pt: *const u8,
-    gal_syn: u8,
-    gal_ac0: u8,
-) {
-    let xor_size = match gal_type {
-        GAL16V8 => 8,
-        GAL20V8 => 8,
-        GAL22V10 => 10,
-        GAL20RA10 => 10,
-        _ => panic!("Nope"),
-    };
-
-    let fuse_size = match gal_type {
-        GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
-        GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
-        GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
-        GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
-        _ => panic!("Nope"),
-    };
-
-    unsafe {
-        let file_name_rs = CStr::from_ptr(file_name);
-
-        let str = make_jedec(
-            gal_type,
-            &(*config),
-            std::slice::from_raw_parts(gal_fuses, fuse_size),
-            std::slice::from_raw_parts(gal_xor, xor_size),
-            std::slice::from_raw_parts(gal_s1, 10),
-            std::slice::from_raw_parts(gal_sig, SIG_SIZE),
-            std::slice::from_raw_parts(gal_ac1, AC1_SIZE),
-            std::slice::from_raw_parts(gal_pt, PT_SIZE),
-            gal_syn,
-            gal_ac0,
-        );
-
-        let mut file = File::create(file_name_rs.to_str().unwrap()).unwrap();
-        file.write_all(str.as_bytes());
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////
