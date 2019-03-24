@@ -6,6 +6,30 @@ use std::fs::File;
 use std::io::Write;
 use std::os::raw::c_char;
 
+// IDs used in C.
+const GAL16V8: i32 = 1;
+const GAL20V8: i32 = 2;
+const GAL22V10: i32 = 3;
+const GAL20RA10: i32 = 4;
+
+// Number of rows of fuses.
+const ROW_COUNT_16V8: usize = 64;
+const ROW_COUNT_20V8: usize = 64;
+const ROW_COUNT_22V10: usize = 132;
+const ROW_COUNT_20RA10: usize = 80;
+
+// Number of fuses per-row.
+const ROW_LEN_ADR16: usize = 32;
+const ROW_LEN_ADR20: usize = 40;
+const ROW_LEN_ADR22V10: usize = 44;
+const ROW_LEN_ADR20RA10: usize = 40;
+
+// Size of various other fields.
+const SIG_SIZE: usize = 64;
+const AC1_SIZE: usize = 8;
+const PT_SIZE: usize = 64;
+
+// Config use on the C side.
 #[repr(C)]
 #[derive(Debug)]
 pub struct Config {
@@ -30,13 +54,21 @@ pub extern "C" fn write_jedec_c(
     gal_syn: u8,
     gal_ac0: u8,
 ) {
-   let xor_size = match gal_type {
+    let xor_size = match gal_type {
         GAL16V8 => 8,
         GAL20V8 => 8,
         GAL22V10 => 10,
         GAL20RA10 => 10,
         _ => panic!("Nope"),
-   };
+    };
+
+    let fuse_size = match gal_type {
+        GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
+        GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
+        GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
+        GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
+        _ => panic!("Nope"),
+    };
 
     unsafe {
         let file_name_rs = CStr::from_ptr(file_name);
@@ -44,7 +76,7 @@ pub extern "C" fn write_jedec_c(
         let str = make_jedec(
             gal_type,
             &(*config),
-            std::slice::from_raw_parts(gal_fuses, 5808),
+            std::slice::from_raw_parts(gal_fuses, fuse_size),
             std::slice::from_raw_parts(gal_xor, xor_size),
             std::slice::from_raw_parts(gal_s1, 10),
             std::slice::from_raw_parts(gal_sig, SIG_SIZE),
@@ -59,24 +91,8 @@ pub extern "C" fn write_jedec_c(
     }
 }
 
-const GAL16V8: i32 = 1;
-const GAL20V8: i32 = 2;
-const GAL22V10: i32 = 3;
-const GAL20RA10: i32 = 4;
-
-const ROW_SIZE_16V8: usize = 64;
-const ROW_SIZE_20V8: usize = 64;
-const ROW_SIZE_22V10: usize = 132;
-const ROW_SIZE_20RA10: usize = 80;
-
-const MAX_FUSE_ADR16: usize = 32;
-const MAX_FUSE_ADR20: usize = 40;
-const MAX_FUSE_ADR22V10: usize = 44;
-const MAX_FUSE_ADR20RA10: usize = 40;
-
-const SIG_SIZE: usize = 64;
-const AC1_SIZE: usize = 8;
-const PT_SIZE: usize = 64;
+////////////////////////////////////////////////////////////////////////
+// Structure to track the fuse checksum.
 
 struct CheckSummer {
     bit_num: u8,
@@ -99,7 +115,7 @@ impl CheckSummer {
         };
         self.bit_num += 1;
         if self.bit_num == 8 {
-            self.sum = (self.sum + self.byte as u16) & 0xffff;
+            self.sum = self.sum.wrapping_add(self.byte as u16);
             self.byte = 0;
             self.bit_num = 0;
         }
@@ -109,6 +125,10 @@ impl CheckSummer {
         (self.sum + self.byte as u16) & 0xffff
     }
 }
+
+////////////////////////////////////////////////////////////////////////
+// Helpers to write fuse entries into the buffer for the given bits,
+// updating the offset and the checksum as we go.
 
 fn write_bits(buf: &mut String, checksum: &mut CheckSummer, idx: &mut usize, data: &[u8]) {
     write_bits_iter(buf, checksum, idx, data.iter());
@@ -125,7 +145,11 @@ fn write_bits_iter<'a, I>(buf: &mut String, checksum: &mut CheckSummer, idx: &mu
     buf.push('\n');
 }
 
-
+////////////////////////////////////////////////////////////////////////
+// Core function to generate a string of the JEDEC file, given the
+// config, fuses, etc.
+//
+// It's galasm-compatible.
 
 fn make_jedec(
     gal_type: i32,
@@ -139,11 +163,11 @@ fn make_jedec(
     gal_syn: u8,
     gal_ac0: u8,
 ) -> String {
-    let (max_fuse_addr, row_size) = match gal_type {
-        GAL16V8 => (MAX_FUSE_ADR16, ROW_SIZE_16V8),
-        GAL20V8 => (MAX_FUSE_ADR20, ROW_SIZE_20V8),
-        GAL22V10 => (MAX_FUSE_ADR22V10, ROW_SIZE_22V10),
-        GAL20RA10 => (MAX_FUSE_ADR20RA10, ROW_SIZE_20RA10),
+    let row_len = match gal_type {
+        GAL16V8   => ROW_LEN_ADR16,
+        GAL20V8   => ROW_LEN_ADR20,
+        GAL22V10  => ROW_LEN_ADR22V10,
+        GAL20RA10 => ROW_LEN_ADR20RA10,
         _ => panic!("Nope"),
     };
 
@@ -155,49 +179,54 @@ fn make_jedec(
     buf.push_str("Used Program:   GALasm 2.1\n");
     buf.push_str("GAL-Assembler:  GALasm 2.1\n");
     buf.push_str(match gal_type {
-        GAL16V8 => "Device:         GAL16V8\n\n",
-        GAL20V8 => "Device:         GAL20V8\n\n",
-        GAL22V10 => "Device:         GAL22V10\n\n",
+        GAL16V8   => "Device:         GAL16V8\n\n",
+        GAL20V8   => "Device:         GAL20V8\n\n",
+        GAL22V10  => "Device:         GAL22V10\n\n",
         GAL20RA10 => "Device:         GAL20RA10\n\n",
         _ => panic!("Nope"),
     });
+
     // Default value of gal_fuses
     buf.push_str("*F0\n");
+
+    // Security bit state.
     buf.push_str(if config.jedec_sec_bit != 0 {
         "*G1\n"
     } else {
         "*G0\n"
     });
+
+    // Number of fuses.
+    // TODO: Should be calculated.
     buf.push_str(match gal_type {
-        GAL16V8 => "*QF2194\n",
-        GAL20V8 => "*QF2706\n",
-        GAL22V10 => "*QF5892\n",
+        GAL16V8   => "*QF2194\n",
+        GAL20V8   => "*QF2706\n",
+        GAL22V10  => "*QF5892\n",
         GAL20RA10 => "*QF3274\n",
         _ => panic!("Nope"),
     });
 
     // Construct fuse matrix.
     let mut checksum = CheckSummer::new();
+    let mut bitnum = 0;
 
-    for m in 0..row_size {
-        let curr_fuses = &gal_fuses[m * max_fuse_addr .. (m + 1) * max_fuse_addr];
+    // Break the fuse map into chunks representing rows.
+    for row in &gal_fuses.iter().chunks(row_len) {
+        let (mut check_iter, mut print_iter) = row.tee();
 
         // Only write out non-zero bits.
-        if curr_fuses.iter().any(|x| *x != 0) {
-            let mut bitnum = m * max_fuse_addr;
-            write_bits(&mut buf, &mut checksum, &mut bitnum, curr_fuses);
+        if check_iter.any(|x| *x != 0) {
+            write_bits_iter(&mut buf, &mut checksum, &mut bitnum, print_iter);
         } else {
-            // Need to update the checksum, since rows may not be byte-aligned.
-            for _i in 0..max_fuse_addr {
-                checksum.add(0);
+            // Process the bits without writing.
+            for _bit in print_iter {
+                checksum.add(*_bit); // (It's a zero.)
+                bitnum += 1;
             }
         }
     }
 
-    let total_bits = max_fuse_addr * row_size;
-    let mut bitnum = total_bits;
-
-    // XOR bits
+    // XOR bits are interleaved with S1 bits on GAL22V10.
     if gal_type != GAL22V10 {
         write_bits(&mut buf, &mut checksum, &mut bitnum, gal_xor)
     } else {
@@ -214,7 +243,9 @@ fn make_jedec(
         write_bits(&mut buf, &mut checksum, &mut bitnum, &[gal_ac0]);
     }
 
+    // Fuse checksum.
     buf.push_str(&format!("*C{:04x}\n", checksum.get()));
+
     buf.push_str("*\n");
     buf.push('\x03');
 
