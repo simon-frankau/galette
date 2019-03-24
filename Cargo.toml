@@ -1,0 +1,10 @@
+[package]
+name = "galette"
+version = "0.1.0"
+authors = ["Simon Frankau <sgf@arbitrary.name>"]
+
+[dependencies]
+libc = "*"
+
+[lib]
+crate-type = ["cdylib"]
