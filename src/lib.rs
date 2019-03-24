@@ -102,9 +102,8 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
 
     let mut buf = String::new();
 
-    if config.jedec_fuse_chk != 0 {
-        buf.push_str("\x02\n");
-    }
+    buf.push_str("\x02\n");
+
     // TODO: Backwards compatibility.
     buf.push_str("Used Program:   GALasm 2.1\n");
     buf.push_str("GAL-Assembler:  GALasm 2.1\n");
@@ -251,19 +250,10 @@ fn make_jedec(gal_type: i32, config: &Config, fuses: &[u8],
     // Closing asterisk
     buf.push_str("*\n");
 
-/*
-    if(!cfg->JedecFuseChk)
-    {
-        if (AddByte(&buff, (UBYTE)0x3))                     //  <ETX> * /
-            return(-1);
+    buf.push('\x03');
 
-        sprintf((char *)&mystrng[0], "%04x\n", FileChecksum(buff2));
-
-        if (AddString(&buff, (UBYTE *)&mystrng[0]))
-            return(-1);
-    }
-
-*/
+    let file_checksum = buf.as_bytes().iter().map(|c| *c as u32).sum::<u32>();
+    buf.push_str(&format!("{:04x}\n", file_checksum & 0xffff));
 
     return buf;
 }
