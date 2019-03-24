@@ -1,3 +1,6 @@
+extern crate itertools;
+
+use itertools::Itertools;
 use std::ffi::CStr;
 use std::fs::File;
 use std::io::Write;
@@ -27,6 +30,14 @@ pub extern "C" fn write_jedec_c(
     gal_syn: u8,
     gal_ac0: u8,
 ) {
+   let xor_size = match gal_type {
+        GAL16V8 => 8,
+        GAL20V8 => 8,
+        GAL22V10 => 10,
+        GAL20RA10 => 10,
+        _ => panic!("Nope"),
+   };
+
     unsafe {
         let file_name_rs = CStr::from_ptr(file_name);
 
@@ -34,7 +45,7 @@ pub extern "C" fn write_jedec_c(
             gal_type,
             &(*config),
             std::slice::from_raw_parts(gal_fuses, 5808),
-            std::slice::from_raw_parts(gal_xor, 10),
+            std::slice::from_raw_parts(gal_xor, xor_size),
             std::slice::from_raw_parts(gal_s1, 10),
             std::slice::from_raw_parts(gal_sig, SIG_SIZE),
             std::slice::from_raw_parts(gal_ac1, AC1_SIZE),
@@ -53,15 +64,15 @@ const GAL20V8: i32 = 2;
 const GAL22V10: i32 = 3;
 const GAL20RA10: i32 = 4;
 
-const ROW_SIZE_16V8: i32 = 64;
-const ROW_SIZE_20V8: i32 = 64;
-const ROW_SIZE_22V10: i32 = 132;
-const ROW_SIZE_20RA10: i32 = 80;
+const ROW_SIZE_16V8: usize = 64;
+const ROW_SIZE_20V8: usize = 64;
+const ROW_SIZE_22V10: usize = 132;
+const ROW_SIZE_20RA10: usize = 80;
 
-const MAX_FUSE_ADR16: i32 = 31;
-const MAX_FUSE_ADR20: i32 = 39;
-const MAX_FUSE_ADR22V10: i32 = 43;
-const MAX_FUSE_ADR20RA10: i32 = 39;
+const MAX_FUSE_ADR16: usize = 32;
+const MAX_FUSE_ADR20: usize = 40;
+const MAX_FUSE_ADR22V10: usize = 44;
+const MAX_FUSE_ADR20RA10: usize = 40;
 
 const SIG_SIZE: usize = 64;
 const AC1_SIZE: usize = 8;
@@ -99,6 +110,23 @@ impl CheckSummer {
     }
 }
 
+fn write_bits(buf: &mut String, checksum: &mut CheckSummer, idx: &mut usize, data: &[u8]) {
+    write_bits_iter(buf, checksum, idx, data.iter());
+}
+
+fn write_bits_iter<'a, I>(buf: &mut String, checksum: &mut CheckSummer, idx: &mut usize, data: I)
+    where I: Iterator<Item = &'a u8> {
+    buf.push_str(&format!("*L{:04} ", idx));
+    for bit in data {
+        buf.push_str(if *bit != 0 { "1" } else { "0" });
+        checksum.add(*bit);
+        *idx += 1;
+    }
+    buf.push('\n');
+}
+
+
+
 fn make_jedec(
     gal_type: i32,
     config: &Config,
@@ -111,11 +139,11 @@ fn make_jedec(
     gal_syn: u8,
     gal_ac0: u8,
 ) -> String {
-    let (max_fuse_addr, row_size, xor_size) = match gal_type {
-        GAL16V8 => (MAX_FUSE_ADR16, ROW_SIZE_16V8, 8),
-        GAL20V8 => (MAX_FUSE_ADR20, ROW_SIZE_20V8, 8),
-        GAL22V10 => (MAX_FUSE_ADR22V10, ROW_SIZE_22V10, 10),
-        GAL20RA10 => (MAX_FUSE_ADR20RA10, ROW_SIZE_20RA10, 10),
+    let (max_fuse_addr, row_size) = match gal_type {
+        GAL16V8 => (MAX_FUSE_ADR16, ROW_SIZE_16V8),
+        GAL20V8 => (MAX_FUSE_ADR20, ROW_SIZE_20V8),
+        GAL22V10 => (MAX_FUSE_ADR22V10, ROW_SIZE_22V10),
+        GAL20RA10 => (MAX_FUSE_ADR20RA10, ROW_SIZE_20RA10),
         _ => panic!("Nope"),
     };
 
@@ -149,110 +177,45 @@ fn make_jedec(
     });
 
     // Construct fuse matrix.
-    let mut bitnum = 0;
-    let mut bitnum2 = 0;
-    let mut flag = 0;
     let mut checksum = CheckSummer::new();
 
     for m in 0..row_size {
-        flag = 0;
-        bitnum2 = bitnum;
+        let curr_fuses = &gal_fuses[m * max_fuse_addr .. (m + 1) * max_fuse_addr];
 
-        // Find the first non-zero bit.
-        for n in 0..max_fuse_addr + 1 {
-            if gal_fuses[bitnum2] != 0 {
-                flag = 1;
-                break;
-            }
-            bitnum2 += 1;
-        }
-
-        if flag != 0 {
-            buf.push_str(&format!("*L{:04} ", bitnum));
-
-            for n in 0..max_fuse_addr + 1 {
-                buf.push_str(if gal_fuses[bitnum] != 0 { "1" } else { "0" });
-                bitnum += 1;
-            }
-
-            buf.push_str("\n");
+        // Only write out non-zero bits.
+        if curr_fuses.iter().any(|x| *x != 0) {
+            let mut bitnum = m * max_fuse_addr;
+            write_bits(&mut buf, &mut checksum, &mut bitnum, curr_fuses);
         } else {
-            bitnum = bitnum2;
+            // Need to update the checksum, since rows may not be byte-aligned.
+            for _i in 0..max_fuse_addr {
+                checksum.add(0);
+            }
         }
     }
 
-    if flag == 0 {
-        bitnum = bitnum2;
-    }
-
-    for n in 0..(((max_fuse_addr + 1) * row_size) as usize) {
-        checksum.add(gal_fuses[n]);
-    }
+    let total_bits = max_fuse_addr * row_size;
+    let mut bitnum = total_bits;
 
     // XOR bits
-    buf.push_str(&format!("*L{:04} ", bitnum));
-
-    for n in 0..xor_size {
-        buf.push_str(if gal_xor[n] != 0 { "1" } else { "0" });
-        checksum.add(gal_xor[n]);
-        bitnum += 1;
-
-        if gal_type == GAL22V10 {
-            // S1 of 22V10
-            buf.push_str(if gal_s1[n] != 0 { "1" } else { "0" });
-            checksum.add(gal_s1[n]);
-            bitnum += 1;
-        }
+    if gal_type != GAL22V10 {
+        write_bits(&mut buf, &mut checksum, &mut bitnum, gal_xor)
+    } else {
+        let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter());
+        write_bits_iter(&mut buf, &mut checksum, &mut bitnum, bits);
     }
-    buf.push('\n');
 
-    // Signature
-    buf.push_str(&format!("*L{:04} ", bitnum));
-    for n in 0..SIG_SIZE {
-        buf.push_str(if gal_sig[n] != 0 { "1" } else { "0" });
-        checksum.add(gal_sig[n]);
-        bitnum += 1;
-    }
-    buf.push('\n');
+    write_bits(&mut buf, &mut checksum, &mut bitnum, gal_sig);
 
     if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
-        // AC1 bits
-        buf.push_str(&format!("*L{:04} ", bitnum));
-        for n in 0..AC1_SIZE {
-            buf.push_str(if gal_ac1[n] != 0 { "1" } else { "0" });
-            checksum.add(gal_ac1[n]);
-            bitnum += 1;
-        }
-        buf.push('\n');
-
-        // PT bits
-        buf.push_str(&format!("*L{:04} ", bitnum));
-        for n in 0..PT_SIZE {
-            buf.push_str(if gal_pt[n] != 0 { "1" } else { "0" });
-            checksum.add(gal_pt[n]);
-            bitnum += 1;
-        }
-        buf.push('\n');
-
-        // SYN bit
-        buf.push_str(&format!("*L{:04} ", bitnum));
-        buf.push_str(if gal_syn != 0 { "1" } else { "0" });
-        checksum.add(gal_syn);
-        buf.push('\n');
-        bitnum += 1;
-
-        // AC0 bit
-        buf.push_str(&format!("*L{:04} ", bitnum));
-        buf.push_str(if gal_ac0 != 0 { "1" } else { "0" });
-        checksum.add(gal_ac0);
-        buf.push('\n');
+        write_bits(&mut buf, &mut checksum, &mut bitnum, gal_ac1);
+        write_bits(&mut buf, &mut checksum, &mut bitnum, gal_pt);
+        write_bits(&mut buf, &mut checksum, &mut bitnum, &[gal_syn]);
+        write_bits(&mut buf, &mut checksum, &mut bitnum, &[gal_ac0]);
     }
 
     buf.push_str(&format!("*C{:04x}\n", checksum.get()));
-
-    // Closing asterisk
     buf.push_str("*\n");
-
     buf.push('\x03');
 
     // TODO: This should be a 16-bit checksum, but galasm does *not*
