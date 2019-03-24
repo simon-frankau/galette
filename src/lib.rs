@@ -127,22 +127,51 @@ impl CheckSummer {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// Helpers to write fuse entries into the buffer for the given bits,
+// A helper to write fuse entries into the buffer for the given bits,
 // updating the offset and the checksum as we go.
 
-fn write_bits(buf: &mut String, checksum: &mut CheckSummer, idx: &mut usize, data: &[u8]) {
-    write_bits_iter(buf, checksum, idx, data.iter());
+struct FuseBuilder<'a> {
+    buf: &'a mut String,
+    checksum: CheckSummer,
+    idx: usize,
 }
 
-fn write_bits_iter<'a, I>(buf: &mut String, checksum: &mut CheckSummer, idx: &mut usize, data: I)
-    where I: Iterator<Item = &'a u8> {
-    buf.push_str(&format!("*L{:04} ", idx));
-    for bit in data {
-        buf.push_str(if *bit != 0 { "1" } else { "0" });
-        checksum.add(*bit);
-        *idx += 1;
+impl<'a> FuseBuilder<'a> {
+    fn new(buf: &mut String) -> FuseBuilder {
+        FuseBuilder {
+            buf: buf,
+            checksum: CheckSummer::new(),
+            idx: 0,
+        }
     }
-    buf.push('\n');
+
+    fn add(&mut self, data: &[u8]) {
+        self.add_iter(data.iter());
+    }
+
+    fn add_iter<'b, I>(&mut self, data: I)
+        where I: Iterator<Item = &'b u8> {
+        self.buf.push_str(&format!("*L{:04} ", self.idx));
+        for bit in data {
+            self.buf.push_str(if *bit != 0 { "1" } else { "0" });
+            self.checksum.add(*bit);
+            self.idx += 1;
+        }
+        self.buf.push('\n');
+    }
+
+    // Skip over zeros, updating count and checksum.
+    fn skip_iter<'b, I>(&mut self, data: I)
+        where I: Iterator<Item = &'b u8> {
+        for _bit in data {
+            self.checksum.add(*_bit); // (It's a zero.)
+            self.idx += 1;
+        }
+    }
+
+    fn checksum(&mut self) {
+        self.buf.push_str(&format!("*C{:04x}\n", self.checksum.get()));
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -206,45 +235,43 @@ fn make_jedec(
         _ => panic!("Nope"),
     });
 
-    // Construct fuse matrix.
-    let mut checksum = CheckSummer::new();
-    let mut bitnum = 0;
+    {
+        // Construct fuse matrix.
+        let mut fuse_builder = FuseBuilder::new(&mut buf);
 
-    // Break the fuse map into chunks representing rows.
-    for row in &gal_fuses.iter().chunks(row_len) {
-        let (mut check_iter, mut print_iter) = row.tee();
+        // Break the fuse map into chunks representing rows.
+        for row in &gal_fuses.iter().chunks(row_len) {
+            let (mut check_iter, mut print_iter) = row.tee();
 
-        // Only write out non-zero bits.
-        if check_iter.any(|x| *x != 0) {
-            write_bits_iter(&mut buf, &mut checksum, &mut bitnum, print_iter);
-        } else {
-            // Process the bits without writing.
-            for _bit in print_iter {
-                checksum.add(*_bit); // (It's a zero.)
-                bitnum += 1;
+            // Only write out non-zero bits.
+            if check_iter.any(|x| *x != 0) {
+                fuse_builder.add_iter(print_iter);
+            } else {
+                // Process the bits without writing.
+                fuse_builder.skip_iter(print_iter);
             }
         }
+
+        // XOR bits are interleaved with S1 bits on GAL22V10.
+        if gal_type != GAL22V10 {
+            fuse_builder.add(gal_xor)
+        } else {
+            let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter());
+            fuse_builder.add_iter(bits);
+        }
+
+        fuse_builder.add(gal_sig);
+
+        if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
+            fuse_builder.add(gal_ac1);
+            fuse_builder.add(gal_pt);
+            fuse_builder.add(&[gal_syn]);
+            fuse_builder.add(&[gal_ac0]);
+        }
+
+        // Fuse checksum.
+        fuse_builder.checksum();
     }
-
-    // XOR bits are interleaved with S1 bits on GAL22V10.
-    if gal_type != GAL22V10 {
-        write_bits(&mut buf, &mut checksum, &mut bitnum, gal_xor)
-    } else {
-        let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter());
-        write_bits_iter(&mut buf, &mut checksum, &mut bitnum, bits);
-    }
-
-    write_bits(&mut buf, &mut checksum, &mut bitnum, gal_sig);
-
-    if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
-        write_bits(&mut buf, &mut checksum, &mut bitnum, gal_ac1);
-        write_bits(&mut buf, &mut checksum, &mut bitnum, gal_pt);
-        write_bits(&mut buf, &mut checksum, &mut bitnum, &[gal_syn]);
-        write_bits(&mut buf, &mut checksum, &mut bitnum, &[gal_ac0]);
-    }
-
-    // Fuse checksum.
-    buf.push_str(&format!("*C{:04x}\n", checksum.get()));
 
     buf.push_str("*\n");
     buf.push('\x03');
