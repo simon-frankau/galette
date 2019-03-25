@@ -106,21 +106,6 @@ impl<'a> FuseBuilder<'a> {
         self.buf.push('\n');
     }
 
-    fn add_bits(&mut self, data: &[bool]) {
-        self.add_iter_bits(data.iter());
-    }
-
-    fn add_iter_bits<'b, I>(&mut self, data: I)
-        where I: Iterator<Item = &'b bool> {
-        self.buf.push_str(&format!("*L{:04} ", self.idx));
-        for bit in data {
-            self.buf.push_str(if *bit { "1" } else { "0" });
-            self.checksum.add_bit(*bit);
-            self.idx += 1;
-        }
-        self.buf.push('\n');
-    }
-
     // Skip over zeros, updating count and checksum.
     fn skip_iter<'b, I>(&mut self, data: I)
         where I: Iterator<Item = &'b bool> {
@@ -206,7 +191,7 @@ pub fn make_jedec(
 
             // Only write out non-zero bits.
             if check_iter.any(|x| *x) {
-                fuse_builder.add_iter_bits(print_iter);
+                fuse_builder.add_iter(print_iter);
             } else {
                 // Process the bits without writing.
                 fuse_builder.skip_iter(print_iter);
@@ -215,19 +200,19 @@ pub fn make_jedec(
 
         // XOR bits are interleaved with S1 bits on GAL22V10.
         if gal_type != GAL22V10 {
-            fuse_builder.add_bits(gal_xor)
+            fuse_builder.add(gal_xor)
         } else {
             let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter());
-            fuse_builder.add_iter_bits(bits);
+            fuse_builder.add_iter(bits);
         }
 
-        fuse_builder.add_bits(gal_sig);
+        fuse_builder.add(gal_sig);
 
         if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
-            fuse_builder.add_bits(gal_ac1);
-            fuse_builder.add_bits(gal_pt);
-            fuse_builder.add_bits(&[gal_syn]);
-            fuse_builder.add_bits(&[gal_ac0]);
+            fuse_builder.add(gal_ac1);
+            fuse_builder.add(gal_pt);
+            fuse_builder.add(&[gal_syn]);
+            fuse_builder.add(&[gal_ac0]);
         }
 
         // Fuse checksum.
