@@ -70,6 +70,25 @@ pub extern "C" fn set_xor(jedec: *mut ::jedec::Jedec, i: usize, x: i32) {
 }
 
 #[no_mangle]
+pub extern "C" fn set_sig(jedec: *mut ::jedec::Jedec, s: *const c_char) {
+    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+
+    let s = unsafe { CStr::from_ptr(s) }.to_bytes();
+
+    // Clear array.
+    jedec.sig.iter_mut().map(|x| *x = false);
+
+    // Signature has space for 8 bytes.
+    for i in 0..usize::min(s.len(), 8) {
+        let c = s[i] as u8;
+        for j in 0..8 {
+            jedec.sig[i * 8 + j] = (c << j) & 0x80 != 0;
+        }
+    }
+}
+
+
+#[no_mangle]
 pub extern "C" fn write_files_c(
     file_name: *const c_char,
     config: *const ::jedec_writer::Config,
@@ -78,7 +97,6 @@ pub extern "C" fn write_files_c(
     pin_names: *const * const c_char,
     olmc_pin_types: *const i32,
     gal_fuses: *const u8,
-    gal_sig: *const u8,
     jedec: *const ::jedec::Jedec
 ) {
     let jedec = unsafe { jedec.as_ref().unwrap() };
@@ -117,7 +135,7 @@ pub extern "C" fn write_files_c(
             std::slice::from_raw_parts(gal_fuses, fuse_size),
             &jedec.xor[0..xor_size],
             &jedec.s1[0..10],
-            std::slice::from_raw_parts(gal_sig, SIG_SIZE),
+            &jedec.sig,
             &jedec.ac1[0..AC1_SIZE],
             &jedec.pt[0..PT_SIZE],
             jedec.syn,

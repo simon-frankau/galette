@@ -147,7 +147,7 @@ pub fn make_jedec(
     gal_fuses: &[u8],
     gal_xor: &[bool],
     gal_s1: &[bool],
-    gal_sig: &[u8],
+    gal_sig: &[bool],
     gal_ac1: &[bool],
     gal_pt: &[bool],
     gal_syn: bool,
@@ -221,7 +221,7 @@ pub fn make_jedec(
             fuse_builder.add_iter_bits(bits);
         }
 
-        fuse_builder.add(gal_sig);
+        fuse_builder.add_bits(gal_sig);
 
         if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
             fuse_builder.add_bits(gal_ac1);
