@@ -81,8 +81,6 @@ pub extern "C" fn write_files_c(
     gal_xor: *const u8,
     gal_s1: *const u8,
     gal_sig: *const u8,
-    gal_ac1: *const u8,
-    gal_pt: *const u8,
     jedec: *const ::jedec::Jedec
 ) {
     let jedec = unsafe { jedec.as_ref().unwrap() };
@@ -125,10 +123,8 @@ pub extern "C" fn write_files_c(
 //            &jedec.xor[0..xor_size],
 //            &jedec.s1[0..10],
             std::slice::from_raw_parts(gal_sig, SIG_SIZE),
-            std::slice::from_raw_parts(gal_ac1, AC1_SIZE),
-            std::slice::from_raw_parts(gal_pt, PT_SIZE),
-//            &jedec.ac1[0..AC1_SIZE],
-//            &jedec.pt[0..PT_SIZE],
+            &jedec.ac1[0..AC1_SIZE],
+            &jedec.pt[0..PT_SIZE],
             jedec.syn,
             jedec.ac0,
         );

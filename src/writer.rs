@@ -178,7 +178,7 @@ fn get_size(gal_type: i32, olmc: usize) -> i32
     }
 }
 
-fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[u8], gal_xor: &[u8], gal_ac1: &[u8], gal_s1: &[u8]) -> String {
+fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[u8], gal_xor: &[u8], gal_ac1: &[bool], gal_s1: &[u8]) -> String {
     let mut buf = String::new();
 
     let (mut pin, num_olmcs) = match gal_type {
@@ -218,10 +218,10 @@ fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[u8], gal_xor: &[u8],
 
         match gal_type {
             ::interop::GAL16V8 => {
-                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", gal_xor[19 - pin], gal_ac1[19 - pin]));
+                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", gal_xor[19 - pin], if gal_ac1[19 - pin] {1} else {0}));
             }
             ::interop::GAL20V8 => {
-                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", gal_xor[22 - pin], gal_ac1[22 - pin]));
+                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", gal_xor[22 - pin], if gal_ac1[22 - pin] {1} else {0}));
             }
             ::interop::GAL22V10 => {
                 buf.push_str(&format!("S0 = {:>1}   S1 = {:>1}", gal_xor[23 - pin], gal_s1[23 - pin]));
@@ -262,8 +262,8 @@ pub fn write_files(file_name: &str,
                gal_xor: &[u8],
                gal_s1: &[u8],
                gal_sig: &[u8],
-               gal_ac1: &[u8],
-               gal_pt: &[u8],
+               gal_ac1: &[bool],
+               gal_pt: &[bool],
                gal_syn: bool,
                gal_ac0: bool) {
     let base = PathBuf::from(file_name);
