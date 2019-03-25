@@ -145,7 +145,7 @@ pub fn make_jedec(
     gal_type: i32,
     config: &Config,
     gal_fuses: &[u8],
-    gal_xor: &[u8],
+    gal_xor: &[bool],
     gal_s1: &[bool],
     gal_sig: &[u8],
     gal_ac1: &[bool],
@@ -215,10 +215,10 @@ pub fn make_jedec(
 
         // XOR bits are interleaved with S1 bits on GAL22V10.
         if gal_type != GAL22V10 {
-            fuse_builder.add(gal_xor)
+            fuse_builder.add_bits(gal_xor)
         } else {
-            let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter().map(|x| if *x {&1} else {&0}));
-            fuse_builder.add_iter(bits);
+            let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter());
+            fuse_builder.add_iter_bits(bits);
         }
 
         fuse_builder.add(gal_sig);

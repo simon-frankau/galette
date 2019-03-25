@@ -78,7 +78,6 @@ pub extern "C" fn write_files_c(
     pin_names: *const * const c_char,
     olmc_pin_types: *const i32,
     gal_fuses: *const u8,
-    gal_xor: *const u8,
     gal_sig: *const u8,
     jedec: *const ::jedec::Jedec
 ) {
@@ -116,8 +115,7 @@ pub extern "C" fn write_files_c(
             &pin_names,
             std::slice::from_raw_parts(olmc_pin_types, 12),
             std::slice::from_raw_parts(gal_fuses, fuse_size),
-            std::slice::from_raw_parts(gal_xor, xor_size),
-//            &jedec.xor[0..xor_size],
+            &jedec.xor[0..xor_size],
             &jedec.s1[0..10],
             std::slice::from_raw_parts(gal_sig, SIG_SIZE),
             &jedec.ac1[0..AC1_SIZE],
