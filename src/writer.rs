@@ -1,7 +1,7 @@
 use std::fs::File;
-use std::path::PathBuf;
 use std::io::Error;
 use std::io::Write;
+use std::path::PathBuf;
 
 const INPUT: i32 = 2;
 
@@ -30,9 +30,9 @@ fn make_chip(gal_type: i32, pin_names: &[&str]) -> String {
     make_spaces(&mut buf, 31);
 
     buf.push_str(match gal_type {
-        ::interop::GAL16V8   => " GAL16V8\n\n",
-        ::interop::GAL20V8   => " GAL20V8\n\n",
-        ::interop::GAL22V10  => " GAL22V10\n\n",
+        ::interop::GAL16V8 => " GAL16V8\n\n",
+        ::interop::GAL20V8 => " GAL20V8\n\n",
+        ::interop::GAL22V10 => " GAL22V10\n\n",
         ::interop::GAL20RA10 => "GAL20RA10\n\n",
         _ => panic!("Nope"),
     });
@@ -52,11 +52,13 @@ fn make_chip(gal_type: i32, pin_names: &[&str]) -> String {
 
         make_spaces(&mut buf, 25 - pin_names[n].len());
 
-        buf.push_str(&format!("{} | {:>2}           {:>2} | {}\n",
-                     pin_names[n],
-                     n + 1,
-                     num_of_pins - n,
-                     pin_names[num_of_pins - n - 1]));
+        buf.push_str(&format!(
+            "{} | {:>2}           {:>2} | {}\n",
+            pin_names[n],
+            n + 1,
+            num_of_pins - n,
+            pin_names[num_of_pins - n - 1]
+        ));
     }
 
     make_spaces(&mut buf, 26);
@@ -69,11 +71,11 @@ const DUMMY_OLMC12: usize = 25;
 
 fn is_olmc(gal_type: i32, n: usize) -> bool {
     match gal_type {
-    ::interop::GAL16V8 => n >= 12 && n <= 19,
-    ::interop::GAL20V8 => n >= 15 && n <= 22,
-    ::interop::GAL22V10 => n >= 14 && n <= DUMMY_OLMC12,
-    ::interop::GAL20RA10 => n >= 14 && n <= 23,
-    _ => panic!("Nope"),
+        ::interop::GAL16V8 => n >= 12 && n <= 19,
+        ::interop::GAL20V8 => n >= 15 && n <= 22,
+        ::interop::GAL22V10 => n >= 14 && n <= DUMMY_OLMC12,
+        ::interop::GAL20RA10 => n >= 14 && n <= 23,
+        _ => panic!("Nope"),
     }
 }
 
@@ -83,7 +85,7 @@ fn pin_to_olmc(gal_type: i32, pin: usize) -> usize {
         ::interop::GAL20V8 => 15,
         ::interop::GAL22V10 => 14,
         ::interop::GAL20RA10 => 14,
-        _ => panic!("Nope")
+        _ => panic!("Nope"),
     }
 }
 
@@ -99,7 +101,7 @@ fn make_pin(gal_type: i32, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]
         buf.push_str(&format!("  {:>2}   | ", n));
         buf.push_str(pin_names[n - 1]);
 
-        make_spaces(&mut buf, 9 - pin_names[n-1].len());
+        make_spaces(&mut buf, 9 - pin_names[n - 1].len());
 
         let mut flag = false;
 
@@ -176,34 +178,40 @@ fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[bool]) {
     }
 }
 
-const OLMC_SIZE_22V10: [i32; 12] = [ 9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1 ];
+const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
 
-fn get_size(gal_type: i32, olmc: usize) -> i32
-{
+fn get_size(gal_type: i32, olmc: usize) -> i32 {
     match gal_type {
-    ::interop::GAL16V8  => 8,
-    ::interop::GAL20V8  => 8,
-    ::interop::GAL22V10 => OLMC_SIZE_22V10[olmc],
-    ::interop::GAL20RA10 => 8,
-    _ => panic!("Nope")
+        ::interop::GAL16V8 => 8,
+        ::interop::GAL20V8 => 8,
+        ::interop::GAL22V10 => OLMC_SIZE_22V10[olmc],
+        ::interop::GAL20RA10 => 8,
+        _ => panic!("Nope"),
     }
 }
 
-fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[bool], gal_xor: &[bool], gal_ac1: &[bool], gal_s1: &[bool]) -> String {
+fn make_fuse(
+    gal_type: i32,
+    pin_names: &[&str],
+    gal_fuse: &[bool],
+    gal_xor: &[bool],
+    gal_ac1: &[bool],
+    gal_s1: &[bool],
+) -> String {
     let mut buf = String::new();
 
     let (mut pin, num_olmcs) = match gal_type {
-        ::interop::GAL16V8   => (19, 8),
-        ::interop::GAL20V8   => (22, 8),
-        ::interop::GAL22V10  => (23, 10),
+        ::interop::GAL16V8 => (19, 8),
+        ::interop::GAL20V8 => (22, 8),
+        ::interop::GAL22V10 => (23, 10),
         ::interop::GAL20RA10 => (23, 10),
         _ => panic!("Nope"),
     };
 
     let row_len = match gal_type {
-        ::interop::GAL16V8   => ROW_LEN_ADR16,
-        ::interop::GAL20V8   => ROW_LEN_ADR20,
-        ::interop::GAL22V10  => ROW_LEN_ADR22V10,
+        ::interop::GAL16V8 => ROW_LEN_ADR16,
+        ::interop::GAL20V8 => ROW_LEN_ADR20,
+        ::interop::GAL22V10 => ROW_LEN_ADR22V10,
         ::interop::GAL20RA10 => ROW_LEN_ADR20RA10,
         _ => panic!("Nope"),
     };
@@ -229,16 +237,31 @@ fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[bool], gal_xor: &[bo
 
         match gal_type {
             ::interop::GAL16V8 => {
-                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", if gal_xor[19 - pin] {1} else {0}, if gal_ac1[19 - pin] {1} else {0}));
+                buf.push_str(&format!(
+                    "XOR = {:>1}   AC1 = {:>1}",
+                    if gal_xor[19 - pin] { 1 } else { 0 },
+                    if gal_ac1[19 - pin] { 1 } else { 0 }
+                ));
             }
             ::interop::GAL20V8 => {
-                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", if gal_xor[22 - pin] {1} else {0}, if gal_ac1[22 - pin] {1} else {0}));
+                buf.push_str(&format!(
+                    "XOR = {:>1}   AC1 = {:>1}",
+                    if gal_xor[22 - pin] { 1 } else { 0 },
+                    if gal_ac1[22 - pin] { 1 } else { 0 }
+                ));
             }
             ::interop::GAL22V10 => {
-                buf.push_str(&format!("S0 = {:>1}   S1 = {:>1}", if gal_xor[23 - pin] {1} else {0}, if gal_s1[23 - pin] {1} else {0}));
+                buf.push_str(&format!(
+                    "S0 = {:>1}   S1 = {:>1}",
+                    if gal_xor[23 - pin] { 1 } else { 0 },
+                    if gal_s1[23 - pin] { 1 } else { 0 }
+                ));
             }
             ::interop::GAL20RA10 => {
-                buf.push_str(&format!("S0 = {:>1}", if gal_xor[23 - pin] {1} else {0}));
+                buf.push_str(&format!(
+                    "S0 = {:>1}",
+                    if gal_xor[23 - pin] { 1 } else { 0 }
+                ));
             }
             _ => panic!("Nope"),
         };
@@ -248,7 +271,6 @@ fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[bool], gal_xor: &[bo
             make_row(&mut buf, row_len, row, gal_fuse);
             row += 1;
         }
-
 
         if gal_type == ::interop::GAL22V10 && olmc == 9 {
             // SP when 22V10
@@ -263,24 +285,29 @@ fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[bool], gal_xor: &[bo
     return buf;
 }
 
-pub fn write_files(file_name: &str,
-               config: &::jedec_writer::Config,
-               gal_type: i32,
-               mode: i32,
-               pin_names: &[&str],
-               olmc_pin_types: &[i32],
-               gal_fuses: &[bool],
-               gal_xor: &[bool],
-               gal_s1: &[bool],
-               gal_sig: &[bool],
-               gal_ac1: &[bool],
-               gal_pt: &[bool],
-               gal_syn: bool,
-               gal_ac0: bool) -> Result<(), Error> {
+pub fn write_files(
+    file_name: &str,
+    config: &::jedec_writer::Config,
+    gal_type: i32,
+    mode: i32,
+    pin_names: &[&str],
+    olmc_pin_types: &[i32],
+    gal_fuses: &[bool],
+    gal_xor: &[bool],
+    gal_s1: &[bool],
+    gal_sig: &[bool],
+    gal_ac1: &[bool],
+    gal_pt: &[bool],
+    gal_syn: bool,
+    gal_ac0: bool,
+) -> Result<(), Error> {
     let base = PathBuf::from(file_name);
 
     {
-        let buf = ::jedec_writer::make_jedec(gal_type, config, gal_fuses, gal_xor, gal_s1, gal_sig, gal_ac1, gal_pt, gal_syn, gal_ac0);
+        let buf = ::jedec_writer::make_jedec(
+            gal_type, config, gal_fuses, gal_xor, gal_s1, gal_sig, gal_ac1, gal_pt, gal_syn,
+            gal_ac0,
+        );
         let mut file = File::create(base.with_extension("jed").to_str().unwrap())?;
         file.write_all(buf.as_bytes())?;
     }

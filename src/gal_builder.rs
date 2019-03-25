@@ -61,18 +61,20 @@ pub extern "C" fn set_and_c(
     pin_num: u32,
     negation: u32,
     gal_type: i32,
-    mode: i32) {
-
+    mode: i32,
+) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.check_magic();
 
-    set_and(&mut jedec.fuses,
-            &jedec.s1,
-            row as usize,
-            pin_num as usize,
-            negation != 0,
-            gal_type,
-            mode);
+    set_and(
+        &mut jedec.fuses,
+        &jedec.s1,
+        row as usize,
+        pin_num as usize,
+        negation != 0,
+        gal_type,
+        mode,
+    );
 }
 
 // Add an 'and' term to a fuse map.

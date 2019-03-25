@@ -74,16 +74,15 @@ pub extern "C" fn set_sig(jedec: *mut ::jedec::Jedec, s: *const c_char) {
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn write_files_c(
     file_name: *const c_char,
     config: *const ::jedec_writer::Config,
     gal_type: i32,
     mode: i32,
-    pin_names: *const * const c_char,
+    pin_names: *const *const c_char,
     olmc_pin_types: *const i32,
-    jedec: *const ::jedec::Jedec
+    jedec: *const ::jedec::Jedec,
 ) {
     let jedec = unsafe { jedec.as_ref().unwrap() };
     jedec.check_magic();
@@ -93,7 +92,10 @@ pub extern "C" fn write_files_c(
 
         let num_pins = if gal_type == GAL16V8 { 20 } else { 24 };
         let cstrs = std::slice::from_raw_parts(pin_names, num_pins);
-        let pin_names = cstrs.iter().map(|x| CStr::from_ptr(*x).to_str().unwrap()).collect::<Vec<_>>();
+        let pin_names = cstrs
+            .iter()
+            .map(|x| CStr::from_ptr(*x).to_str().unwrap())
+            .collect::<Vec<_>>();
 
         ::writer::write_files(
             file_name.to_str().unwrap(),

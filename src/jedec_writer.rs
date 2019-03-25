@@ -84,7 +84,9 @@ impl<'a> FuseBuilder<'a> {
     }
 
     fn add_iter<'b, I>(&mut self, data: I)
-        where I: Iterator<Item = &'b bool> {
+    where
+        I: Iterator<Item = &'b bool>,
+    {
         self.buf.push_str(&format!("*L{:04} ", self.idx));
         for bit in data {
             self.buf.push_str(if *bit { "1" } else { "0" });
@@ -96,7 +98,9 @@ impl<'a> FuseBuilder<'a> {
 
     // Skip over zeros, updating count and checksum.
     fn skip_iter<'b, I>(&mut self, data: I)
-        where I: Iterator<Item = &'b bool> {
+    where
+        I: Iterator<Item = &'b bool>,
+    {
         for _bit in data {
             self.checksum.add(*_bit); // (It's a zero.)
             self.idx += 1;
@@ -104,7 +108,8 @@ impl<'a> FuseBuilder<'a> {
     }
 
     fn checksum(&mut self) {
-        self.buf.push_str(&format!("*C{:04x}\n", self.checksum.get()));
+        self.buf
+            .push_str(&format!("*C{:04x}\n", self.checksum.get()));
     }
 }
 
@@ -127,9 +132,9 @@ pub fn make_jedec(
     gal_ac0: bool,
 ) -> String {
     let row_len = match gal_type {
-        GAL16V8   => ROW_LEN_ADR16,
-        GAL20V8   => ROW_LEN_ADR20,
-        GAL22V10  => ROW_LEN_ADR22V10,
+        GAL16V8 => ROW_LEN_ADR16,
+        GAL20V8 => ROW_LEN_ADR20,
+        GAL22V10 => ROW_LEN_ADR22V10,
         GAL20RA10 => ROW_LEN_ADR20RA10,
         _ => panic!("Nope"),
     };
@@ -142,9 +147,9 @@ pub fn make_jedec(
     buf.push_str("Used Program:   GALasm 2.1\n");
     buf.push_str("GAL-Assembler:  GALasm 2.1\n");
     buf.push_str(match gal_type {
-        GAL16V8   => "Device:         GAL16V8\n\n",
-        GAL20V8   => "Device:         GAL20V8\n\n",
-        GAL22V10  => "Device:         GAL22V10\n\n",
+        GAL16V8 => "Device:         GAL16V8\n\n",
+        GAL20V8 => "Device:         GAL20V8\n\n",
+        GAL22V10 => "Device:         GAL22V10\n\n",
         GAL20RA10 => "Device:         GAL20RA10\n\n",
         _ => panic!("Nope"),
     });
@@ -162,9 +167,9 @@ pub fn make_jedec(
     // Number of fuses.
     // TODO: Should be calculated.
     buf.push_str(match gal_type {
-        GAL16V8   => "*QF2194\n",
-        GAL20V8   => "*QF2706\n",
-        GAL22V10  => "*QF5892\n",
+        GAL16V8 => "*QF2194\n",
+        GAL20V8 => "*QF2706\n",
+        GAL22V10 => "*QF5892\n",
         GAL20RA10 => "*QF3274\n",
         _ => panic!("Nope"),
     });
