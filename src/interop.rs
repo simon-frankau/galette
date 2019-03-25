@@ -79,12 +79,10 @@ pub extern "C" fn write_files_c(
     olmc_pin_types: *const i32,
     gal_fuses: *const u8,
     gal_xor: *const u8,
-    gal_s1: *const u8,
     gal_sig: *const u8,
     jedec: *const ::jedec::Jedec
 ) {
     let jedec = unsafe { jedec.as_ref().unwrap() };
-
     jedec.check_magic();
 
     let xor_size = match gal_type {
@@ -119,9 +117,8 @@ pub extern "C" fn write_files_c(
             std::slice::from_raw_parts(olmc_pin_types, 12),
             std::slice::from_raw_parts(gal_fuses, fuse_size),
             std::slice::from_raw_parts(gal_xor, xor_size),
-            std::slice::from_raw_parts(gal_s1, 10),
 //            &jedec.xor[0..xor_size],
-//            &jedec.s1[0..10],
+            &jedec.s1[0..10],
             std::slice::from_raw_parts(gal_sig, SIG_SIZE),
             &jedec.ac1[0..AC1_SIZE],
             &jedec.pt[0..PT_SIZE],

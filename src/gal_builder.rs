@@ -63,12 +63,15 @@ const MODE3: i32 = 3;
 #[no_mangle]
 pub extern "C" fn set_and_c(
     fuses: *mut i8,
-    gal_s1: *const i8,
+    jedec: *const ::jedec::Jedec,
     row: u32,
     pin_num: u32,
     negation: u32,
     gal_type: i32,
     mode: i32) {
+
+    let jedec = unsafe { jedec.as_ref().unwrap() };
+    jedec.check_magic();
 
     let fuse_size = match gal_type {
         GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
@@ -80,7 +83,7 @@ pub extern "C" fn set_and_c(
 
     unsafe {
         set_and(std::slice::from_raw_parts_mut(fuses, fuse_size),
-                std::slice::from_raw_parts(gal_s1, 10),
+                &jedec.s1,
                 row as usize,
                 pin_num as usize,
                 negation != 0,
@@ -92,7 +95,7 @@ pub extern "C" fn set_and_c(
 // Add an 'and' term to a fuse map.
 fn set_and(
     fuses: &mut [i8],
-    gal_s1: &[i8],
+    s1: &[bool],
     row: usize,
     pin_num: usize,
     negation: bool,
@@ -130,7 +133,7 @@ fn set_and(
     // Is it a registered OLMC pin?
     // If yes, then correct the negation.
     let mut neg_off = if negation { 1 } else { 0 };
-    if gal_type == GAL22V10 && (pin_num >= 14 && pin_num <= 23) && gal_s1[23 - pin_num] == 0 {
+    if gal_type == GAL22V10 && (pin_num >= 14 && pin_num <= 23) && !s1[23 - pin_num] {
         neg_off = 1 - neg_off;
     }
 

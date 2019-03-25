@@ -146,7 +146,7 @@ pub fn make_jedec(
     config: &Config,
     gal_fuses: &[u8],
     gal_xor: &[u8],
-    gal_s1: &[u8],
+    gal_s1: &[bool],
     gal_sig: &[u8],
     gal_ac1: &[bool],
     gal_pt: &[bool],
@@ -217,7 +217,7 @@ pub fn make_jedec(
         if gal_type != GAL22V10 {
             fuse_builder.add(gal_xor)
         } else {
-            let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter());
+            let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter().map(|x| if *x {&1} else {&0}));
             fuse_builder.add_iter(bits);
         }
 
