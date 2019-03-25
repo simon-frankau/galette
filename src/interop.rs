@@ -34,6 +34,12 @@ pub extern "C" fn new_jedec() -> *mut ::jedec::Jedec {
 }
 
 #[no_mangle]
+pub extern "C" fn set_fuse(jedec: *mut ::jedec::Jedec, i: usize, x: i32) {
+    let mut jedec: &mut ::jedec::Jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.fuses[i] = x != 0;
+}
+
+#[no_mangle]
 pub extern "C" fn set_syn(jedec: *mut ::jedec::Jedec, syn: i32) {
     let mut jedec: &mut ::jedec::Jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.syn = syn != 0;
@@ -96,7 +102,6 @@ pub extern "C" fn write_files_c(
     mode: i32,
     pin_names: *const * const c_char,
     olmc_pin_types: *const i32,
-    gal_fuses: *const u8,
     jedec: *const ::jedec::Jedec
 ) {
     let jedec = unsafe { jedec.as_ref().unwrap() };
@@ -132,7 +137,7 @@ pub extern "C" fn write_files_c(
             mode,
             &pin_names,
             std::slice::from_raw_parts(olmc_pin_types, 12),
-            std::slice::from_raw_parts(gal_fuses, fuse_size),
+            &jedec.fuses[0..fuse_size],
             &jedec.xor[0..xor_size],
             &jedec.s1[0..10],
             &jedec.sig,

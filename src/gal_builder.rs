@@ -62,15 +62,14 @@ const MODE3: i32 = 3;
 
 #[no_mangle]
 pub extern "C" fn set_and_c(
-    fuses: *mut i8,
-    jedec: *const ::jedec::Jedec,
+    jedec: *mut ::jedec::Jedec,
     row: u32,
     pin_num: u32,
     negation: u32,
     gal_type: i32,
     mode: i32) {
 
-    let jedec = unsafe { jedec.as_ref().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.check_magic();
 
     let fuse_size = match gal_type {
@@ -82,7 +81,7 @@ pub extern "C" fn set_and_c(
     };
 
     unsafe {
-        set_and(std::slice::from_raw_parts_mut(fuses, fuse_size),
+        set_and(&mut jedec.fuses,
                 &jedec.s1,
                 row as usize,
                 pin_num as usize,
@@ -94,7 +93,7 @@ pub extern "C" fn set_and_c(
 
 // Add an 'and' term to a fuse map.
 fn set_and(
-    fuses: &mut [i8],
+    fuses: &mut [bool],
     s1: &[bool],
     row: usize,
     pin_num: usize,
@@ -137,5 +136,5 @@ fn set_and(
         neg_off = 1 - neg_off;
     }
 
-    fuses[row * row_len + column + neg_off] = 0;
+    fuses[row * row_len + column + neg_off] = false;
 }

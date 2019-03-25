@@ -14,7 +14,7 @@ impl Jedec {
     pub fn new() -> Jedec {
         Jedec {
             magic: 0x87654321,
-            fuses: vec![false; 5808],
+            fuses: vec![true; 5808],
             xor: vec![false; 10],
             sig: vec![false; 64],
             ac1: vec![false; 8],

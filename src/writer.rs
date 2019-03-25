@@ -149,7 +149,7 @@ fn make_pin(gal_type: i32, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]
     return buf;
 }
 
-fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[u8]) {
+fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[bool]) {
     buf.push_str(&format!("\n{:>3} ", row));
 
     for col in 0..num_of_col {
@@ -157,7 +157,7 @@ fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[u8]) {
             buf.push_str(" ");
         }
 
-        if data[row * num_of_col + col] != 0 {
+        if data[row * num_of_col + col] {
             buf.push_str("-");
         } else {
             buf.push_str("x");
@@ -178,7 +178,7 @@ fn get_size(gal_type: i32, olmc: usize) -> i32
     }
 }
 
-fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[u8], gal_xor: &[bool], gal_ac1: &[bool], gal_s1: &[bool]) -> String {
+fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[bool], gal_xor: &[bool], gal_ac1: &[bool], gal_s1: &[bool]) -> String {
     let mut buf = String::new();
 
     let (mut pin, num_olmcs) = match gal_type {
@@ -258,7 +258,7 @@ pub fn write_files(file_name: &str,
                mode: i32,
                pin_names: &[&str],
                olmc_pin_types: &[i32],
-               gal_fuses: &[u8],
+               gal_fuses: &[bool],
                gal_xor: &[bool],
                gal_s1: &[bool],
                gal_sig: &[bool],

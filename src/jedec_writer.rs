@@ -43,8 +43,8 @@ impl CheckSummer {
         }
     }
 
-    fn add(&mut self, bit: u8) {
-        if bit != 0 {
+    fn add(&mut self, bit: bool) {
+        if bit {
             self.byte |= 1 << self.bit_num
         };
         self.bit_num += 1;
@@ -91,15 +91,15 @@ impl<'a> FuseBuilder<'a> {
         }
     }
 
-    fn add(&mut self, data: &[u8]) {
+    fn add(&mut self, data: &[bool]) {
         self.add_iter(data.iter());
     }
 
     fn add_iter<'b, I>(&mut self, data: I)
-        where I: Iterator<Item = &'b u8> {
+        where I: Iterator<Item = &'b bool> {
         self.buf.push_str(&format!("*L{:04} ", self.idx));
         for bit in data {
-            self.buf.push_str(if *bit != 0 { "1" } else { "0" });
+            self.buf.push_str(if *bit { "1" } else { "0" });
             self.checksum.add(*bit);
             self.idx += 1;
         }
@@ -123,7 +123,7 @@ impl<'a> FuseBuilder<'a> {
 
     // Skip over zeros, updating count and checksum.
     fn skip_iter<'b, I>(&mut self, data: I)
-        where I: Iterator<Item = &'b u8> {
+        where I: Iterator<Item = &'b bool> {
         for _bit in data {
             self.checksum.add(*_bit); // (It's a zero.)
             self.idx += 1;
@@ -144,7 +144,7 @@ impl<'a> FuseBuilder<'a> {
 pub fn make_jedec(
     gal_type: i32,
     config: &Config,
-    gal_fuses: &[u8],
+    gal_fuses: &[bool],
     gal_xor: &[bool],
     gal_s1: &[bool],
     gal_sig: &[bool],
@@ -205,8 +205,8 @@ pub fn make_jedec(
             let (mut check_iter, mut print_iter) = row.tee();
 
             // Only write out non-zero bits.
-            if check_iter.any(|x| *x != 0) {
-                fuse_builder.add_iter(print_iter);
+            if check_iter.any(|x| *x) {
+                fuse_builder.add_iter_bits(print_iter);
             } else {
                 // Process the bits without writing.
                 fuse_builder.skip_iter(print_iter);
