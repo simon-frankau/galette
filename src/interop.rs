@@ -7,82 +7,63 @@ pub const GAL20V8: i32 = 2;
 pub const GAL22V10: i32 = 3;
 pub const GAL20RA10: i32 = 4;
 
-pub const MODE1: i32 = 1;
-pub const MODE2: i32 = 2;
-pub const MODE3: i32 = 3;
-
-// Size of various other fields.
-const SIG_SIZE: usize = 64;
-const AC1_SIZE: usize = 8;
-const PT_SIZE: usize = 64;
-
-// Number of fuses per-row.
-pub const ROW_LEN_ADR16: usize = 32;
-pub const ROW_LEN_ADR20: usize = 40;
-pub const ROW_LEN_ADR22V10: usize = 44;
-pub const ROW_LEN_ADR20RA10: usize = 40;
-
-// Number of rows of fuses.
-const ROW_COUNT_16V8: usize = 64;
-const ROW_COUNT_20V8: usize = 64;
-const ROW_COUNT_22V10: usize = 132;
-const ROW_COUNT_20RA10: usize = 80;
-
 #[no_mangle]
 pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
-    unsafe { Box::into_raw(Box::new(::jedec::Jedec::new(gal_type))) }
+    Box::into_raw(Box::new(::jedec::Jedec::new(gal_type)))
 }
 
 #[no_mangle]
 pub extern "C" fn set_fuse(jedec: *mut ::jedec::Jedec, i: usize, x: i32) {
-    let mut jedec: &mut ::jedec::Jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.fuses[i] = x != 0;
 }
 
 #[no_mangle]
 pub extern "C" fn set_syn(jedec: *mut ::jedec::Jedec, syn: i32) {
-    let mut jedec: &mut ::jedec::Jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.syn = syn != 0;
 }
 
 #[no_mangle]
 pub extern "C" fn set_ac0(jedec: *mut ::jedec::Jedec, ac0: i32) {
-    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.ac0 = ac0 != 0;
 }
 
 #[no_mangle]
 pub extern "C" fn set_ac1(jedec: *mut ::jedec::Jedec, i: usize, ac0: i32) {
-    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.ac1[i] = ac0 != 0;
 }
 
 #[no_mangle]
 pub extern "C" fn set_s1(jedec: *mut ::jedec::Jedec, i: usize, s1: i32) {
-    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.s1[i] = s1 != 0;
 }
 
 #[no_mangle]
 pub extern "C" fn set_pt(jedec: *mut ::jedec::Jedec, i: usize, pt: i32) {
-    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.pt[i] = pt != 0;
 }
 
 #[no_mangle]
 pub extern "C" fn set_xor(jedec: *mut ::jedec::Jedec, i: usize, x: i32) {
-    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.xor[i] = x != 0;
 }
 
 #[no_mangle]
 pub extern "C" fn set_sig(jedec: *mut ::jedec::Jedec, s: *const c_char) {
-    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    let jedec = unsafe { jedec.as_mut().unwrap() };
 
     let s = unsafe { CStr::from_ptr(s) }.to_bytes();
 
     // Clear array.
-    jedec.sig.iter_mut().map(|x| *x = false);
+    for x in jedec.sig.iter_mut() {
+        *x = false;
+    }
 
     // Signature has space for 8 bytes.
     for i in 0..usize::min(s.len(), 8) {
@@ -107,22 +88,6 @@ pub extern "C" fn write_files_c(
     let jedec = unsafe { jedec.as_ref().unwrap() };
     jedec.check_magic();
 
-    let xor_size = match gal_type {
-        GAL16V8 => 8,
-        GAL20V8 => 8,
-        GAL22V10 => 10,
-        GAL20RA10 => 10,
-        _ => panic!("Nope"),
-    };
-
-    let fuse_size = match gal_type {
-        GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
-        GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
-        GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
-        GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
-        _ => panic!("Nope"),
-    };
-
     unsafe {
         let file_name = CStr::from_ptr(file_name);
 
@@ -145,6 +110,6 @@ pub extern "C" fn write_files_c(
             &jedec.pt,
             jedec.syn,
             jedec.ac0,
-        );
+        ).unwrap();
     }
 }

@@ -10,12 +10,6 @@ const ROW_LEN_ADR20: usize = 40;
 const ROW_LEN_ADR22V10: usize = 44;
 const ROW_LEN_ADR20RA10: usize = 40;
 
-// Number of rows of fuses.
-const ROW_COUNT_16V8: usize = 64;
-const ROW_COUNT_20V8: usize = 64;
-const ROW_COUNT_22V10: usize = 132;
-const ROW_COUNT_20RA10: usize = 80;
-
 // GAL16V8
 
 const PIN_TO_FUSE_16_MODE1: [i32; 20] = [
@@ -72,23 +66,13 @@ pub extern "C" fn set_and_c(
     let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.check_magic();
 
-    let fuse_size = match gal_type {
-        GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
-        GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
-        GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
-        GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
-        _ => panic!("Nope"),
-    };
-
-    unsafe {
-        set_and(&mut jedec.fuses,
-                &jedec.s1,
-                row as usize,
-                pin_num as usize,
-                negation != 0,
-                gal_type,
-                mode);
-    }
+    set_and(&mut jedec.fuses,
+            &jedec.s1,
+            row as usize,
+            pin_num as usize,
+            negation != 0,
+            gal_type,
+            mode);
 }
 
 // Add an 'and' term to a fuse map.

@@ -28,7 +28,8 @@ const ROW_COUNT_20V8: usize = 64;
 const ROW_COUNT_22V10: usize = 132;
 const ROW_COUNT_20RA10: usize = 80;
 
-
+// This structure is passed across the C boundary, so let's be careful.
+const MAGIC: i32 = 0x12345678;
 
 impl Jedec {
     pub fn new(gal_type: i32) -> Jedec {
@@ -49,7 +50,7 @@ impl Jedec {
         };
 
         Jedec {
-            magic: 0x87654321,
+            magic: MAGIC,
             fuses: vec![true; fuse_size],
             xor: vec![false; xor_size],
             sig: vec![false; 64],
@@ -62,6 +63,6 @@ impl Jedec {
     }
 
     pub fn check_magic(&self) {
-        assert!(self.magic == 0x87654321);
+        assert!(self.magic == MAGIC);
     }
 }

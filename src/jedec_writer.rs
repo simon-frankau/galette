@@ -55,18 +55,6 @@ impl CheckSummer {
         }
     }
 
-    fn add_bit(&mut self, bit: bool) {
-        if bit {
-            self.byte |= 1 << self.bit_num
-        };
-        self.bit_num += 1;
-        if self.bit_num == 8 {
-            self.sum = self.sum.wrapping_add(self.byte as u16);
-            self.byte = 0;
-            self.bit_num = 0;
-        }
-    }
-
     fn get(&self) -> u16 {
         (self.sum + self.byte as u16) & 0xffff
     }

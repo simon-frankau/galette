@@ -1,8 +1,19 @@
 use std::fs::File;
 use std::path::PathBuf;
+use std::io::Error;
 use std::io::Write;
 
 const INPUT: i32 = 2;
+
+// Number of fuses per-row.
+pub const ROW_LEN_ADR16: usize = 32;
+pub const ROW_LEN_ADR20: usize = 40;
+pub const ROW_LEN_ADR22V10: usize = 44;
+pub const ROW_LEN_ADR20RA10: usize = 40;
+
+pub const MODE1: i32 = 1;
+pub const MODE2: i32 = 2;
+pub const MODE3: i32 = 3;
 
 fn make_spaces(buf: &mut String, n: usize) {
     for _i in 0..n {
@@ -103,12 +114,12 @@ fn make_pin(gal_type: i32, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]
         }
 
         if gal_type == ::interop::GAL16V8 || gal_type == ::interop::GAL20V8 {
-            if mode == ::interop::MODE3 && n == 1 {
+            if mode == MODE3 && n == 1 {
                 buf.push_str("| Clock\n");
                 flag = true;
             }
 
-            if mode == ::interop::MODE3 {
+            if mode == MODE3 {
                 if gal_type == ::interop::GAL16V8 && n == 11 {
                     buf.push_str("| /OE\n");
                     flag = true;
@@ -190,10 +201,10 @@ fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[bool], gal_xor: &[bo
     };
 
     let row_len = match gal_type {
-        ::interop::GAL16V8   => ::interop::ROW_LEN_ADR16,
-        ::interop::GAL20V8   => ::interop::ROW_LEN_ADR20,
-        ::interop::GAL22V10  => ::interop::ROW_LEN_ADR22V10,
-        ::interop::GAL20RA10 => ::interop::ROW_LEN_ADR20RA10,
+        ::interop::GAL16V8   => ROW_LEN_ADR16,
+        ::interop::GAL20V8   => ROW_LEN_ADR20,
+        ::interop::GAL22V10  => ROW_LEN_ADR22V10,
+        ::interop::GAL20RA10 => ROW_LEN_ADR20RA10,
         _ => panic!("Nope"),
     };
 
@@ -232,7 +243,7 @@ fn make_fuse(gal_type: i32, pin_names: &[&str], gal_fuse: &[bool], gal_xor: &[bo
             _ => panic!("Nope"),
         };
 
-        for n in 0..num_rows {
+        for _n in 0..num_rows {
             // Print all fuses of an OLMC
             make_row(&mut buf, row_len, row, gal_fuse);
             row += 1;
@@ -265,30 +276,32 @@ pub fn write_files(file_name: &str,
                gal_ac1: &[bool],
                gal_pt: &[bool],
                gal_syn: bool,
-               gal_ac0: bool) {
+               gal_ac0: bool) -> Result<(), Error> {
     let base = PathBuf::from(file_name);
 
     {
         let buf = ::jedec_writer::make_jedec(gal_type, config, gal_fuses, gal_xor, gal_s1, gal_sig, gal_ac1, gal_pt, gal_syn, gal_ac0);
-        let mut file = File::create(base.with_extension("jed").to_str().unwrap()).unwrap();
-        file.write_all(buf.as_bytes());
+        let mut file = File::create(base.with_extension("jed").to_str().unwrap())?;
+        file.write_all(buf.as_bytes())?;
     }
 
     if config.gen_fuse != 0 {
         let buf = make_fuse(gal_type, pin_names, gal_fuses, gal_xor, gal_ac1, gal_s1);
-        let mut file = File::create(base.with_extension("fus").to_str().unwrap()).unwrap();
-        file.write_all(buf.as_bytes());
+        let mut file = File::create(base.with_extension("fus").to_str().unwrap())?;
+        file.write_all(buf.as_bytes())?;
     }
 
     if config.gen_pin != 0 {
         let buf = make_pin(gal_type, pin_names, mode, olmc_pin_types);
-        let mut file = File::create(base.with_extension("pin").to_str().unwrap()).unwrap();
-        file.write_all(buf.as_bytes());
+        let mut file = File::create(base.with_extension("pin").to_str().unwrap())?;
+        file.write_all(buf.as_bytes())?;
     }
 
     if config.gen_chip != 0 {
         let buf = make_chip(gal_type, pin_names);
-        let mut file = File::create(base.with_extension("chp").to_str().unwrap()).unwrap();
-        file.write_all(buf.as_bytes());
+        let mut file = File::create(base.with_extension("chp").to_str().unwrap())?;
+        file.write_all(buf.as_bytes())?;
     }
+
+    Ok(())
 }
