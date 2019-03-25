@@ -29,8 +29,8 @@ const ROW_COUNT_22V10: usize = 132;
 const ROW_COUNT_20RA10: usize = 80;
 
 #[no_mangle]
-pub extern "C" fn new_jedec() -> *mut ::jedec::Jedec {
-    unsafe { Box::into_raw(Box::new(::jedec::Jedec::new())) }
+pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
+    unsafe { Box::into_raw(Box::new(::jedec::Jedec::new(gal_type))) }
 }
 
 #[no_mangle]
@@ -137,12 +137,12 @@ pub extern "C" fn write_files_c(
             mode,
             &pin_names,
             std::slice::from_raw_parts(olmc_pin_types, 12),
-            &jedec.fuses[0..fuse_size],
-            &jedec.xor[0..xor_size],
-            &jedec.s1[0..10],
+            &jedec.fuses,
+            &jedec.xor,
+            &jedec.s1,
             &jedec.sig,
-            &jedec.ac1[0..AC1_SIZE],
-            &jedec.pt[0..PT_SIZE],
+            &jedec.ac1,
+            &jedec.pt,
             jedec.syn,
             jedec.ac0,
         );
