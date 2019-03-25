@@ -264,8 +264,8 @@ pub fn write_files(file_name: &str,
                gal_sig: &[u8],
                gal_ac1: &[u8],
                gal_pt: &[u8],
-               gal_syn: u8,
-               gal_ac0: u8) {
+               gal_syn: bool,
+               gal_ac0: bool) {
     let base = PathBuf::from(file_name);
 
     {

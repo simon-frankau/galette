@@ -55,6 +55,18 @@ impl CheckSummer {
         }
     }
 
+    fn add_bit(&mut self, bit: bool) {
+        if bit {
+            self.byte |= 1 << self.bit_num
+        };
+        self.bit_num += 1;
+        if self.bit_num == 8 {
+            self.sum = self.sum.wrapping_add(self.byte as u16);
+            self.byte = 0;
+            self.bit_num = 0;
+        }
+    }
+
     fn get(&self) -> u16 {
         (self.sum + self.byte as u16) & 0xffff
     }
@@ -94,6 +106,21 @@ impl<'a> FuseBuilder<'a> {
         self.buf.push('\n');
     }
 
+    fn add_bits(&mut self, data: &[bool]) {
+        self.add_iter_bits(data.iter());
+    }
+
+    fn add_iter_bits<'b, I>(&mut self, data: I)
+        where I: Iterator<Item = &'b bool> {
+        self.buf.push_str(&format!("*L{:04} ", self.idx));
+        for bit in data {
+            self.buf.push_str(if *bit { "1" } else { "0" });
+            self.checksum.add_bit(*bit);
+            self.idx += 1;
+        }
+        self.buf.push('\n');
+    }
+
     // Skip over zeros, updating count and checksum.
     fn skip_iter<'b, I>(&mut self, data: I)
         where I: Iterator<Item = &'b u8> {
@@ -123,8 +150,8 @@ pub fn make_jedec(
     gal_sig: &[u8],
     gal_ac1: &[u8],
     gal_pt: &[u8],
-    gal_syn: u8,
-    gal_ac0: u8,
+    gal_syn: bool,
+    gal_ac0: bool,
 ) -> String {
     let row_len = match gal_type {
         GAL16V8   => ROW_LEN_ADR16,
@@ -199,8 +226,8 @@ pub fn make_jedec(
         if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
             fuse_builder.add(gal_ac1);
             fuse_builder.add(gal_pt);
-            fuse_builder.add(&[gal_syn]);
-            fuse_builder.add(&[gal_ac0]);
+            fuse_builder.add_bits(&[gal_syn]);
+            fuse_builder.add_bits(&[gal_ac0]);
         }
 
         // Fuse checksum.

@@ -29,6 +29,47 @@ const ROW_COUNT_22V10: usize = 132;
 const ROW_COUNT_20RA10: usize = 80;
 
 #[no_mangle]
+pub extern "C" fn new_jedec() -> *mut ::jedec::Jedec {
+    unsafe { Box::into_raw(Box::new(::jedec::Jedec::new())) }
+}
+
+#[no_mangle]
+pub extern "C" fn set_syn(jedec: *mut ::jedec::Jedec, syn: i32) {
+    let mut jedec: &mut ::jedec::Jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.syn = syn != 0;
+}
+
+#[no_mangle]
+pub extern "C" fn set_ac0(jedec: *mut ::jedec::Jedec, ac0: i32) {
+    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.ac0 = ac0 != 0;
+}
+
+#[no_mangle]
+pub extern "C" fn set_ac1(jedec: *mut ::jedec::Jedec, i: usize, ac0: i32) {
+    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.ac1[i] = ac0 != 0;
+}
+
+#[no_mangle]
+pub extern "C" fn set_s1(jedec: *mut ::jedec::Jedec, i: usize, s1: i32) {
+    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.s1[i] = s1 != 0;
+}
+
+#[no_mangle]
+pub extern "C" fn set_pt(jedec: *mut ::jedec::Jedec, i: usize, pt: i32) {
+    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.pt[i] = pt != 0;
+}
+
+#[no_mangle]
+pub extern "C" fn set_xor(jedec: *mut ::jedec::Jedec, i: usize, x: i32) {
+    let mut jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.xor[i] = x != 0;
+}
+
+#[no_mangle]
 pub extern "C" fn write_files_c(
     file_name: *const c_char,
     config: *const ::jedec_writer::Config,
@@ -42,9 +83,12 @@ pub extern "C" fn write_files_c(
     gal_sig: *const u8,
     gal_ac1: *const u8,
     gal_pt: *const u8,
-    gal_syn: u8,
-    gal_ac0: u8
+    jedec: *const ::jedec::Jedec
 ) {
+    let jedec = unsafe { jedec.as_ref().unwrap() };
+
+    jedec.check_magic();
+
     let xor_size = match gal_type {
         GAL16V8 => 8,
         GAL20V8 => 8,
@@ -78,11 +122,15 @@ pub extern "C" fn write_files_c(
             std::slice::from_raw_parts(gal_fuses, fuse_size),
             std::slice::from_raw_parts(gal_xor, xor_size),
             std::slice::from_raw_parts(gal_s1, 10),
+//            &jedec.xor[0..xor_size],
+//            &jedec.s1[0..10],
             std::slice::from_raw_parts(gal_sig, SIG_SIZE),
             std::slice::from_raw_parts(gal_ac1, AC1_SIZE),
             std::slice::from_raw_parts(gal_pt, PT_SIZE),
-            gal_syn,
-            gal_ac0,
+//            &jedec.ac1[0..AC1_SIZE],
+//            &jedec.pt[0..PT_SIZE],
+            jedec.syn,
+            jedec.ac0,
         );
     }
 }
