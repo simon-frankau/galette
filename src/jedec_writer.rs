@@ -3,12 +3,6 @@ extern crate itertools;
 use chips::Chip;
 use self::itertools::Itertools;
 
-// Number of fuses per-row.
-const ROW_LEN_ADR16: usize = 32;
-const ROW_LEN_ADR20: usize = 40;
-const ROW_LEN_ADR22V10: usize = 44;
-const ROW_LEN_ADR20RA10: usize = 40;
-
 // Config use on the C side.
 #[repr(C)]
 #[derive(Debug)]
@@ -126,12 +120,7 @@ pub fn make_jedec(
     gal_syn: bool,
     gal_ac0: bool,
 ) -> String {
-    let row_len = match gal_type {
-        Chip::GAL16V8 => ROW_LEN_ADR16,
-        Chip::GAL20V8 => ROW_LEN_ADR20,
-        Chip::GAL22V10 => ROW_LEN_ADR22V10,
-        Chip::GAL20RA10 => ROW_LEN_ADR20RA10,
-    };
+    let row_len = gal_type.num_cols();
 
     let mut buf = String::new();
 

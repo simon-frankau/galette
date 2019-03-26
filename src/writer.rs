@@ -6,12 +6,6 @@ use std::path::PathBuf;
 
 const INPUT: i32 = 2;
 
-// Number of fuses per-row.
-pub const ROW_LEN_ADR16: usize = 32;
-pub const ROW_LEN_ADR20: usize = 40;
-pub const ROW_LEN_ADR22V10: usize = 44;
-pub const ROW_LEN_ADR20RA10: usize = 40;
-
 pub const MODE1: i32 = 1;
 pub const MODE2: i32 = 2;
 pub const MODE3: i32 = 3;
@@ -204,12 +198,7 @@ fn make_fuse(
         Chip::GAL20RA10 => (23, 10),
     };
 
-    let row_len = match gal_type {
-        Chip::GAL16V8 => ROW_LEN_ADR16,
-        Chip::GAL20V8 => ROW_LEN_ADR20,
-        Chip::GAL22V10 => ROW_LEN_ADR22V10,
-        Chip::GAL20RA10 => ROW_LEN_ADR20RA10,
-    };
+    let row_len = gal_type.num_cols();
 
     let mut row = 0;
 
