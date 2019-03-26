@@ -1,4 +1,6 @@
 use chips::Chip;
+use olmc;
+use olmc::OLMC;
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -124,4 +126,14 @@ pub extern "C" fn write_files_c(
             jedec
         ).unwrap();
     }
+}
+
+#[no_mangle]
+pub extern "C" fn analyse_mode_v8_c(
+    olmcs: *const OLMC,
+    chip: i32
+) -> i32 {
+    let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 8) };
+    let chip = i32_to_chip(chip);
+    olmc::analyse_mode_v8(olmcs, chip)
 }
