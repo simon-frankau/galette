@@ -1,8 +1,5 @@
-// IDs used in C.
-const GAL16V8: i32 = 1;
-const GAL20V8: i32 = 2;
-const GAL22V10: i32 = 3;
-const GAL20RA10: i32 = 4;
+use chips::Chip;
+use interop;
 
 // Number of fuses per-row.
 const ROW_LEN_ADR16: usize = 32;
@@ -65,6 +62,7 @@ pub extern "C" fn set_and_c(
 ) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.check_magic();
+    let gal_type = interop::i32_to_chip(gal_type);
 
     set_and(
         &mut jedec.fuses,
@@ -84,33 +82,31 @@ fn set_and(
     row: usize,
     pin_num: usize,
     negation: bool,
-    gal_type: i32,
+    gal_type: Chip,
     mode: i32,
 ) {
     let row_len = match gal_type {
-        GAL16V8 => ROW_LEN_ADR16,
-        GAL20V8 => ROW_LEN_ADR20,
-        GAL22V10 => ROW_LEN_ADR22V10,
-        GAL20RA10 => ROW_LEN_ADR20RA10,
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => ROW_LEN_ADR16,
+        Chip::GAL20V8 => ROW_LEN_ADR20,
+        Chip::GAL22V10 => ROW_LEN_ADR22V10,
+        Chip::GAL20RA10 => ROW_LEN_ADR20RA10,
     };
 
     let column_lookup: &[i32] = match gal_type {
-        GAL16V8 => match mode {
+        Chip::GAL16V8 => match mode {
             MODE1 => &PIN_TO_FUSE_16_MODE1,
             MODE2 => &PIN_TO_FUSE_16_MODE2,
             MODE3 => &PIN_TO_FUSE_16_MODE3,
             _ => panic!("Nope"),
         },
-        GAL20V8 => match mode {
+        Chip::GAL20V8 => match mode {
             MODE1 => &PIN_TO_FUSE_20_MODE1,
             MODE2 => &PIN_TO_FUSE_20_MODE2,
             MODE3 => &PIN_TO_FUSE_20_MODE3,
             _ => panic!("Nope"),
         },
-        GAL22V10 => &PIN_TO_FUSE_22V10,
-        GAL20RA10 => &PIN_TO_FUSE_20RA10,
-        _ => panic!("Nope"),
+        Chip::GAL22V10 => &PIN_TO_FUSE_22V10,
+        Chip::GAL20RA10 => &PIN_TO_FUSE_20RA10,
     };
 
     let column = column_lookup[pin_num - 1] as usize;
@@ -118,7 +114,7 @@ fn set_and(
     // Is it a registered OLMC pin?
     // If yes, then correct the negation.
     let mut neg_off = if negation { 1 } else { 0 };
-    if gal_type == GAL22V10 && (pin_num >= 14 && pin_num <= 23) && !s1[23 - pin_num] {
+    if gal_type == Chip::GAL22V10 && (pin_num >= 14 && pin_num <= 23) && !s1[23 - pin_num] {
         neg_off = 1 - neg_off;
     }
 

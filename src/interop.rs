@@ -1,14 +1,11 @@
+use chips::Chip;
+
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-// IDs used in C.
-pub const GAL16V8: i32 = 1;
-pub const GAL20V8: i32 = 2;
-pub const GAL22V10: i32 = 3;
-pub const GAL20RA10: i32 = 4;
-
 #[no_mangle]
 pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
+    let gal_type = i32_to_chip(gal_type);
     Box::into_raw(Box::new(::jedec::Jedec::new(gal_type)))
 }
 
@@ -74,6 +71,16 @@ pub extern "C" fn set_sig(jedec: *mut ::jedec::Jedec, s: *const c_char) {
     }
 }
 
+pub fn i32_to_chip(gal_type: i32) -> Chip {
+    match gal_type {
+        1 => Chip::GAL16V8,
+        2 => Chip::GAL20V8,
+        3 => Chip::GAL22V10,
+        4 => Chip::GAL20RA10,
+        _ => panic!("Nope")
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn write_files_c(
     file_name: *const c_char,
@@ -87,10 +94,12 @@ pub extern "C" fn write_files_c(
     let jedec = unsafe { jedec.as_ref().unwrap() };
     jedec.check_magic();
 
+    let gal_type = i32_to_chip(gal_type);
+
     unsafe {
         let file_name = CStr::from_ptr(file_name);
 
-        let num_pins = if gal_type == GAL16V8 { 20 } else { 24 };
+        let num_pins = if gal_type == Chip::GAL16V8 { 20 } else { 24 };
         let cstrs = std::slice::from_raw_parts(pin_names, num_pins);
         let pin_names = cstrs
             .iter()

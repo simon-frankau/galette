@@ -1,12 +1,7 @@
 extern crate itertools;
 
+use chips::Chip;
 use self::itertools::Itertools;
-
-// IDs used in C.
-const GAL16V8: i32 = 1;
-const GAL20V8: i32 = 2;
-const GAL22V10: i32 = 3;
-const GAL20RA10: i32 = 4;
 
 // Number of fuses per-row.
 const ROW_LEN_ADR16: usize = 32;
@@ -120,7 +115,7 @@ impl<'a> FuseBuilder<'a> {
 // It's galasm-compatible.
 
 pub fn make_jedec(
-    gal_type: i32,
+    gal_type: Chip,
     config: &Config,
     gal_fuses: &[bool],
     gal_xor: &[bool],
@@ -132,11 +127,10 @@ pub fn make_jedec(
     gal_ac0: bool,
 ) -> String {
     let row_len = match gal_type {
-        GAL16V8 => ROW_LEN_ADR16,
-        GAL20V8 => ROW_LEN_ADR20,
-        GAL22V10 => ROW_LEN_ADR22V10,
-        GAL20RA10 => ROW_LEN_ADR20RA10,
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => ROW_LEN_ADR16,
+        Chip::GAL20V8 => ROW_LEN_ADR20,
+        Chip::GAL22V10 => ROW_LEN_ADR22V10,
+        Chip::GAL20RA10 => ROW_LEN_ADR20RA10,
     };
 
     let mut buf = String::new();
@@ -147,11 +141,10 @@ pub fn make_jedec(
     buf.push_str("Used Program:   GALasm 2.1\n");
     buf.push_str("GAL-Assembler:  GALasm 2.1\n");
     buf.push_str(match gal_type {
-        GAL16V8 => "Device:         GAL16V8\n\n",
-        GAL20V8 => "Device:         GAL20V8\n\n",
-        GAL22V10 => "Device:         GAL22V10\n\n",
-        GAL20RA10 => "Device:         GAL20RA10\n\n",
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => "Device:         GAL16V8\n\n",
+        Chip::GAL20V8 => "Device:         GAL20V8\n\n",
+        Chip::GAL22V10 => "Device:         GAL22V10\n\n",
+        Chip::GAL20RA10 => "Device:         GAL20RA10\n\n",
     });
 
     // Default value of gal_fuses
@@ -167,11 +160,10 @@ pub fn make_jedec(
     // Number of fuses.
     // TODO: Should be calculated.
     buf.push_str(match gal_type {
-        GAL16V8 => "*QF2194\n",
-        GAL20V8 => "*QF2706\n",
-        GAL22V10 => "*QF5892\n",
-        GAL20RA10 => "*QF3274\n",
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => "*QF2194\n",
+        Chip::GAL20V8 => "*QF2706\n",
+        Chip::GAL22V10 => "*QF5892\n",
+        Chip::GAL20RA10 => "*QF3274\n",
     });
 
     {
@@ -192,7 +184,7 @@ pub fn make_jedec(
         }
 
         // XOR bits are interleaved with S1 bits on GAL22V10.
-        if gal_type != GAL22V10 {
+        if gal_type != Chip::GAL22V10 {
             fuse_builder.add(gal_xor)
         } else {
             let bits = itertools::interleave(gal_xor.iter(), gal_s1.iter());
@@ -201,7 +193,7 @@ pub fn make_jedec(
 
         fuse_builder.add(gal_sig);
 
-        if (gal_type == GAL16V8) || (gal_type == GAL20V8) {
+        if (gal_type == Chip::GAL16V8) || (gal_type == Chip::GAL20V8) {
             fuse_builder.add(gal_ac1);
             fuse_builder.add(gal_pt);
             fuse_builder.add(&[gal_syn]);

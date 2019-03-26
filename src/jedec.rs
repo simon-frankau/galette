@@ -1,3 +1,5 @@
+use chips::Chip;
+
 pub struct Jedec {
     pub magic: i32,
     pub fuses: Vec<bool>,
@@ -9,12 +11,6 @@ pub struct Jedec {
     pub ac0: bool,
     pub s1: Vec<bool>,
 }
-
-// IDs used in C.
-pub const GAL16V8: i32 = 1;
-pub const GAL20V8: i32 = 2;
-pub const GAL22V10: i32 = 3;
-pub const GAL20RA10: i32 = 4;
 
 // Number of fuses per-row.
 pub const ROW_LEN_ADR16: usize = 32;
@@ -32,21 +28,19 @@ const ROW_COUNT_20RA10: usize = 80;
 const MAGIC: i32 = 0x12345678;
 
 impl Jedec {
-    pub fn new(gal_type: i32) -> Jedec {
+    pub fn new(gal_type: Chip) -> Jedec {
         let fuse_size = match gal_type {
-            GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
-            GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
-            GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
-            GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
-            _ => panic!("Nope"),
+            Chip::GAL16V8 => ROW_LEN_ADR16 * ROW_COUNT_16V8,
+            Chip::GAL20V8 => ROW_LEN_ADR20 * ROW_COUNT_20V8,
+            Chip::GAL22V10 => ROW_LEN_ADR22V10 * ROW_COUNT_22V10,
+            Chip::GAL20RA10 => ROW_LEN_ADR20RA10 * ROW_COUNT_20RA10,
         };
 
         let xor_size = match gal_type {
-            GAL16V8 => 8,
-            GAL20V8 => 8,
-            GAL22V10 => 10,
-            GAL20RA10 => 10,
-            _ => panic!("Nope"),
+            Chip::GAL16V8 => 8,
+            Chip::GAL20V8 => 8,
+            Chip::GAL22V10 => 10,
+            Chip::GAL20RA10 => 10,
         };
 
         Jedec {

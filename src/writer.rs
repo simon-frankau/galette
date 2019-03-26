@@ -1,3 +1,4 @@
+use chips::Chip;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
@@ -21,7 +22,7 @@ fn make_spaces(buf: &mut String, n: usize) {
     }
 }
 
-fn make_chip(gal_type: i32, pin_names: &[&str]) -> String {
+fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
     let num_of_pins = pin_names.len();
     let mut buf = String::new();
 
@@ -30,11 +31,10 @@ fn make_chip(gal_type: i32, pin_names: &[&str]) -> String {
     make_spaces(&mut buf, 31);
 
     buf.push_str(match gal_type {
-        ::interop::GAL16V8 => " GAL16V8\n\n",
-        ::interop::GAL20V8 => " GAL20V8\n\n",
-        ::interop::GAL22V10 => " GAL22V10\n\n",
-        ::interop::GAL20RA10 => "GAL20RA10\n\n",
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => " GAL16V8\n\n",
+        Chip::GAL20V8 => " GAL20V8\n\n",
+        Chip::GAL22V10 => " GAL22V10\n\n",
+        Chip::GAL20RA10 => "GAL20RA10\n\n",
     });
 
     make_spaces(&mut buf, 26);
@@ -69,27 +69,25 @@ fn make_chip(gal_type: i32, pin_names: &[&str]) -> String {
 
 const DUMMY_OLMC12: usize = 25;
 
-fn is_olmc(gal_type: i32, n: usize) -> bool {
+fn is_olmc(gal_type: Chip, n: usize) -> bool {
     match gal_type {
-        ::interop::GAL16V8 => n >= 12 && n <= 19,
-        ::interop::GAL20V8 => n >= 15 && n <= 22,
-        ::interop::GAL22V10 => n >= 14 && n <= DUMMY_OLMC12,
-        ::interop::GAL20RA10 => n >= 14 && n <= 23,
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => n >= 12 && n <= 19,
+        Chip::GAL20V8 => n >= 15 && n <= 22,
+        Chip::GAL22V10 => n >= 14 && n <= DUMMY_OLMC12,
+        Chip::GAL20RA10 => n >= 14 && n <= 23,
     }
 }
 
-fn pin_to_olmc(gal_type: i32, pin: usize) -> usize {
+fn pin_to_olmc(gal_type: Chip, pin: usize) -> usize {
     pin - match gal_type {
-        ::interop::GAL16V8 => 12,
-        ::interop::GAL20V8 => 15,
-        ::interop::GAL22V10 => 14,
-        ::interop::GAL20RA10 => 14,
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => 12,
+        Chip::GAL20V8 => 15,
+        Chip::GAL22V10 => 14,
+        Chip::GAL20RA10 => 14,
     }
 }
 
-fn make_pin(gal_type: i32, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]) -> String {
+fn make_pin(gal_type: Chip, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]) -> String {
     let num_of_pins = pin_names.len();
 
     let mut buf = String::new();
@@ -115,26 +113,26 @@ fn make_pin(gal_type: i32, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]
             flag = true;
         }
 
-        if gal_type == ::interop::GAL16V8 || gal_type == ::interop::GAL20V8 {
+        if gal_type == Chip::GAL16V8 || gal_type == Chip::GAL20V8 {
             if mode == MODE3 && n == 1 {
                 buf.push_str("| Clock\n");
                 flag = true;
             }
 
             if mode == MODE3 {
-                if gal_type == ::interop::GAL16V8 && n == 11 {
+                if gal_type == Chip::GAL16V8 && n == 11 {
                     buf.push_str("| /OE\n");
                     flag = true;
                 }
 
-                if gal_type == ::interop::GAL20V8 && n == 13 {
+                if gal_type == Chip::GAL20V8 && n == 13 {
                     buf.push_str("| /OE\n");
                     flag = true;
                 }
             }
         }
 
-        if gal_type == ::interop::GAL22V10 && n == 1 {
+        if gal_type == Chip::GAL22V10 && n == 1 {
             buf.push_str("| Clock/Input\n");
             flag = true;
         }
@@ -180,18 +178,17 @@ fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[bool]) {
 
 const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
 
-fn get_size(gal_type: i32, olmc: usize) -> i32 {
+fn get_size(gal_type: Chip, olmc: usize) -> i32 {
     match gal_type {
-        ::interop::GAL16V8 => 8,
-        ::interop::GAL20V8 => 8,
-        ::interop::GAL22V10 => OLMC_SIZE_22V10[olmc],
-        ::interop::GAL20RA10 => 8,
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => 8,
+        Chip::GAL20V8 => 8,
+        Chip::GAL22V10 => OLMC_SIZE_22V10[olmc],
+        Chip::GAL20RA10 => 8,
     }
 }
 
 fn make_fuse(
-    gal_type: i32,
+    gal_type: Chip,
     pin_names: &[&str],
     gal_fuse: &[bool],
     gal_xor: &[bool],
@@ -201,25 +198,23 @@ fn make_fuse(
     let mut buf = String::new();
 
     let (mut pin, num_olmcs) = match gal_type {
-        ::interop::GAL16V8 => (19, 8),
-        ::interop::GAL20V8 => (22, 8),
-        ::interop::GAL22V10 => (23, 10),
-        ::interop::GAL20RA10 => (23, 10),
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => (19, 8),
+        Chip::GAL20V8 => (22, 8),
+        Chip::GAL22V10 => (23, 10),
+        Chip::GAL20RA10 => (23, 10),
     };
 
     let row_len = match gal_type {
-        ::interop::GAL16V8 => ROW_LEN_ADR16,
-        ::interop::GAL20V8 => ROW_LEN_ADR20,
-        ::interop::GAL22V10 => ROW_LEN_ADR22V10,
-        ::interop::GAL20RA10 => ROW_LEN_ADR20RA10,
-        _ => panic!("Nope"),
+        Chip::GAL16V8 => ROW_LEN_ADR16,
+        Chip::GAL20V8 => ROW_LEN_ADR20,
+        Chip::GAL22V10 => ROW_LEN_ADR22V10,
+        Chip::GAL20RA10 => ROW_LEN_ADR20RA10,
     };
 
     let mut row = 0;
 
     for olmc in 0..num_olmcs {
-        if gal_type == ::interop::GAL22V10 && olmc == 0 {
+        if gal_type == Chip::GAL22V10 && olmc == 0 {
             // AR when 22V10
             buf.push_str("\n\nAR");
             make_row(&mut buf, row_len, row, gal_fuse);
@@ -236,34 +231,33 @@ fn make_fuse(
         make_spaces(&mut buf, 13 - pin_names[pin - 1].len());
 
         match gal_type {
-            ::interop::GAL16V8 => {
+            Chip::GAL16V8 => {
                 buf.push_str(&format!(
                     "XOR = {:>1}   AC1 = {:>1}",
                     if gal_xor[19 - pin] { 1 } else { 0 },
                     if gal_ac1[19 - pin] { 1 } else { 0 }
                 ));
             }
-            ::interop::GAL20V8 => {
+            Chip::GAL20V8 => {
                 buf.push_str(&format!(
                     "XOR = {:>1}   AC1 = {:>1}",
                     if gal_xor[22 - pin] { 1 } else { 0 },
                     if gal_ac1[22 - pin] { 1 } else { 0 }
                 ));
             }
-            ::interop::GAL22V10 => {
+            Chip::GAL22V10 => {
                 buf.push_str(&format!(
                     "S0 = {:>1}   S1 = {:>1}",
                     if gal_xor[23 - pin] { 1 } else { 0 },
                     if gal_s1[23 - pin] { 1 } else { 0 }
                 ));
             }
-            ::interop::GAL20RA10 => {
+            Chip::GAL20RA10 => {
                 buf.push_str(&format!(
                     "S0 = {:>1}",
                     if gal_xor[23 - pin] { 1 } else { 0 }
                 ));
             }
-            _ => panic!("Nope"),
         };
 
         for _n in 0..num_rows {
@@ -272,7 +266,7 @@ fn make_fuse(
             row += 1;
         }
 
-        if gal_type == ::interop::GAL22V10 && olmc == 9 {
+        if gal_type == Chip::GAL22V10 && olmc == 9 {
             // SP when 22V10
             buf.push_str("\n\nSP");
             make_row(&mut buf, row_len, row, gal_fuse);
@@ -288,7 +282,7 @@ fn make_fuse(
 pub fn write_files(
     file_name: &str,
     config: &::jedec_writer::Config,
-    gal_type: i32,
+    gal_type: Chip,
     mode: i32,
     pin_names: &[&str],
     olmc_pin_types: &[i32],
