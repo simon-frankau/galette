@@ -19,12 +19,13 @@ impl Jedec {
     pub fn new(gal_type: Chip) -> Jedec {
 
         let fuse_size = gal_type.logic_size();
-        let xor_size = gal_type.xor_size();
+        let num_olmcs = gal_type.num_olmcs();
 
         Jedec {
             magic: MAGIC,
             fuses: vec![true; fuse_size],
-            xor: vec![false; xor_size],
+            // One xor bit per OLMC.
+            xor: vec![false; num_olmcs],
             sig: vec![false; 64],
             ac1: vec![false; 8],
             pt: vec![false; 64],

@@ -8,35 +8,55 @@ pub enum Chip {
 }
 
 struct ChipData {
-    // Size of the main fuse array
+    name: &'static str,
+    // Size of the main fuse array.
     num_rows: usize,
     num_cols: usize,
-    xor_size: usize,
+    // Total size of the bitstream.
+    // TODO: Should be calculated.
+    total_size: usize,
+    // Range of pins that are backed by OLMCs
+    min_olmc_pin: usize,
+    max_olmc_pin: usize,
 }
 
 const GAL16V8_DATA: ChipData = ChipData {
+    name: "GAL16V8",
     num_rows: 64,
     num_cols: 32,
-    xor_size: 8,
+    total_size: 2194,
+    min_olmc_pin: 12,
+    max_olmc_pin: 19,
 };
 
 const GAL20V8_DATA: ChipData = ChipData {
+    name: "GAL20V8",
     num_rows: 64,
     num_cols: 40,
-    xor_size: 8,
+    total_size: 2706,
+    min_olmc_pin: 15,
+    max_olmc_pin: 22,
 };
 
 const GAL22V10_DATA: ChipData = ChipData {
+    name: "GAL22V10",
     num_rows: 132,
     num_cols: 44,
-    xor_size: 10,
+    total_size: 5892,
+    min_olmc_pin: 14,
+    max_olmc_pin: 23,
 };
 
 const GAL20RA10_DATA: ChipData = ChipData {
+    name: "GAL20RA10",
     num_rows: 80,
     num_cols: 40,
-    xor_size: 10,
+    total_size: 3274,
+    min_olmc_pin: 14,
+    max_olmc_pin: 23,
 };
+
+const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
 
 impl Chip {
     fn get_chip_data(&self) -> &ChipData {
@@ -46,6 +66,10 @@ impl Chip {
             Chip::GAL22V10 => &GAL22V10_DATA,
             Chip::GAL20RA10 => &GAL20RA10_DATA,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        self.get_chip_data().name
     }
 
     pub fn num_rows(&self) -> usize {
@@ -61,7 +85,37 @@ impl Chip {
         data.num_rows * data.num_cols
     }
 
-    pub fn xor_size(&self) -> usize {
-        self.get_chip_data().xor_size
+    pub fn total_size(&self) -> usize {
+        self.get_chip_data().total_size
+    }
+
+    pub fn pin_to_olmc(&self, pin: usize) -> Option<usize> {
+        let data = self.get_chip_data();
+        if data.min_olmc_pin <= pin && pin <= data.max_olmc_pin {
+            Some(pin - data.min_olmc_pin)
+        } else {
+            None
+        }
+    }
+
+    // Pin number of last OLMC'd output.
+    pub fn last_olmc(&self) -> usize {
+        self.get_chip_data().max_olmc_pin
+    }
+
+    // Count of OLMCs
+    pub fn num_olmcs(&self) -> usize {
+        let data = self.get_chip_data();
+        data.max_olmc_pin - data.min_olmc_pin + 1
+    }
+
+    // Not everything is easiest driven off a table...
+    pub fn num_rows_for_olmc(&self, olmc_num: usize) -> usize {
+        if *self == Chip::GAL22V10 {
+            // Only 22V10 has non-uniform-sized OLMCs.
+            OLMC_SIZE_22V10[olmc_num] as usize
+        } else {
+            8
+        }
     }
 }

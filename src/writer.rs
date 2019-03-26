@@ -24,12 +24,8 @@ fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
 
     make_spaces(&mut buf, 31);
 
-    buf.push_str(match gal_type {
-        Chip::GAL16V8 => " GAL16V8\n\n",
-        Chip::GAL20V8 => " GAL20V8\n\n",
-        Chip::GAL22V10 => " GAL22V10\n\n",
-        Chip::GAL20RA10 => "GAL20RA10\n\n",
-    });
+    // TODO: Shuffle name a space left for the RA10 for alignment.
+    buf.push_str(&format!(" {}\n\n", gal_type.name()));
 
     make_spaces(&mut buf, 26);
 
@@ -59,26 +55,6 @@ fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
     buf.push_str("-------------------\n");
 
     return buf;
-}
-
-const DUMMY_OLMC12: usize = 25;
-
-fn is_olmc(gal_type: Chip, n: usize) -> bool {
-    match gal_type {
-        Chip::GAL16V8 => n >= 12 && n <= 19,
-        Chip::GAL20V8 => n >= 15 && n <= 22,
-        Chip::GAL22V10 => n >= 14 && n <= DUMMY_OLMC12,
-        Chip::GAL20RA10 => n >= 14 && n <= 23,
-    }
-}
-
-fn pin_to_olmc(gal_type: Chip, pin: usize) -> usize {
-    pin - match gal_type {
-        Chip::GAL16V8 => 12,
-        Chip::GAL20V8 => 15,
-        Chip::GAL22V10 => 14,
-        Chip::GAL20RA10 => 14,
-    }
 }
 
 fn make_pin(gal_type: Chip, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]) -> String {
@@ -131,12 +107,9 @@ fn make_pin(gal_type: Chip, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32
             flag = true;
         }
 
-        // OLMC pin?
-        // Second condition is a hack as VCC is a dummy OLMC on a 22V10.
-        if is_olmc(gal_type, n) && n < 24 {
-            let k = pin_to_olmc(gal_type, n);
-            if olmc_pin_types[k] != INPUT {
-                if olmc_pin_types[k] != 0 {
+        if let Some(olmc) = gal_type.pin_to_olmc(n) {
+            if olmc_pin_types[olmc] != INPUT {
+                if olmc_pin_types[olmc] != 0 {
                     buf.push_str("| Output\n");
                 } else {
                     buf.push_str("| NC\n");
@@ -170,14 +143,12 @@ fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[bool]) {
     }
 }
 
-const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
-
-fn get_size(gal_type: Chip, olmc: usize) -> i32 {
-    match gal_type {
-        Chip::GAL16V8 => 8,
-        Chip::GAL20V8 => 8,
-        Chip::GAL22V10 => OLMC_SIZE_22V10[olmc],
-        Chip::GAL20RA10 => 8,
+// Short-named helper
+fn b(bit: bool) -> char {
+    if bit {
+        '1'
+    } else {
+        '0'
     }
 }
 
@@ -191,15 +162,10 @@ fn make_fuse(
 ) -> String {
     let mut buf = String::new();
 
-    let (mut pin, num_olmcs) = match gal_type {
-        Chip::GAL16V8 => (19, 8),
-        Chip::GAL20V8 => (22, 8),
-        Chip::GAL22V10 => (23, 10),
-        Chip::GAL20RA10 => (23, 10),
-    };
-
+    let num_olmcs = gal_type.num_olmcs();
     let row_len = gal_type.num_cols();
 
+    let mut pin = gal_type.last_olmc();
     let mut row = 0;
 
     for olmc in 0..num_olmcs {
@@ -210,7 +176,7 @@ fn make_fuse(
             row += 1;
         }
 
-        let num_rows = get_size(gal_type, olmc);
+        let num_rows = gal_type.num_rows_for_olmc(olmc);
 
         // Print pin
         buf.push_str(&format!("\n\nPin {:>2} = ", pin));
@@ -221,31 +187,16 @@ fn make_fuse(
 
         match gal_type {
             Chip::GAL16V8 => {
-                buf.push_str(&format!(
-                    "XOR = {:>1}   AC1 = {:>1}",
-                    if gal_xor[19 - pin] { 1 } else { 0 },
-                    if gal_ac1[19 - pin] { 1 } else { 0 }
-                ));
+                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", b(gal_xor[19 - pin]), b(gal_ac1[19 - pin])));
             }
             Chip::GAL20V8 => {
-                buf.push_str(&format!(
-                    "XOR = {:>1}   AC1 = {:>1}",
-                    if gal_xor[22 - pin] { 1 } else { 0 },
-                    if gal_ac1[22 - pin] { 1 } else { 0 }
-                ));
+                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", b(gal_xor[22 - pin]), b(gal_ac1[22 - pin])));
             }
             Chip::GAL22V10 => {
-                buf.push_str(&format!(
-                    "S0 = {:>1}   S1 = {:>1}",
-                    if gal_xor[23 - pin] { 1 } else { 0 },
-                    if gal_s1[23 - pin] { 1 } else { 0 }
-                ));
+                buf.push_str(&format!("S0 = {:>1}   S1 = {:>1}", b(gal_xor[23 - pin]), b(gal_s1[23 - pin])));
             }
             Chip::GAL20RA10 => {
-                buf.push_str(&format!(
-                    "S0 = {:>1}",
-                    if gal_xor[23 - pin] { 1 } else { 0 }
-                ));
+                buf.push_str(&format!("S0 = {:>1}", b(gal_xor[23 - pin])));
             }
         };
 

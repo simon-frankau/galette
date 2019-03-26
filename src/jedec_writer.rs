@@ -129,13 +129,7 @@ pub fn make_jedec(
     // TODO: Backwards compatibility.
     buf.push_str("Used Program:   GALasm 2.1\n");
     buf.push_str("GAL-Assembler:  GALasm 2.1\n");
-    buf.push_str(match gal_type {
-        Chip::GAL16V8 => "Device:         GAL16V8\n\n",
-        Chip::GAL20V8 => "Device:         GAL20V8\n\n",
-        Chip::GAL22V10 => "Device:         GAL22V10\n\n",
-        Chip::GAL20RA10 => "Device:         GAL20RA10\n\n",
-    });
-
+    buf.push_str(&format!("Device:         {}\n\n", gal_type.name()));
     // Default value of gal_fuses
     buf.push_str("*F0\n");
 
@@ -148,12 +142,7 @@ pub fn make_jedec(
 
     // Number of fuses.
     // TODO: Should be calculated.
-    buf.push_str(match gal_type {
-        Chip::GAL16V8 => "*QF2194\n",
-        Chip::GAL20V8 => "*QF2706\n",
-        Chip::GAL22V10 => "*QF5892\n",
-        Chip::GAL20RA10 => "*QF3274\n",
-    });
+    buf.push_str(&format!("*QF{}\n", gal_type.total_size()));
 
     {
         // Construct fuse matrix.
