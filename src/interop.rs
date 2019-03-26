@@ -113,14 +113,7 @@ pub extern "C" fn write_files_c(
             mode,
             &pin_names,
             std::slice::from_raw_parts(olmc_pin_types, 12),
-            &jedec.fuses,
-            &jedec.xor,
-            &jedec.s1,
-            &jedec.sig,
-            &jedec.ac1,
-            &jedec.pt,
-            jedec.syn,
-            jedec.ac0,
+            jedec
         ).unwrap();
     }
 }

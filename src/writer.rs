@@ -1,4 +1,5 @@
 use chips::Chip;
+use jedec::Jedec;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
@@ -15,6 +16,10 @@ fn make_spaces(buf: &mut String, n: usize) {
         buf.push(' ');
     }
 }
+
+////////////////////////////////////////////////////////////////////////
+// 'make_chip' draws out the chip with pin assignments.
+//
 
 fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
     let num_of_pins = pin_names.len();
@@ -56,6 +61,10 @@ fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
 
     return buf;
 }
+
+////////////////////////////////////////////////////////////////////////
+// 'make_pin' lists the pin assignments.
+//
 
 fn make_pin(gal_type: Chip, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]) -> String {
     let num_of_pins = pin_names.len();
@@ -127,6 +136,10 @@ fn make_pin(gal_type: Chip, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32
     return buf;
 }
 
+////////////////////////////////////////////////////////////////////////
+// 'make_fuse' writes out a fuse map.
+//
+
 fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[bool]) {
     buf.push_str(&format!("\n{:>3} ", row));
 
@@ -155,10 +168,7 @@ fn b(bit: bool) -> char {
 fn make_fuse(
     gal_type: Chip,
     pin_names: &[&str],
-    gal_fuse: &[bool],
-    gal_xor: &[bool],
-    gal_ac1: &[bool],
-    gal_s1: &[bool],
+    jedec: &Jedec,
 ) -> String {
     let mut buf = String::new();
 
@@ -172,7 +182,7 @@ fn make_fuse(
         if gal_type == Chip::GAL22V10 && olmc == 0 {
             // AR when 22V10
             buf.push_str("\n\nAR");
-            make_row(&mut buf, row_len, row, gal_fuse);
+            make_row(&mut buf, row_len, row, &jedec.fuses);
             row += 1;
         }
 
@@ -187,29 +197,29 @@ fn make_fuse(
 
         match gal_type {
             Chip::GAL16V8 => {
-                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", b(gal_xor[19 - pin]), b(gal_ac1[19 - pin])));
+                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", b(jedec.xor[19 - pin]), b(jedec.ac1[19 - pin])));
             }
             Chip::GAL20V8 => {
-                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", b(gal_xor[22 - pin]), b(gal_ac1[22 - pin])));
+                buf.push_str(&format!("XOR = {:>1}   AC1 = {:>1}", b(jedec.xor[22 - pin]), b(jedec.ac1[22 - pin])));
             }
             Chip::GAL22V10 => {
-                buf.push_str(&format!("S0 = {:>1}   S1 = {:>1}", b(gal_xor[23 - pin]), b(gal_s1[23 - pin])));
+                buf.push_str(&format!("S0 = {:>1}   S1 = {:>1}", b(jedec.xor[23 - pin]), b(jedec.s1[23 - pin])));
             }
             Chip::GAL20RA10 => {
-                buf.push_str(&format!("S0 = {:>1}", b(gal_xor[23 - pin])));
+                buf.push_str(&format!("S0 = {:>1}", b(jedec.xor[23 - pin])));
             }
         };
 
         for _n in 0..num_rows {
             // Print all fuses of an OLMC
-            make_row(&mut buf, row_len, row, gal_fuse);
+            make_row(&mut buf, row_len, row, &jedec.fuses);
             row += 1;
         }
 
         if gal_type == Chip::GAL22V10 && olmc == 9 {
             // SP when 22V10
             buf.push_str("\n\nSP");
-            make_row(&mut buf, row_len, row, gal_fuse);
+            make_row(&mut buf, row_len, row, &jedec.fuses);
         }
 
         pin -= 1;
@@ -219,6 +229,16 @@ fn make_fuse(
     return buf;
 }
 
+////////////////////////////////////////////////////////////////////////
+// Main entry point for writing all the files is 'write_files'.
+//
+
+fn write_file(base: &PathBuf, ext: &str, buf: &str) -> Result<(), Error> {
+    let mut file = File::create(base.with_extension(ext).to_str().unwrap())?;
+    file.write_all(buf.as_bytes())?;
+    Ok(())
+}
+
 pub fn write_files(
     file_name: &str,
     config: &::jedec_writer::Config,
@@ -226,42 +246,22 @@ pub fn write_files(
     mode: i32,
     pin_names: &[&str],
     olmc_pin_types: &[i32],
-    gal_fuses: &[bool],
-    gal_xor: &[bool],
-    gal_s1: &[bool],
-    gal_sig: &[bool],
-    gal_ac1: &[bool],
-    gal_pt: &[bool],
-    gal_syn: bool,
-    gal_ac0: bool,
+    jedec: &Jedec,
 ) -> Result<(), Error> {
     let base = PathBuf::from(file_name);
 
-    {
-        let buf = ::jedec_writer::make_jedec(
-            gal_type, config, gal_fuses, gal_xor, gal_s1, gal_sig, gal_ac1, gal_pt, gal_syn,
-            gal_ac0,
-        );
-        let mut file = File::create(base.with_extension("jed").to_str().unwrap())?;
-        file.write_all(buf.as_bytes())?;
-    }
+    write_file(&base, "jed", &::jedec_writer::make_jedec(gal_type, config, jedec))?;
 
     if config.gen_fuse != 0 {
-        let buf = make_fuse(gal_type, pin_names, gal_fuses, gal_xor, gal_ac1, gal_s1);
-        let mut file = File::create(base.with_extension("fus").to_str().unwrap())?;
-        file.write_all(buf.as_bytes())?;
+        write_file(&base, "fus", &make_fuse(gal_type, pin_names, jedec))?;
     }
 
     if config.gen_pin != 0 {
-        let buf = make_pin(gal_type, pin_names, mode, olmc_pin_types);
-        let mut file = File::create(base.with_extension("pin").to_str().unwrap())?;
-        file.write_all(buf.as_bytes())?;
+        write_file(&base, "pin", &make_pin(gal_type, pin_names, mode, olmc_pin_types))?;
     }
 
     if config.gen_chip != 0 {
-        let buf = make_chip(gal_type, pin_names);
-        let mut file = File::create(base.with_extension("chp").to_str().unwrap())?;
-        file.write_all(buf.as_bytes())?;
+        write_file(&base, "chp", &make_chip(gal_type, pin_names))?;
     }
 
     Ok(())
