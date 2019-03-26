@@ -10,9 +10,21 @@ pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
 }
 
 #[no_mangle]
-pub extern "C" fn set_fuse(jedec: *mut ::jedec::Jedec, i: usize, x: i32) {
+pub extern "C" fn clear_row_c(jedec: *mut ::jedec::Jedec, start_row: i32, row_offset: i32) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.fuses[i] = x != 0;
+    jedec.clear_row(start_row as usize, row_offset as usize);
+}
+
+#[no_mangle]
+pub extern "C" fn clear_rows_c(jedec: *mut ::jedec::Jedec, start_row: i32, row_offset: i32, max_row: i32) {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.clear_rows(start_row as usize, row_offset as usize, max_row as usize);
+}
+
+#[no_mangle]
+pub extern "C" fn clear_olmc_c(jedec: *mut ::jedec::Jedec, olmc: i32) {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.clear_olmc(olmc as usize);
 }
 
 #[no_mangle]
@@ -85,7 +97,6 @@ pub fn i32_to_chip(gal_type: i32) -> Chip {
 pub extern "C" fn write_files_c(
     file_name: *const c_char,
     config: *const ::jedec_writer::Config,
-    gal_type: i32,
     mode: i32,
     pin_names: *const *const c_char,
     olmc_pin_types: *const i32,
@@ -94,12 +105,10 @@ pub extern "C" fn write_files_c(
     let jedec = unsafe { jedec.as_ref().unwrap() };
     jedec.check_magic();
 
-    let gal_type = i32_to_chip(gal_type);
-
     unsafe {
         let file_name = CStr::from_ptr(file_name);
 
-        let num_pins = if gal_type == Chip::GAL16V8 { 20 } else { 24 };
+        let num_pins = if jedec.chip == Chip::GAL16V8 { 20 } else { 24 };
         let cstrs = std::slice::from_raw_parts(pin_names, num_pins);
         let pin_names = cstrs
             .iter()
@@ -109,7 +118,6 @@ pub extern "C" fn write_files_c(
         ::writer::write_files(
             file_name.to_str().unwrap(),
             &(*config),
-            gal_type,
             mode,
             &pin_names,
             std::slice::from_raw_parts(olmc_pin_types, 12),

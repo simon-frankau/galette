@@ -110,10 +110,10 @@ impl<'a> FuseBuilder<'a> {
 // It's galasm-compatible.
 
 pub fn make_jedec(
-    gal_type: Chip,
     config: &Config,
     jedec: &Jedec,
 ) -> String {
+    let gal_type = jedec.chip;
     let row_len = gal_type.num_cols();
 
     let mut buf = String::new();
@@ -135,7 +135,6 @@ pub fn make_jedec(
     });
 
     // Number of fuses.
-    // TODO: Should be calculated.
     buf.push_str(&format!("*QF{}\n", gal_type.total_size()));
 
     {

@@ -1,5 +1,4 @@
 use chips::Chip;
-use interop;
 
 // GAL16V8
 
@@ -51,12 +50,10 @@ pub extern "C" fn set_and_c(
     row: u32,
     pin_num: u32,
     negation: u32,
-    gal_type: i32,
     mode: i32,
 ) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.check_magic();
-    let gal_type = interop::i32_to_chip(gal_type);
 
     set_and(
         &mut jedec.fuses,
@@ -64,7 +61,7 @@ pub extern "C" fn set_and_c(
         row as usize,
         pin_num as usize,
         negation != 0,
-        gal_type,
+        jedec.chip,
         mode,
     );
 }

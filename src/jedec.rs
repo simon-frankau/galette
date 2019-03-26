@@ -1,6 +1,7 @@
 use chips::Chip;
 
 pub struct Jedec {
+    pub chip: Chip,
     pub magic: i32,
     pub fuses: Vec<bool>,
     pub xor: Vec<bool>,
@@ -22,6 +23,7 @@ impl Jedec {
         let num_olmcs = gal_type.num_olmcs();
 
         Jedec {
+            chip: gal_type,
             magic: MAGIC,
             fuses: vec![true; fuse_size],
             // One xor bit per OLMC.
@@ -37,5 +39,31 @@ impl Jedec {
 
     pub fn check_magic(&self) {
         assert!(self.magic == MAGIC);
+    }
+
+    pub fn clear_row(&mut self, start_row: usize, row_offset: usize) {
+        let num_cols = self.chip.num_cols();
+        let start = (start_row + row_offset) * num_cols;
+        for i in start .. start + num_cols {
+            self.fuses[i] = false;
+        }
+    }
+
+    pub fn clear_rows(&mut self, start_row: usize, row_offset: usize, max_row: usize) {
+        let num_cols = self.chip.num_cols();
+        let start = (start_row + row_offset) * num_cols;
+        let end = (start_row + max_row) * num_cols;
+        for i in start .. end {
+            self.fuses[i] = false;
+        }
+    }
+
+    pub fn clear_olmc(&mut self, olmc: usize) {
+        let num_cols = self.chip.num_cols();
+        let start = self.chip.start_row_for_olmc(olmc);
+        let end = start + self.chip.num_rows_for_olmc(olmc);
+        for i in start * num_cols .. end * num_cols {
+            self.fuses[i] = false;
+        }
     }
 }

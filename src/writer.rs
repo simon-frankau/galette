@@ -166,12 +166,12 @@ fn b(bit: bool) -> char {
 }
 
 fn make_fuse(
-    gal_type: Chip,
     pin_names: &[&str],
     jedec: &Jedec,
 ) -> String {
     let mut buf = String::new();
 
+    let gal_type = jedec.chip;
     let num_olmcs = gal_type.num_olmcs();
     let row_len = gal_type.num_cols();
 
@@ -242,18 +242,18 @@ fn write_file(base: &PathBuf, ext: &str, buf: &str) -> Result<(), Error> {
 pub fn write_files(
     file_name: &str,
     config: &::jedec_writer::Config,
-    gal_type: Chip,
     mode: i32,
     pin_names: &[&str],
     olmc_pin_types: &[i32],
     jedec: &Jedec,
 ) -> Result<(), Error> {
     let base = PathBuf::from(file_name);
+    let gal_type = jedec.chip;
 
-    write_file(&base, "jed", &::jedec_writer::make_jedec(gal_type, config, jedec))?;
+    write_file(&base, "jed", &::jedec_writer::make_jedec(config, jedec))?;
 
     if config.gen_fuse != 0 {
-        write_file(&base, "fus", &make_fuse(gal_type, pin_names, jedec))?;
+        write_file(&base, "fus", &make_fuse(pin_names, jedec))?;
     }
 
     if config.gen_pin != 0 {

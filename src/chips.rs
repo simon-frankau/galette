@@ -7,6 +7,20 @@ pub enum Chip {
     GAL20RA10,
 }
 
+// Number of rows for each OLMC in the 22V10's fuse table (only 22V10
+// is non-uniform).
+//
+// The last two OLMCs aren't connected to pins, but represent SP
+// and AR.
+const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
+// And for everything else...
+const OLMC_SIZE_DEFAULT: i32 = 8;
+
+// Map OLMC number to starting row within the fuse table
+const OLMC_ROWS_XXV8: [i32; 8] = [56, 48, 40, 32, 24, 16, 8, 0];
+const OLMC_ROWS_22V10: [i32; 12] = [122, 111, 98, 83, 66, 49, 34, 21, 10, 1, 0, 131];
+const OLMC_ROWS_20RA10: [i32; 10] = [72, 64, 56, 48, 40, 32, 24, 16, 8, 0];
+
 struct ChipData {
     name: &'static str,
     // Size of the main fuse array.
@@ -18,6 +32,8 @@ struct ChipData {
     // Range of pins that are backed by OLMCs
     min_olmc_pin: usize,
     max_olmc_pin: usize,
+    // Mapping from OLMC number to starting row in the fuse grid.
+    olmc_map: &'static [i32],
 }
 
 const GAL16V8_DATA: ChipData = ChipData {
@@ -27,6 +43,7 @@ const GAL16V8_DATA: ChipData = ChipData {
     total_size: 2194,
     min_olmc_pin: 12,
     max_olmc_pin: 19,
+    olmc_map: &OLMC_ROWS_XXV8,
 };
 
 const GAL20V8_DATA: ChipData = ChipData {
@@ -36,6 +53,7 @@ const GAL20V8_DATA: ChipData = ChipData {
     total_size: 2706,
     min_olmc_pin: 15,
     max_olmc_pin: 22,
+    olmc_map: &OLMC_ROWS_XXV8,
 };
 
 const GAL22V10_DATA: ChipData = ChipData {
@@ -45,6 +63,7 @@ const GAL22V10_DATA: ChipData = ChipData {
     total_size: 5892,
     min_olmc_pin: 14,
     max_olmc_pin: 23,
+    olmc_map: &OLMC_ROWS_22V10,
 };
 
 const GAL20RA10_DATA: ChipData = ChipData {
@@ -54,9 +73,8 @@ const GAL20RA10_DATA: ChipData = ChipData {
     total_size: 3274,
     min_olmc_pin: 14,
     max_olmc_pin: 23,
+    olmc_map: &OLMC_ROWS_20RA10,
 };
-
-const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
 
 impl Chip {
     fn get_chip_data(&self) -> &ChipData {
@@ -109,13 +127,19 @@ impl Chip {
         data.max_olmc_pin - data.min_olmc_pin + 1
     }
 
+    // First row number in the fuse table for the rows associated with an OLMC.
+    pub fn start_row_for_olmc(&self, olmc_num: usize) -> usize {
+        self.get_chip_data().olmc_map[olmc_num] as usize
+    }
+
     // Not everything is easiest driven off a table...
     pub fn num_rows_for_olmc(&self, olmc_num: usize) -> usize {
         if *self == Chip::GAL22V10 {
             // Only 22V10 has non-uniform-sized OLMCs.
             OLMC_SIZE_22V10[olmc_num] as usize
         } else {
-            8
+            OLMC_SIZE_DEFAULT as usize
         }
     }
+
 }
