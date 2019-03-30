@@ -1,9 +1,14 @@
 use chips::Chip;
+use jedec::Mode;
 use olmc;
 use olmc::OLMC;
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
+
+const MODE1: i32 =           1;               /* modes (SYN, AC0) */
+const MODE2: i32 =           2;
+const MODE3: i32 =           3;
 
 #[no_mangle]
 pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
@@ -27,18 +32,6 @@ pub extern "C" fn clear_rows_c(jedec: *mut ::jedec::Jedec, start_row: i32, row_o
 pub extern "C" fn clear_olmc_c(jedec: *mut ::jedec::Jedec, olmc: i32) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.clear_olmc(olmc as usize);
-}
-
-#[no_mangle]
-pub extern "C" fn set_syn(jedec: *mut ::jedec::Jedec, syn: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.syn = syn != 0;
-}
-
-#[no_mangle]
-pub extern "C" fn set_ac0(jedec: *mut ::jedec::Jedec, ac0: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.ac0 = ac0 != 0;
 }
 
 #[no_mangle]
@@ -128,12 +121,18 @@ pub extern "C" fn write_files_c(
     }
 }
 
+// Check the OLMC assignments, set AC0 and SYN, and return the mode.
 #[no_mangle]
 pub extern "C" fn analyse_mode_v8_c(
+    jedec: *mut ::jedec::Jedec,
     olmcs: *const OLMC,
-    chip: i32
 ) -> i32 {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.check_magic();
     let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 8) };
-    let chip = i32_to_chip(chip);
-    olmc::analyse_mode_v8(olmcs, chip)
+    match olmc::analyse_mode_v8(jedec, olmcs) {
+        Mode::Mode1 => MODE1,
+        Mode::Mode2 => MODE2,
+        Mode::Mode3 => MODE3,
+    }
 }

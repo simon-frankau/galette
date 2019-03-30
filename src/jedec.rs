@@ -13,6 +13,14 @@ pub struct Jedec {
     pub s1: Vec<bool>,
 }
 
+// Mode enums for the v8s
+#[derive(PartialEq,Clone,Copy)]
+pub enum Mode {
+    Mode1,
+    Mode2,
+    Mode3,
+}
+
 // This structure is passed across the C boundary, so let's be careful.
 const MAGIC: i32 = 0x12345678;
 
@@ -64,6 +72,24 @@ impl Jedec {
         let end = start + self.chip.num_rows_for_olmc(olmc);
         for i in start * num_cols .. end * num_cols {
             self.fuses[i] = false;
+        }
+    }
+
+    pub fn set_mode(&mut self, mode: Mode) {
+        assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
+        match mode {
+        Mode::Mode1 => {
+            self.syn = true;
+            self.ac0 = false;
+        }
+        Mode::Mode2 => {
+            self.syn = true;
+            self.ac0 = true;
+        }
+        Mode::Mode3 => {
+            self.syn = false;
+            self.ac0 = true;
+        }
         }
     }
 }
