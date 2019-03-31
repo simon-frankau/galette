@@ -93,7 +93,7 @@ impl Jedec {
         }
     }
 
-    pub fn get_mode(&mut self) -> Mode {
+    pub fn get_mode(&self) -> Mode {
         assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
         match (self.syn, self.ac0) {
         (true, false) => Mode::Mode1,

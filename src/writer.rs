@@ -1,15 +1,12 @@
 use chips::Chip;
 use jedec::Jedec;
+use jedec::Mode;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
 use std::path::PathBuf;
 
 const INPUT: i32 = 2;
-
-pub const MODE1: i32 = 1;
-pub const MODE2: i32 = 2;
-pub const MODE3: i32 = 3;
 
 fn make_spaces(buf: &mut String, n: usize) {
     for _i in 0..n {
@@ -66,8 +63,9 @@ fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
 // 'make_pin' lists the pin assignments.
 //
 
-fn make_pin(gal_type: Chip, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32]) -> String {
+fn make_pin(jedec: &Jedec, pin_names: &[&str], olmc_pin_types: &[i32]) -> String {
     let num_of_pins = pin_names.len();
+    let gal_type = jedec.chip;
 
     let mut buf = String::new();
     buf.push_str("\n\n");
@@ -93,12 +91,14 @@ fn make_pin(gal_type: Chip, pin_names: &[&str], mode: i32, olmc_pin_types: &[i32
         }
 
         if gal_type == Chip::GAL16V8 || gal_type == Chip::GAL20V8 {
-            if mode == MODE3 && n == 1 {
+            let mode = jedec.get_mode();
+
+            if mode == Mode::Mode3 && n == 1 {
                 buf.push_str("| Clock\n");
                 flag = true;
             }
 
-            if mode == MODE3 {
+            if mode == Mode::Mode3 {
                 if gal_type == Chip::GAL16V8 && n == 11 {
                     buf.push_str("| /OE\n");
                     flag = true;
@@ -242,7 +242,6 @@ fn write_file(base: &PathBuf, ext: &str, buf: &str) -> Result<(), Error> {
 pub fn write_files(
     file_name: &str,
     config: &::jedec_writer::Config,
-    mode: i32,
     pin_names: &[&str],
     olmc_pin_types: &[i32],
     jedec: &Jedec,
@@ -257,7 +256,7 @@ pub fn write_files(
     }
 
     if config.gen_pin != 0 {
-        write_file(&base, "pin", &make_pin(gal_type, pin_names, mode, olmc_pin_types))?;
+        write_file(&base, "pin", &make_pin(jedec, pin_names, olmc_pin_types))?;
     }
 
     if config.gen_chip != 0 {

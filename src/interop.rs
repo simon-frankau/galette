@@ -92,7 +92,6 @@ pub fn i32_to_chip(gal_type: i32) -> Chip {
 pub extern "C" fn write_files_c(
     file_name: *const c_char,
     config: *const ::jedec_writer::Config,
-    mode: i32,
     pin_names: *const *const c_char,
     olmc_pin_types: *const i32,
     jedec: *const ::jedec::Jedec,
@@ -113,7 +112,6 @@ pub extern "C" fn write_files_c(
         ::writer::write_files(
             file_name.to_str().unwrap(),
             &(*config),
-            mode,
             &pin_names,
             std::slice::from_raw_parts(olmc_pin_types, 12),
             jedec

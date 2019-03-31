@@ -75,13 +75,11 @@ fn set_and(
             Mode::Mode1 => &PIN_TO_FUSE_16_MODE1,
             Mode::Mode2 => &PIN_TO_FUSE_16_MODE2,
             Mode::Mode3 => &PIN_TO_FUSE_16_MODE3,
-            _ => panic!("Nope"),
         },
         Chip::GAL20V8 => match jedec.get_mode() {
             Mode::Mode1 => &PIN_TO_FUSE_20_MODE1,
             Mode::Mode2 => &PIN_TO_FUSE_20_MODE2,
             Mode::Mode3 => &PIN_TO_FUSE_20_MODE3,
-            _ => panic!("Nope"),
         },
         Chip::GAL22V10 => &PIN_TO_FUSE_22V10,
         Chip::GAL20RA10 => &PIN_TO_FUSE_20RA10,
