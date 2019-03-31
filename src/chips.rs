@@ -1,4 +1,3 @@
-
 #[derive(PartialEq,Clone,Copy)]
 pub enum Chip {
     GAL16V8,
@@ -141,5 +140,4 @@ impl Chip {
             OLMC_SIZE_DEFAULT as usize
         }
     }
-
 }

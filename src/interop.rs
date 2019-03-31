@@ -134,3 +134,21 @@ pub extern "C" fn analyse_mode_v8_c(
         Mode::Mode3 => MODE3,
     }
 }
+
+#[no_mangle]
+pub extern "C" fn start_row_for_olmc_c(
+    gal_type: i32,
+    olmc: i32,
+) -> i32 {
+    let chip = i32_to_chip(gal_type);
+    chip.start_row_for_olmc(olmc as usize) as i32
+}
+
+#[no_mangle]
+pub extern "C" fn num_rows_for_olmc_c(
+    gal_type: i32,
+    olmc: i32,
+) -> i32 {
+    let chip = i32_to_chip(gal_type);
+    chip.num_rows_for_olmc(olmc as usize) as i32
+}
