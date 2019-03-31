@@ -140,7 +140,7 @@ impl Jedec {
         }
     }
 
-    pub fn pin_to_column(&self, pin_num: usize) -> usize {
+    pub fn pin_to_column(&self, pin_num: usize) -> Result<usize, String> {
         let column_lookup: &[i32] = match self.chip {
             Chip::GAL16V8 => match self.get_mode() {
                 Mode::Mode1 => &PIN_TO_COL_16_MODE1,
@@ -156,8 +156,32 @@ impl Jedec {
             Chip::GAL20RA10 => &PIN_TO_COL_20RA10,
         };
 
-        // TODO: Handle -1 gracefully.
+        let column = column_lookup[pin_num - 1];
 
-        column_lookup[pin_num - 1] as usize
+        if column < 0 {
+                // TODO: Better error stuff.
+                return Err::<usize, String>(format!("{} cannot use pin {} as input or feedback",
+                            self.name_for_error(),
+                            pin_num));
+        }
+
+        Ok(column as usize)
+    }
+
+    fn name_for_error(&self) -> &str {
+        match self.chip {
+            Chip::GAL16V8 => match self.get_mode() {
+                Mode::Mode1 => "GAL16V8 (mode 1)",
+                Mode::Mode2 => "GAL16V8 (mode 2)",
+                Mode::Mode3 => "GAL16V8 (mode 3)",
+            },
+            Chip::GAL20V8 => match self.get_mode() {
+                Mode::Mode1 => "GAL20V8 (mode 1)",
+                Mode::Mode2 => "GAL20V8 (mode 2)",
+                Mode::Mode3 => "GAL20V8 (mode 3)",
+            },
+            Chip::GAL22V10 => "GAL22V10",
+            Chip::GAL20RA10 => "GAL20RA10",
+        }
     }
 }

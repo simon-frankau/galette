@@ -7,16 +7,19 @@ pub extern "C" fn set_and_c(
     row: u32,
     pin_num: u32,
     negation: u32,
-) {
+) -> i32 {
     let mut jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.check_magic();
 
-    set_and(
+    match set_and(
         &mut jedec,
         row as usize,
         pin_num as usize,
         negation != 0,
-    );
+    ) {
+        Ok(_) => 0,
+        Err(_) => 1,
+    }
 }
 
 // Add an 'and' term to a fuse map.
@@ -25,10 +28,10 @@ fn set_and(
     row: usize,
     pin_num: usize,
     negation: bool,
-) {
+) -> Result<(), String>{
     let chip = jedec.chip;
     let row_len = chip.num_cols();
-    let column = jedec.pin_to_column(pin_num);
+    let column = jedec.pin_to_column(pin_num)?;
 
     // Is it a registered OLMC pin?
     // If yes, then correct the negation.
@@ -38,4 +41,5 @@ fn set_and(
     }
 
     jedec.fuses[row * row_len + column + neg_off] = false;
+    Ok(())
 }
