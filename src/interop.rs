@@ -1,4 +1,5 @@
 use chips::Chip;
+use gal_builder;
 use jedec::Mode;
 use olmc;
 use olmc::OLMC;
@@ -151,4 +152,15 @@ pub extern "C" fn num_rows_for_olmc_c(
 ) -> i32 {
     let chip = i32_to_chip(gal_type);
     chip.num_rows_for_olmc(olmc as usize) as i32
+}
+
+#[no_mangle]
+pub extern "C" fn set_unused_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC) -> i32{
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    // TODO: This was "jedec.chip.num_olmcs())", but AR and SP are special...
+    let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 12) };
+    match gal_builder::set_unused(jedec, olmcs) {
+        Ok(_) => 0,
+        Err(i) => i as i32,
+    }
 }

@@ -15,14 +15,13 @@ pub struct OLMC {
     pub feedback: u8,
 }
 
-const NOTUSED    : u8 =     0;             /* pin not used up to now */
-const NOTCON     : u8 =     0;             /* pin not used           */
-const INPUT      : u8 =     2;             /* input                  */
-const COMOUT     : u8 =     3;             /* combinational output   */
-const TRIOUT     : u8 =     4;             /* tristate output        */
-const REGOUT     : u8 =     5;             /* register output        */
-const COM_TRI_OUT: u8 =     6;             /* either tristate or     */
-
+pub const NOTUSED    : u8 =     0;             /* pin not used up to now */
+pub const NOTCON     : u8 =     0;             /* pin not used           */
+pub const INPUT      : u8 =     2;             /* input                  */
+pub const COMOUT     : u8 =     3;             /* combinational output   */
+pub const TRIOUT     : u8 =     4;             /* tristate output        */
+pub const REGOUT     : u8 =     5;             /* register output        */
+pub const COM_TRI_OUT: u8 =     6;             /* either tristate or     */
 
 // Get the mode for GAL16V8 and GAL20V8, set the flags appropriately
 pub fn analyse_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
