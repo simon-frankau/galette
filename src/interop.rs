@@ -164,3 +164,26 @@ pub extern "C" fn set_unused_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC) -
         Err(i) => i as i32,
     }
 }
+
+#[no_mangle]
+pub extern "C" fn get_bounds_c(
+    jedec: *mut ::jedec::Jedec,
+    act_olmc: i32,
+    olmcs: *const OLMC,
+    suffix: i32,
+    mode: i32,
+    start_row: *mut i32,
+    max_row: *mut i32,
+    row_offset: *mut i32,
+) {
+    let jedec = unsafe { jedec.as_ref().unwrap() };
+    let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 12) };
+    let start_row = unsafe { start_row.as_mut().unwrap() };
+    let max_row = unsafe { max_row.as_mut().unwrap() };
+    let row_offset = unsafe { row_offset.as_mut().unwrap() };
+
+    let (a, b, c) = gal_builder::get_bounds(jedec, act_olmc as usize, olmcs, suffix, mode);
+    *start_row = a as i32;
+    *max_row = b as i32;
+    *row_offset = c as i32;
+}
