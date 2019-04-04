@@ -19,30 +19,6 @@ pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
 }
 
 #[no_mangle]
-pub extern "C" fn set_ac1(jedec: *mut ::jedec::Jedec, i: usize, ac0: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.ac1[i] = ac0 != 0;
-}
-
-#[no_mangle]
-pub extern "C" fn set_s1(jedec: *mut ::jedec::Jedec, i: usize, s1: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.s1[i] = s1 != 0;
-}
-
-#[no_mangle]
-pub extern "C" fn set_pt(jedec: *mut ::jedec::Jedec, i: usize, pt: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.pt[i] = pt != 0;
-}
-
-#[no_mangle]
-pub extern "C" fn set_xor(jedec: *mut ::jedec::Jedec, i: usize, x: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.xor[i] = x != 0;
-}
-
-#[no_mangle]
 pub extern "C" fn set_sig(jedec: *mut ::jedec::Jedec, s: *const c_char) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
 
@@ -100,22 +76,6 @@ pub extern "C" fn write_files_c(
             std::slice::from_raw_parts(olmc_pin_types, 12),
             jedec
         ).unwrap();
-    }
-}
-
-// Check the OLMC assignments, set AC0 and SYN, and return the mode.
-#[no_mangle]
-pub extern "C" fn analyse_mode_v8_c(
-    jedec: *mut ::jedec::Jedec,
-    olmcs: *const OLMC,
-) -> i32 {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.check_magic();
-    let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 8) };
-    match olmc::analyse_mode_v8(jedec, olmcs) {
-        Mode::Mode1 => MODE1,
-        Mode::Mode2 => MODE2,
-        Mode::Mode3 => MODE3,
     }
 }
 
