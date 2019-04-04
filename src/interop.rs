@@ -19,12 +19,6 @@ pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
 }
 
 #[no_mangle]
-pub extern "C" fn clear_olmc_c(jedec: *mut ::jedec::Jedec, olmc: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.clear_olmc(olmc as usize);
-}
-
-#[no_mangle]
 pub extern "C" fn set_ac1(jedec: *mut ::jedec::Jedec, i: usize, ac0: i32) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.ac1[i] = ac0 != 0;
@@ -123,24 +117,6 @@ pub extern "C" fn analyse_mode_v8_c(
         Mode::Mode2 => MODE2,
         Mode::Mode3 => MODE3,
     }
-}
-
-#[no_mangle]
-pub extern "C" fn start_row_for_olmc_c(
-    gal_type: i32,
-    olmc: i32,
-) -> i32 {
-    let chip = i32_to_chip(gal_type);
-    chip.start_row_for_olmc(olmc as usize) as i32
-}
-
-#[no_mangle]
-pub extern "C" fn num_rows_for_olmc_c(
-    gal_type: i32,
-    olmc: i32,
-) -> i32 {
-    let chip = i32_to_chip(gal_type);
-    chip.num_rows_for_olmc(olmc as usize) as i32
 }
 
 #[no_mangle]
