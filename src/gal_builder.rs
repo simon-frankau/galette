@@ -11,6 +11,10 @@ pub struct Pin {
     pin: i8,
 }
 
+const ACTIVE_LOW: u8 =      0;             /* pin is high-active */
+const ACTIVE_HIGH: u8 =     1;             /* pin is low-active  */
+
+
 // Add an 'and' term to a fuse map.
 fn set_and(
     jedec: &mut Jedec,
@@ -91,9 +95,9 @@ pub fn set_unused(
     Ok(())
 }
 
-// const SUFFIX_NON: i32 =              0;	/* possible suffixes */
-// const SUFFIX_T: i32 =                1;
-// const SUFFIX_R: i32 =                2;
+const SUFFIX_NON: i32 =              0;	/* possible suffixes */
+const SUFFIX_T: i32 =                1;
+const SUFFIX_R: i32 =                2;
 const SUFFIX_E: i32 =                3;
 const SUFFIX_CLK: i32 =              4;
 const SUFFIX_APRST: i32 =            5;
@@ -210,6 +214,184 @@ pub fn add_equation(
     // Then zero the rest...
     row_offset += 1;
     jedec.clear_rows(start_row, row_offset, max_row);
+
+    Ok(())
+}
+
+pub fn mark_input(
+    jedec: &Jedec,
+    olmcs: &mut [OLMC],
+    act_pin: &Pin,
+) {
+    if let Some(n) = jedec.chip.pin_to_olmc(act_pin.pin as usize) {
+        if olmcs[n].pin_type == olmc::NOTUSED {
+            olmcs[n].pin_type = olmc::INPUT;
+        }
+        olmcs[n].feedback = 1;
+    }
+}
+
+pub fn register_output(
+    jedec: &Jedec,
+    olmcs: &mut [OLMC],
+    act_pin: &Pin,
+    suffix: i32
+) -> Result<(), i32> {
+    let olmc = match jedec.chip.pin_to_olmc(act_pin.pin as usize) {
+        None => return Err(15),
+        Some(olmc) => olmc,
+    };
+
+    match suffix {
+        SUFFIX_R | SUFFIX_T | SUFFIX_NON =>
+            register_output_base(jedec, &mut olmcs[olmc], act_pin, suffix, olmc >= 10),
+        SUFFIX_E =>
+            register_output_enable(jedec, &mut olmcs[olmc], act_pin),
+        SUFFIX_CLK =>
+            register_output_clock(&mut olmcs[olmc], act_pin),
+        SUFFIX_ARST =>
+            register_output_arst(&mut olmcs[olmc], act_pin),
+        SUFFIX_APRST =>
+            register_output_aprst(&mut olmcs[olmc], act_pin),
+        _ =>
+            panic!("Nope"),
+    }
+}
+
+fn register_output_base(
+    jedec: &Jedec,
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+    suffix: i32,
+    is_arsp: bool, // TODO: Hack for the error message?
+) -> Result<(), i32> {
+    if olmc.pin_type == 0 || olmc.pin_type == olmc::INPUT {
+        if act_pin.neg != 0 {
+            olmc.active = ACTIVE_LOW;
+        } else {
+            olmc.active = ACTIVE_HIGH;
+        }
+
+        if suffix == SUFFIX_T {
+            olmc.pin_type = olmc::TRIOUT;
+        }
+
+        if suffix == SUFFIX_R {
+            olmc.pin_type = olmc::REGOUT;
+        }
+
+        if suffix == SUFFIX_NON {
+            olmc.pin_type = olmc::COM_TRI_OUT;
+        }
+    } else {
+        if jedec.chip == Chip::GAL22V10 && is_arsp {
+            return Err(40);
+        } else {
+            return Err(16);
+        }
+    }
+
+    Ok(())
+}
+
+fn register_output_enable(
+    jedec: &Jedec,
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.tri_con != 0 {
+        return Err(22);
+    }
+
+    olmc.tri_con = 1;
+
+    if olmc.pin_type == 0 || olmc.pin_type == olmc::INPUT {
+        return Err(17);
+    }
+
+    if olmc.pin_type == olmc::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
+        return Err(23);
+    }
+
+    if olmc.pin_type == olmc::COM_TRI_OUT {
+        return Err(24);
+    }
+
+    Ok(())
+}
+
+fn register_output_clock(
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.pin_type == olmc::NOTUSED {
+        return Err(42);
+    }
+
+    if olmc.clock != 0 {
+        return Err(45);
+    }
+
+    olmc.clock = 1;
+    if olmc.pin_type != olmc::REGOUT {
+        return Err(48);
+    }
+
+    Ok(())
+}
+
+fn register_output_arst(
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.pin_type == olmc::NOTUSED {
+        return Err(43);
+    }
+
+    if olmc.arst != 0 {
+        return Err(46);
+    }
+
+    olmc.arst = 1;
+    if olmc.pin_type != olmc::REGOUT {
+        return Err(48);
+    }
+
+    Ok(())
+}
+
+fn register_output_aprst(
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.pin_type == olmc::NOTUSED {
+        return Err(44);
+    }
+
+    if olmc.aprst != 0 {
+        return Err(47);
+    }
+
+    olmc.aprst = 1;
+    if olmc.pin_type != olmc::REGOUT {
+        return Err(48);
+    }
 
     Ok(())
 }

@@ -180,3 +180,26 @@ pub extern "C" fn add_equation_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC,
         Err(i) => i,
     }
 }
+
+
+#[no_mangle]
+pub extern "C" fn mark_input_c(jedec: *mut ::jedec::Jedec, olmcs: *mut OLMC, act_pin: *const Pin) {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.check_magic();
+    let olmcs = unsafe { std::slice::from_raw_parts_mut(olmcs, 8) };
+    let act_pin = unsafe { act_pin.as_ref().unwrap() };
+    gal_builder::mark_input(jedec, olmcs, act_pin);
+}
+
+#[no_mangle]
+pub extern "C" fn register_output_c(jedec: *mut ::jedec::Jedec, olmcs: *mut OLMC, act_pin: *const Pin, suffix: i32) -> i32 {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.check_magic();
+    let olmcs = unsafe { std::slice::from_raw_parts_mut(olmcs, 12) };
+    let act_pin = unsafe { act_pin.as_ref().unwrap() };
+
+    match gal_builder::register_output(jedec, olmcs, act_pin, suffix) {
+        Ok(_) => 0,
+        Err(i) => i,
+    }
+}
