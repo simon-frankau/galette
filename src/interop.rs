@@ -179,3 +179,19 @@ pub extern "C" fn register_output_c(jedec: *mut ::jedec::Jedec, olmcs: *mut OLMC
         Err(i) => i,
     }
 }
+
+#[no_mangle]
+pub extern "C" fn analyse_mode_c(
+    jedec: *mut ::jedec::Jedec,
+    olmcs: *mut OLMC,
+) -> i32 {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.check_magic();
+    let olmcs = unsafe { std::slice::from_raw_parts_mut(olmcs, 10) };
+    match olmc::analyse_mode(jedec, olmcs) {
+        Some(Mode::Mode1) => MODE1,
+        Some(Mode::Mode2) => MODE2,
+        Some(Mode::Mode3) => MODE3,
+        None => 0,
+    }
+}

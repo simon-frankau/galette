@@ -11,10 +11,6 @@ pub struct Pin {
     pin: i8,
 }
 
-const ACTIVE_LOW: u8 =      0;             /* pin is high-active */
-const ACTIVE_HIGH: u8 =     1;             /* pin is low-active  */
-
-
 // Add an 'and' term to a fuse map.
 fn set_and(
     jedec: &mut Jedec,
@@ -267,9 +263,9 @@ fn register_output_base(
 ) -> Result<(), i32> {
     if olmc.pin_type == 0 || olmc.pin_type == olmc::INPUT {
         if act_pin.neg != 0 {
-            olmc.active = ACTIVE_LOW;
+            olmc.active = olmc::ACTIVE_LOW;
         } else {
-            olmc.active = ACTIVE_HIGH;
+            olmc.active = olmc::ACTIVE_HIGH;
         }
 
         if suffix == SUFFIX_T {
