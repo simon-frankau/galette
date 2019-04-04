@@ -19,18 +19,6 @@ pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
 }
 
 #[no_mangle]
-pub extern "C" fn clear_row_c(jedec: *mut ::jedec::Jedec, start_row: i32, row_offset: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.clear_row(start_row as usize, row_offset as usize);
-}
-
-#[no_mangle]
-pub extern "C" fn clear_rows_c(jedec: *mut ::jedec::Jedec, start_row: i32, row_offset: i32, max_row: i32) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.clear_rows(start_row as usize, row_offset as usize, max_row as usize);
-}
-
-#[no_mangle]
 pub extern "C" fn clear_olmc_c(jedec: *mut ::jedec::Jedec, olmc: i32) {
     let jedec = unsafe { jedec.as_mut().unwrap() };
     jedec.clear_olmc(olmc as usize);
@@ -166,28 +154,6 @@ pub extern "C" fn set_unused_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC) -
     }
 }
 
-#[no_mangle]
-pub extern "C" fn get_bounds_c(
-    jedec: *mut ::jedec::Jedec,
-    act_olmc: i32,
-    olmcs: *const OLMC,
-    suffix: i32,
-    start_row: *mut i32,
-    max_row: *mut i32,
-    row_offset: *mut i32,
-) {
-    let jedec = unsafe { jedec.as_ref().unwrap() };
-    let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 12) };
-    let start_row = unsafe { start_row.as_mut().unwrap() };
-    let max_row = unsafe { max_row.as_mut().unwrap() };
-    let row_offset = unsafe { row_offset.as_mut().unwrap() };
-
-    let (a, b, c) = gal_builder::get_bounds(jedec, act_olmc as usize, olmcs, suffix);
-    *start_row = a as i32;
-    *max_row = b as i32;
-    *row_offset = c as i32;
-}
-
 // Config use on the C side.
 #[repr(C)]
 #[derive(Debug)]
@@ -208,16 +174,7 @@ pub extern "C" fn add_equation_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC,
     let eqn = unsafe { eqn.as_ref().unwrap() };
     let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
     let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
-/*
-    print!("{} {:?} {} ", eqn.line_num, eqn.lhs, eqn.suffix);
-    for pin in rhs.iter() {
-        print!("{:?} ", pin);
-    }
-    for op in ops.iter() {
-        print!("{} ", op);
-    }
-    println!("");
-*/
+
     match gal_builder::add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
         Ok(_) => 0,
         Err(i) => i,

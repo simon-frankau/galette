@@ -11,27 +11,6 @@ pub struct Pin {
     pin: i8,
 }
 
-#[no_mangle]
-pub extern "C" fn set_and_c(
-    jedec: *mut ::jedec::Jedec,
-    row: u32,
-    pin_num: u32,
-    negation: u32,
-) -> i32 {
-    let mut jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.check_magic();
-
-    match set_and(
-        &mut jedec,
-        row as usize,
-        pin_num as usize,
-        negation != 0,
-    ) {
-        Ok(_) => 0,
-        Err(_) => 1,
-    }
-}
-
 // Add an 'and' term to a fuse map.
 fn set_and(
     jedec: &mut Jedec,
@@ -112,14 +91,9 @@ pub fn set_unused(
     Ok(())
 }
 
-// TODO!
-const MODE1: i32 =           1;               /* modes (SYN, AC0) */
-const MODE2: i32 =           2;
-const MODE3: i32 =           3;
-
-const SUFFIX_NON: i32 =              0;	/* possible suffixes */
-const SUFFIX_T: i32 =                1;
-const SUFFIX_R: i32 =                2;
+// const SUFFIX_NON: i32 =              0;	/* possible suffixes */
+// const SUFFIX_T: i32 =                1;
+// const SUFFIX_R: i32 =                2;
 const SUFFIX_E: i32 =                3;
 const SUFFIX_CLK: i32 =              4;
 const SUFFIX_APRST: i32 =            5;
@@ -191,14 +165,14 @@ pub fn get_bounds(
 pub fn add_equation(
     jedec: &mut Jedec,
     olmcs: &[OLMC],
-    line_num: i32,
+    _line_num: i32, // TODO
     lhs: &Pin,
     suffix: i32,
     rhs: &[Pin],
     ops: &[i8]
 ) -> Result<(), i32> {
     let act_olmc = jedec.chip.pin_to_olmc(lhs.pin as usize).unwrap();
-    let (mut start_row, mut max_row, mut row_offset) = get_bounds(jedec, act_olmc, olmcs, suffix);
+    let (start_row, max_row, mut row_offset) = get_bounds(jedec, act_olmc, olmcs, suffix);
 
     // if GND, set row equal 0
     if rhs.len() == 1 && (rhs[0].pin as usize == jedec.chip.num_pins() || rhs[0].pin as usize == jedec.chip.num_pins() / 2) {
