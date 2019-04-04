@@ -22,6 +22,7 @@ const OLMC_ROWS_20RA10: [i32; 10] = [72, 64, 56, 48, 40, 32, 24, 16, 8, 0];
 
 struct ChipData {
     name: &'static str,
+    num_pins: usize,
     // Size of the main fuse array.
     num_rows: usize,
     num_cols: usize,
@@ -37,6 +38,7 @@ struct ChipData {
 
 const GAL16V8_DATA: ChipData = ChipData {
     name: "GAL16V8",
+    num_pins: 20,
     num_rows: 64,
     num_cols: 32,
     total_size: 2194,
@@ -47,6 +49,7 @@ const GAL16V8_DATA: ChipData = ChipData {
 
 const GAL20V8_DATA: ChipData = ChipData {
     name: "GAL20V8",
+    num_pins: 24,
     num_rows: 64,
     num_cols: 40,
     total_size: 2706,
@@ -57,6 +60,7 @@ const GAL20V8_DATA: ChipData = ChipData {
 
 const GAL22V10_DATA: ChipData = ChipData {
     name: "GAL22V10",
+    num_pins: 24,
     num_rows: 132,
     num_cols: 44,
     total_size: 5892,
@@ -67,6 +71,7 @@ const GAL22V10_DATA: ChipData = ChipData {
 
 const GAL20RA10_DATA: ChipData = ChipData {
     name: "GAL20RA10",
+    num_pins: 24,
     num_rows: 80,
     num_cols: 40,
     total_size: 3274,
@@ -89,6 +94,10 @@ impl Chip {
         self.get_chip_data().name
     }
 
+    pub fn num_pins(&self) -> usize {
+        self.get_chip_data().num_pins
+    }
+
     pub fn num_rows(&self) -> usize {
         self.get_chip_data().num_rows
     }
@@ -108,7 +117,9 @@ impl Chip {
 
     pub fn pin_to_olmc(&self, pin: usize) -> Option<usize> {
         let data = self.get_chip_data();
-        if data.min_olmc_pin <= pin && pin <= data.max_olmc_pin {
+        if data.min_olmc_pin <= pin && pin <= data.max_olmc_pin ||
+           // TODO: Horrible hack for AR and SP.
+            (*self == Chip::GAL22V10 && (pin == 24 || pin == 25)) {
             Some(pin - data.min_olmc_pin)
         } else {
             None

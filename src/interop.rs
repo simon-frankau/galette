@@ -1,5 +1,6 @@
 use chips::Chip;
 use gal_builder;
+use gal_builder::Pin;
 use jedec::Mode;
 use olmc;
 use olmc::OLMC;
@@ -171,7 +172,6 @@ pub extern "C" fn get_bounds_c(
     act_olmc: i32,
     olmcs: *const OLMC,
     suffix: i32,
-    mode: i32,
     start_row: *mut i32,
     max_row: *mut i32,
     row_offset: *mut i32,
@@ -182,8 +182,44 @@ pub extern "C" fn get_bounds_c(
     let max_row = unsafe { max_row.as_mut().unwrap() };
     let row_offset = unsafe { row_offset.as_mut().unwrap() };
 
-    let (a, b, c) = gal_builder::get_bounds(jedec, act_olmc as usize, olmcs, suffix, mode);
+    let (a, b, c) = gal_builder::get_bounds(jedec, act_olmc as usize, olmcs, suffix);
     *start_row = a as i32;
     *max_row = b as i32;
     *row_offset = c as i32;
+}
+
+// Config use on the C side.
+#[repr(C)]
+#[derive(Debug)]
+pub struct Equation {
+    line_num: i32,
+    lhs: Pin,
+    suffix: i32,
+    num_rhs: i32,
+    rhs: *const Pin,
+    ops: *const i8
+}
+
+#[no_mangle]
+pub extern "C" fn add_equation_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC, eqn: *const Equation) -> i32 {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.check_magic();
+    let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 8) };
+    let eqn = unsafe { eqn.as_ref().unwrap() };
+    let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+    let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+/*
+    print!("{} {:?} {} ", eqn.line_num, eqn.lhs, eqn.suffix);
+    for pin in rhs.iter() {
+        print!("{:?} ", pin);
+    }
+    for op in ops.iter() {
+        print!("{} ", op);
+    }
+    println!("");
+*/
+    match gal_builder::add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
+        Ok(_) => 0,
+        Err(i) => i,
+    }
 }

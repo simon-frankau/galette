@@ -1,7 +1,15 @@
 use chips::Chip;
 use jedec::Jedec;
+use jedec::Mode;
 use olmc;
 use olmc::OLMC;
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct Pin {
+    neg: i8,
+    pin: i8,
+}
 
 #[no_mangle]
 pub extern "C" fn set_and_c(
@@ -30,10 +38,13 @@ fn set_and(
     row: usize,
     pin_num: usize,
     negation: bool,
-) -> Result<(), String> {
+) -> Result<(), i32> {
     let chip = jedec.chip;
     let row_len = chip.num_cols();
-    let column = jedec.pin_to_column(pin_num)?;
+    let column = match jedec.pin_to_column(pin_num) {
+        Ok(x) => x,
+        Err(_) => return Err(26),
+    };
 
     // Is it a registered OLMC pin?
     // If yes, then correct the negation.
@@ -119,8 +130,7 @@ pub fn get_bounds(
     jedec: &Jedec,
     act_olmc: usize,
     olmcs: &[OLMC],
-    suffix: i32,
-    mode: i32,
+    suffix: i32
 ) -> (usize, usize, usize) {
     let start_row = jedec.chip.start_row_for_olmc(act_olmc);
     let mut max_row = jedec.chip.num_rows_for_olmc(act_olmc);
@@ -131,7 +141,7 @@ pub fn get_bounds(
             if suffix == SUFFIX_E {/* when tristate control use */
                 row_offset = 0; /* first row (=> offset = 0) */
                 max_row = 1;
-            } else if mode != MODE1 && olmcs[act_olmc].pin_type != olmc::REGOUT {
+            } else if jedec.get_mode() != Mode::Mode1 && olmcs[act_olmc].pin_type != olmc::REGOUT {
                 row_offset = 1; /* then init. row-offset */
             }
         }
@@ -176,4 +186,56 @@ pub fn get_bounds(
     }
 
     (start_row, max_row, row_offset)
+}
+
+pub fn add_equation(
+    jedec: &mut Jedec,
+    olmcs: &[OLMC],
+    line_num: i32,
+    lhs: &Pin,
+    suffix: i32,
+    rhs: &[Pin],
+    ops: &[i8]
+) -> Result<(), i32> {
+    let act_olmc = jedec.chip.pin_to_olmc(lhs.pin as usize).unwrap();
+    let (mut start_row, mut max_row, mut row_offset) = get_bounds(jedec, act_olmc, olmcs, suffix);
+
+    // if GND, set row equal 0
+    if rhs.len() == 1 && (rhs[0].pin as usize == jedec.chip.num_pins() || rhs[0].pin as usize == jedec.chip.num_pins() / 2) {
+        if rhs[0].neg != 0 {
+            // /VCC and /GND are not allowed
+            return Err(25);
+        }
+
+        if rhs[0].pin as usize == jedec.chip.num_pins() / 2 {
+            jedec.clear_row(start_row, row_offset);
+        }
+    } else {
+        for i in 0..rhs.len() {
+            let pin_num = rhs[i].pin;
+
+            if pin_num as usize == jedec.chip.num_pins() || pin_num as usize == jedec.chip.num_pins() / 2 {
+                return Err(28);
+            }
+
+            if ops[i] == 43 || ops[i] == 35 {
+                // If an OR, go to next row.
+                row_offset += 1;
+
+                if row_offset == max_row {
+                    // too many ORs?
+                    return Err(30);
+                }
+            }
+
+            // Set ANDs.
+            set_and(jedec, start_row + row_offset, pin_num as usize, rhs[i].neg != 0)?;
+        }
+    }
+
+    // Then zero the rest...
+    row_offset += 1;
+    jedec.clear_rows(start_row, row_offset, max_row);
+
+    Ok(())
 }
