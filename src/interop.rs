@@ -1,17 +1,10 @@
 use chips::Chip;
 use gal_builder;
 use gal_builder::Equation;
-use gal_builder::Pin;
-use jedec::Mode;
-use olmc;
 use olmc::OLMC;
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
-
-const MODE1: i32 =           1;               /* modes (SYN, AC0) */
-const MODE2: i32 =           2;
-const MODE3: i32 =           3;
 
 #[no_mangle]
 pub extern "C" fn new_jedec(gal_type: i32) -> *mut ::jedec::Jedec {
@@ -88,60 +81,6 @@ pub extern "C" fn set_unused_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC) -
     match gal_builder::set_unused(jedec, olmcs) {
         Ok(_) => 0,
         Err(i) => i as i32,
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn add_equation_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC, eqn: *const Equation) -> i32 {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.check_magic();
-    let olmcs = unsafe { std::slice::from_raw_parts(olmcs, 8) };
-    let eqn = unsafe { eqn.as_ref().unwrap() };
-    let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-    let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
-
-    match gal_builder::add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
-        Ok(_) => 0,
-        Err(i) => i,
-    }
-}
-
-
-#[no_mangle]
-pub extern "C" fn mark_input_c(jedec: *mut ::jedec::Jedec, olmcs: *mut OLMC, act_pin: *const Pin) {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.check_magic();
-    let olmcs = unsafe { std::slice::from_raw_parts_mut(olmcs, 8) };
-    let act_pin = unsafe { act_pin.as_ref().unwrap() };
-    gal_builder::mark_input(jedec, olmcs, act_pin);
-}
-
-#[no_mangle]
-pub extern "C" fn register_output_c(jedec: *mut ::jedec::Jedec, olmcs: *mut OLMC, act_pin: *const Pin, suffix: i32) -> i32 {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.check_magic();
-    let olmcs = unsafe { std::slice::from_raw_parts_mut(olmcs, 12) };
-    let act_pin = unsafe { act_pin.as_ref().unwrap() };
-
-    match gal_builder::register_output(jedec, olmcs, act_pin, suffix) {
-        Ok(_) => 0,
-        Err(i) => i,
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn analyse_mode_c(
-    jedec: *mut ::jedec::Jedec,
-    olmcs: *mut OLMC,
-) -> i32 {
-    let jedec = unsafe { jedec.as_mut().unwrap() };
-    jedec.check_magic();
-    let olmcs = unsafe { std::slice::from_raw_parts_mut(olmcs, 10) };
-    match olmc::analyse_mode(jedec, olmcs) {
-        Some(Mode::Mode1) => MODE1,
-        Some(Mode::Mode2) => MODE2,
-        Some(Mode::Mode3) => MODE3,
-        None => 0,
     }
 }
 
