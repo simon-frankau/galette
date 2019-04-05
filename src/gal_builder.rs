@@ -11,6 +11,18 @@ pub struct Pin {
     pin: i8,
 }
 
+// Config use on the C side.
+#[repr(C)]
+#[derive(Debug)]
+pub struct Equation {
+    pub line_num: i32,
+    pub lhs: Pin,
+    pub suffix: i32,
+    pub num_rhs: i32,
+    pub rhs: *const Pin,
+    pub ops: *const i8
+}
+
 // Add an 'and' term to a fuse map.
 fn set_and(
     jedec: &mut Jedec,
@@ -387,6 +399,53 @@ fn register_output_aprst(
     olmc.aprst = 1;
     if olmc.pin_type != olmc::REGOUT {
         return Err(48);
+    }
+
+    Ok(())
+}
+
+pub fn do_it_all(
+    jedec: &mut Jedec,
+    olmcs: &mut [OLMC],
+    eqns: &[Equation],
+    file: &str,
+) -> Result<(), i32> {
+    // Collect marks.
+    for eqn in eqns.iter() {
+        if let Err(err) = register_output(jedec, olmcs, &eqn.lhs, eqn.suffix) {
+            return Err(eqn.line_num * 0x10000 + err); // TODO: Ick.
+        }
+
+        let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+
+        for input in rhs.iter() {
+            mark_input(jedec, olmcs, input);
+        }
+    }
+
+    // Complete second pass from in-memory structure.
+    println!("Assembler Phase 2 for \"{}\"", file);
+
+    let mode = match olmc::analyse_mode(jedec, olmcs) {
+        Some(Mode::Mode1) => 1,
+        Some(Mode::Mode2) => 2,
+        Some(Mode::Mode3) => 3,
+        None => 0,
+    };
+
+    println!("GAL {}; Operation mode {}; Security fuse {}",
+             &jedec.chip.name()[3..],
+             mode,
+             "off"); // TODO cfg->JedecSecBit ? "on" : "off");
+
+
+    for eqn in eqns.iter() {
+        let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+        let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+
+        if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
+            return Err(eqn.line_num * 0x10000 + err);
+        }
     }
 
     Ok(())

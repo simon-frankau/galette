@@ -1,5 +1,6 @@
 use chips::Chip;
 use gal_builder;
+use gal_builder::Equation;
 use gal_builder::Pin;
 use jedec::Mode;
 use olmc;
@@ -90,18 +91,6 @@ pub extern "C" fn set_unused_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC) -
     }
 }
 
-// Config use on the C side.
-#[repr(C)]
-#[derive(Debug)]
-pub struct Equation {
-    line_num: i32,
-    lhs: Pin,
-    suffix: i32,
-    num_rhs: i32,
-    rhs: *const Pin,
-    ops: *const i8
-}
-
 #[no_mangle]
 pub extern "C" fn add_equation_c(jedec: *mut ::jedec::Jedec, olmcs: *const OLMC, eqn: *const Equation) -> i32 {
     let jedec = unsafe { jedec.as_mut().unwrap() };
@@ -153,5 +142,25 @@ pub extern "C" fn analyse_mode_c(
         Some(Mode::Mode2) => MODE2,
         Some(Mode::Mode3) => MODE3,
         None => 0,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn do_it_all_c(
+    jedec: *mut ::jedec::Jedec,
+    olmcs: *mut OLMC,
+    eqns: *const Equation,
+    num_eqns: i32,
+    file_name: *const c_char,
+) -> i32 {
+    let jedec = unsafe { jedec.as_mut().unwrap() };
+    jedec.check_magic();
+    let olmcs = unsafe { std::slice::from_raw_parts_mut(olmcs, 12) };
+    let eqns = unsafe { std::slice::from_raw_parts(eqns, num_eqns as usize) };
+    let file_name = unsafe {CStr::from_ptr(file_name) };
+
+    match gal_builder::do_it_all(jedec, olmcs, eqns, file_name.to_str().unwrap()) {
+        Ok(()) => 0,
+        Err(i) => i,
     }
 }
