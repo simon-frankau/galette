@@ -9,8 +9,8 @@ pub struct OLMC {
     pub pin_type: u8,
     pub tri_con: u8,
     pub clock: u8,
-    pub arst: u8,
-    pub aprst: u8,
+    pub arst: Option<gal_builder::Equation>,
+    pub aprst: Option<gal_builder::Equation>,
     pub feedback: u8,
     pub eqns: Vec<gal_builder::Equation>,
 }

@@ -123,20 +123,19 @@ pub fn get_bounds(
 pub fn add_equation(
     jedec: &mut Jedec,
     olmcs: &[OLMC],
-    _line_num: i32, // TODO
-    lhs: &Pin,
-    suffix: i32,
-    rhs: &[Pin],
-    ops: &[i8]
+    eqn: &Equation,
 ) -> Result<(), i32> {
-    let act_olmc = jedec.chip.pin_to_olmc(lhs.pin as usize).unwrap();
-    let (start_row, max_row, mut row_offset) = get_bounds(jedec, act_olmc, olmcs, suffix);
+    let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+    let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+
+    let act_olmc = jedec.chip.pin_to_olmc(eqn.lhs.pin as usize).unwrap();
+    let (start_row, max_row, mut row_offset) = get_bounds(jedec, act_olmc, olmcs, eqn.suffix);
 
     // if GND, set row equal 0
     if rhs.len() == 1 && (rhs[0].pin as usize == jedec.chip.num_pins() || rhs[0].pin as usize == jedec.chip.num_pins() / 2) {
         if rhs[0].neg != 0 {
             // /VCC and /GND are not allowed
-            return Err(25);
+            return Err(eqn.line_num * 0x10000 + 25);
         }
 
         if rhs[0].pin as usize == jedec.chip.num_pins() / 2 {
@@ -147,7 +146,7 @@ pub fn add_equation(
             let pin_num = rhs[i].pin;
 
             if pin_num as usize == jedec.chip.num_pins() || pin_num as usize == jedec.chip.num_pins() / 2 {
-                return Err(28);
+                return Err(eqn.line_num * 0x10000 + 28);
             }
 
             if ops[i] == 43 || ops[i] == 35 {
@@ -156,12 +155,14 @@ pub fn add_equation(
 
                 if row_offset == max_row {
                     // too many ORs?
-                    return Err(30);
+                    return Err(eqn.line_num * 0x10000 + 30);
                 }
             }
 
             // Set ANDs.
-            set_and(jedec, start_row + row_offset, pin_num as usize, rhs[i].neg != 0)?;
+            if let Err(i) =  set_and(jedec, start_row + row_offset, pin_num as usize, rhs[i].neg != 0) {
+                return Err(eqn.line_num * 0x10000 + i);
+            }
         }
     }
 
@@ -188,13 +189,14 @@ pub fn mark_input(
 // Pin types:
 // NOT USED
 //  -> INPUT if used as input
-//
+//  -> 
 
 pub fn register_output(
+    eqn: &Equation,
     jedec: &Jedec,
     olmcs: &mut [OLMC],
     act_pin: &Pin,
-    suffix: i32
+    suffix: i32,
 ) -> Result<(), i32> {
     let olmc = match jedec.chip.pin_to_olmc(act_pin.pin as usize) {
         None => return Err(15),
@@ -209,9 +211,9 @@ pub fn register_output(
         SUFFIX_CLK =>
             register_output_clock(&mut olmcs[olmc], act_pin),
         SUFFIX_ARST =>
-            register_output_arst(&mut olmcs[olmc], act_pin),
+            register_output_arst(&mut olmcs[olmc], act_pin, eqn),
         SUFFIX_APRST =>
-            register_output_aprst(&mut olmcs[olmc], act_pin),
+            register_output_aprst(&mut olmcs[olmc], act_pin, eqn),
         _ =>
             panic!("Nope"),
     }
@@ -310,6 +312,7 @@ fn register_output_clock(
 fn register_output_arst(
     olmc: &mut OLMC,
     act_pin: &Pin,
+    eqn: &Equation
 ) -> Result<(), i32> {
     if act_pin.neg != 0 {
         return Err(19);
@@ -319,11 +322,11 @@ fn register_output_arst(
         return Err(43);
     }
 
-    if olmc.arst != 0 {
+    if olmc.arst.is_some() {
         return Err(46);
     }
 
-    olmc.arst = 1;
+    olmc.arst = Some(*eqn);
     if olmc.pin_type != olmc::REGOUT {
         return Err(48);
     }
@@ -334,6 +337,7 @@ fn register_output_arst(
 fn register_output_aprst(
     olmc: &mut OLMC,
     act_pin: &Pin,
+    eqn: &Equation,
 ) -> Result<(), i32> {
     if act_pin.neg != 0 {
         return Err(19);
@@ -343,11 +347,11 @@ fn register_output_aprst(
         return Err(44);
     }
 
-    if olmc.aprst != 0 {
+    if olmc.aprst.is_some() {
         return Err(47);
     }
 
-    olmc.aprst = 1;
+    olmc.aprst = Some(*eqn);
     if olmc.pin_type != olmc::REGOUT {
         return Err(48);
     }
@@ -369,7 +373,7 @@ pub fn do_it_all(
         };
         olmcs[olmc].eqns.push(*eqn);
 
-        if let Err(err) = register_output(jedec, olmcs, &eqn.lhs, eqn.suffix) {
+        if let Err(err) = register_output(eqn, jedec, olmcs, &eqn.lhs, eqn.suffix) {
             return Err(eqn.line_num * 0x10000 + err); // TODO: Ick.
         }
 
@@ -399,12 +403,7 @@ pub fn do_it_all(
     // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
     for i in 0..jedec.chip.num_olmcs() {
         for eqn in olmcs[i].eqns.iter() {
-            let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-            let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
-
-            if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
-                return Err(eqn.line_num * 0x10000 + err);
-            }
+            add_equation(jedec, olmcs, eqn)?;
         }
 
         if olmcs[i].pin_type == olmc::NOTUSED || olmcs[i].pin_type == olmc::INPUT {
@@ -424,12 +423,12 @@ pub fn do_it_all(
                 }
 
                 if olmcs[i].pin_type == olmc::REGOUT {
-                    if olmcs[i].arst == olmc::NOTUSED {
+                    if olmcs[i].arst.is_none() {
                         let start_row = jedec.chip.start_row_for_olmc(i);
                         jedec.clear_row(start_row, 2);
                     }
 
-                    if olmcs[i].aprst == olmc::NOTUSED {
+                    if olmcs[i].aprst.is_none() {
                         let start_row = jedec.chip.start_row_for_olmc(i);
                         jedec.clear_row(start_row, 3);
                     }
@@ -442,12 +441,7 @@ pub fn do_it_all(
     if jedec.chip == Chip::GAL22V10 {
         {
             for eqn in olmcs[10].eqns.iter() {
-                let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-                let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
-
-                if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
-                    return Err(eqn.line_num * 0x10000 + err);
-                }
+                add_equation(jedec, olmcs, eqn)?;
             }
         }
 
@@ -457,12 +451,7 @@ pub fn do_it_all(
 
         {
             for eqn in olmcs[11].eqns.iter() {
-                let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-                let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
-
-                if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
-                    return Err(eqn.line_num * 0x10000 + err);
-                }
+                add_equation(jedec, olmcs, eqn)?;
             }
         }
 
@@ -490,8 +479,8 @@ pub fn do_stuff(
         pin_type: 0,
         tri_con: 0,
         clock: 0,
-        arst: 0,
-        aprst: 0,
+        arst: None,
+        aprst: None,
         feedback: 0,
         eqns: Vec::new(),
      };12);
