@@ -3,6 +3,7 @@ use jedec::Jedec;
 use jedec::Mode;
 use olmc;
 use olmc::OLMC;
+use olmc::PinType;
 use writer;
 
 #[repr(C)]
@@ -73,7 +74,7 @@ pub fn get_bounds(
             if suffix == SUFFIX_E {/* when tristate control use */
                 row_offset = 0; /* first row (=> offset = 0) */
                 max_row = 1;
-            } else if jedec.get_mode() != Mode::Mode1 && olmcs[act_olmc].pin_type != olmc::REGOUT {
+            } else if jedec.get_mode() != Mode::Mode1 && olmcs[act_olmc].pin_type != PinType::REGOUT {
                 row_offset = 1; /* then init. row-offset */
             }
         }
@@ -179,7 +180,7 @@ pub fn mark_input(
     act_pin: &Pin,
 ) {
     if let Some(n) = jedec.chip.pin_to_olmc(act_pin.pin as usize) {
-        olmcs[n].feedback = 1;
+        olmcs[n].feedback = true;
     }
 }
 
@@ -187,7 +188,7 @@ pub fn mark_input(
 // NOT USED (Can also be only used as input)
 //  -> TRIOUT - tristate
 //  -> REGOUT - registered
-//  -> COM_TRI_OUT - combinatorial, might be tristated.
+//  -> COMTRIOUT - combinatorial, might be tristated.
 //     analysed to:
 //     -> COM_OUT
 //     -> TRI_OUT
@@ -230,23 +231,23 @@ fn register_output_base(
 ) -> Result<(), i32> {
     olmc.output = Some(*eqn);
 
-    if olmc.pin_type == 0 {
+    if olmc.pin_type == PinType::UNDRIVEN {
         if act_pin.neg != 0 {
-            olmc.active = olmc::ACTIVE_LOW;
+            olmc.active = olmc::Active::LOW;
         } else {
-            olmc.active = olmc::ACTIVE_HIGH;
+            olmc.active = olmc::Active::HIGH;
         }
 
         if suffix == SUFFIX_T {
-            olmc.pin_type = olmc::TRIOUT;
+            olmc.pin_type = PinType::TRIOUT;
         }
 
         if suffix == SUFFIX_R {
-            olmc.pin_type = olmc::REGOUT;
+            olmc.pin_type = PinType::REGOUT;
         }
 
         if suffix == SUFFIX_NON {
-            olmc.pin_type = olmc::COM_TRI_OUT;
+            olmc.pin_type = PinType::COMTRIOUT;
         }
     } else {
         if jedec.chip == Chip::GAL22V10 && is_arsp {
@@ -275,15 +276,15 @@ fn register_output_enable(
 
     olmc.tri_con = olmc::Tri::Some(*eqn);
 
-    if olmc.pin_type == 0 {
+    if olmc.pin_type == PinType::UNDRIVEN {
         return Err(17);
     }
 
-    if olmc.pin_type == olmc::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
+    if olmc.pin_type == PinType::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
         return Err(23);
     }
 
-    if olmc.pin_type == olmc::COM_TRI_OUT {
+    if olmc.pin_type == PinType::COMTRIOUT {
         return Err(24);
     }
 
@@ -299,7 +300,7 @@ fn register_output_clock(
         return Err(19);
     }
 
-    if olmc.pin_type == olmc::NOTUSED {
+    if olmc.pin_type == PinType::UNDRIVEN {
         return Err(42);
     }
 
@@ -308,7 +309,7 @@ fn register_output_clock(
     }
 
     olmc.clock = Some(*eqn);
-    if olmc.pin_type != olmc::REGOUT {
+    if olmc.pin_type != PinType::REGOUT {
         return Err(48);
     }
 
@@ -324,7 +325,7 @@ fn register_output_arst(
         return Err(19);
     }
 
-    if olmc.pin_type == olmc::NOTUSED {
+    if olmc.pin_type == PinType::UNDRIVEN {
         return Err(43);
     }
 
@@ -333,7 +334,7 @@ fn register_output_arst(
     }
 
     olmc.arst = Some(*eqn);
-    if olmc.pin_type != olmc::REGOUT {
+    if olmc.pin_type != PinType::REGOUT {
         return Err(48);
     }
 
@@ -349,7 +350,7 @@ fn register_output_aprst(
         return Err(19);
     }
 
-    if olmc.pin_type == olmc::NOTUSED {
+    if olmc.pin_type == PinType::UNDRIVEN {
         return Err(44);
     }
 
@@ -358,7 +359,7 @@ fn register_output_aprst(
     }
 
     olmc.aprst = Some(*eqn);
-    if olmc.pin_type != olmc::REGOUT {
+    if olmc.pin_type != PinType::REGOUT {
         return Err(48);
     }
 
@@ -418,13 +419,13 @@ pub fn do_it_all(
             add_equation(jedec, olmcs, &eqn)?;
         }
 
-        if olmcs[i].pin_type == olmc::NOTUSED {
+        if olmcs[i].pin_type == PinType::UNDRIVEN {
             jedec.clear_olmc(i);
         }
 
         if jedec.chip == Chip::GAL20RA10 {
-            if olmcs[i].pin_type != olmc::NOTUSED {
-                if olmcs[i].pin_type == olmc::REGOUT && olmcs[i].clock.is_none() {
+            if olmcs[i].pin_type != PinType::UNDRIVEN {
+                if olmcs[i].pin_type == PinType::REGOUT && olmcs[i].clock.is_none() {
                     // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
                     return Err(41); // FIXME i + 14);
                 }
@@ -434,7 +435,7 @@ pub fn do_it_all(
                     jedec.clear_row(start_row, 1);
                 }
 
-                if olmcs[i].pin_type == olmc::REGOUT {
+                if olmcs[i].pin_type == PinType::REGOUT {
                     if olmcs[i].arst.is_none() {
                         let start_row = jedec.chip.start_row_for_olmc(i);
                         jedec.clear_row(start_row, 2);
@@ -457,7 +458,7 @@ pub fn do_it_all(
             }
         }
 
-        if olmcs[10].pin_type == 0    /* set row of AR equal 0 */ {
+        if olmcs[10].pin_type == PinType::UNDRIVEN    /* set row of AR equal 0 */ {
             jedec.clear_olmc(10);
         }
 
@@ -467,7 +468,7 @@ pub fn do_it_all(
             }
         }
 
-        if olmcs[11].pin_type == 0    /* set row of SP equal 0 */ {
+        if olmcs[11].pin_type == PinType::UNDRIVEN    /* set row of SP equal 0 */ {
             jedec.clear_olmc(11);
         }
     }
@@ -487,14 +488,14 @@ pub fn do_stuff(
 
     // Set up OLMCs.
     let mut olmcs = vec!(OLMC {
-        active: 0,
-        pin_type: 0,
+        active: olmc::Active::LOW,
+        pin_type: PinType::UNDRIVEN,
         output: None,
         tri_con: olmc::Tri::None,
         clock: None,
         arst: None,
         aprst: None,
-        feedback: 0,
+        feedback: false,
      };12);
 
     // Set signature.

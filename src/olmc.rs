@@ -10,28 +10,32 @@ pub enum Tri {
     VCC
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum PinType {
+    UNDRIVEN,
+    COMOUT,
+    TRIOUT,
+    REGOUT,
+    COMTRIOUT,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Active {
+    LOW,
+    HIGH
+}
+
 #[derive(Clone, Debug)]
 pub struct OLMC {
-    pub active: u8,
-    pub pin_type: u8,
+    pub active: Active,
+    pub pin_type: PinType,
     pub output: Option<gal_builder::Equation>,
     pub tri_con: Tri,
     pub clock: Option<gal_builder::Equation>,
     pub arst: Option<gal_builder::Equation>,
     pub aprst: Option<gal_builder::Equation>,
-    pub feedback: u8,
+    pub feedback: bool,
 }
-
-pub const NOTUSED    : u8 =     0;             /* pin not used up to now */
-pub const NOTCON     : u8 =     0;             /* pin not used           */
-pub const INPUT      : u8 =     2;             /* input                  */
-pub const COMOUT     : u8 =     3;             /* combinational output   */
-pub const TRIOUT     : u8 =     4;             /* tristate output        */
-pub const REGOUT     : u8 =     5;             /* register output        */
-pub const COM_TRI_OUT: u8 =     6;             /* either tristate or     */
-
-pub const ACTIVE_LOW: u8 =      0;             /* pin is high-active */
-pub const ACTIVE_HIGH: u8 =     1;             /* pin is low-active  */
 
 // Get the mode for GAL16V8 and GAL20V8, set the flags appropriately
 pub fn analyse_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
@@ -43,13 +47,13 @@ pub fn analyse_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
 pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
     // If there's a registered pin, it's mode 3.
     for n in 0..8 {
-        if olmcs[n].pin_type == REGOUT {
+        if olmcs[n].pin_type == PinType::REGOUT {
             return Mode::Mode3;
         }
     }
     // If there's a tristate, it's mode 2.
     for n in 0..8 {
-        if olmcs[n].pin_type == TRIOUT {
+        if olmcs[n].pin_type == PinType::TRIOUT {
             return Mode::Mode2;
         }
     }
@@ -57,7 +61,7 @@ pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
     let chip = jedec.chip;
     for n in 0..8 {
         // Some pins cannot be used as input or feedback.
-        if olmcs[n].feedback != 0 && olmcs[n].pin_type == 0 {
+        if olmcs[n].feedback && olmcs[n].pin_type == PinType::UNDRIVEN {
             if chip == Chip::GAL16V8 {
                 let pin_num = n + 12;
                 if pin_num == 15 || pin_num == 16 {
@@ -72,7 +76,7 @@ pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
             }
         }
         // Other pins cannot be used as feedback.
-        if olmcs[n].feedback != 0 && olmcs[n].pin_type == COM_TRI_OUT {
+        if olmcs[n].feedback && olmcs[n].pin_type == PinType::COMTRIOUT {
             return Mode::Mode2;
         }
     }
@@ -86,11 +90,11 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
             let mode = analyse_mode_v8(jedec, olmcs);
 
             for n in 0..8 {
-                if olmcs[n].pin_type == COM_TRI_OUT {
+                if olmcs[n].pin_type == PinType::COMTRIOUT {
                     if mode == Mode::Mode1 {
-                        olmcs[n].pin_type = COMOUT;
+                        olmcs[n].pin_type = PinType::COMOUT;
                     } else {
-                        olmcs[n].pin_type = TRIOUT;
+                        olmcs[n].pin_type = PinType::TRIOUT;
                         // Set to VCC.
                         olmcs[n].tri_con = Tri::VCC;
                     }
@@ -104,13 +108,13 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
             }
 
             for n in 0..8 {
-                if (olmcs[n].pin_type == 0 && olmcs[n].feedback != 0) || olmcs[n].pin_type == TRIOUT {
+                if (olmcs[n].pin_type == PinType::UNDRIVEN && olmcs[n].feedback) || olmcs[n].pin_type == PinType::TRIOUT {
                     jedec.ac1[7 - n] = true;
                 }
             }
 
             for n in 0..8 {
-                if ((olmcs[n].pin_type == COMOUT) || (olmcs[n].pin_type == TRIOUT) || (olmcs[n].pin_type == REGOUT)) && (olmcs[n].active == ACTIVE_HIGH) {
+                if ((olmcs[n].pin_type == PinType::COMOUT) || (olmcs[n].pin_type == PinType::TRIOUT) || (olmcs[n].pin_type == PinType::REGOUT)) && (olmcs[n].active == Active::HIGH) {
                     jedec.xor[7 - n] = true;
                 }
             }
@@ -120,15 +124,15 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
 
         Chip::GAL22V10 => {
             for n in 0..10 {
-                if olmcs[n].pin_type == COM_TRI_OUT {
-                    olmcs[n].pin_type = TRIOUT;
+                if olmcs[n].pin_type == PinType::COMTRIOUT {
+                    olmcs[n].pin_type = PinType::TRIOUT;
                 }
 
-                if ((olmcs[n].pin_type == COMOUT) || (olmcs[n].pin_type == TRIOUT) || (olmcs[n].pin_type == REGOUT)) && (olmcs[n].active == ACTIVE_HIGH) {
+                if ((olmcs[n].pin_type == PinType::COMOUT) || (olmcs[n].pin_type == PinType::TRIOUT) || (olmcs[n].pin_type == PinType::REGOUT)) && (olmcs[n].active == Active::HIGH) {
                     jedec.xor[9 - n] = true;
                 }
 
-                if (olmcs[n].pin_type == 0 && olmcs[n].feedback != 0) || olmcs[n].pin_type == TRIOUT {
+                if (olmcs[n].pin_type == PinType::UNDRIVEN && olmcs[n].feedback) || olmcs[n].pin_type == PinType::TRIOUT {
                     jedec.s1[9 - n] = true;
                 }
             }
@@ -136,11 +140,11 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
 
         Chip::GAL20RA10 => {
             for n in 0..10 {
-                if olmcs[n].pin_type == COM_TRI_OUT {
-                    olmcs[n].pin_type = TRIOUT;
+                if olmcs[n].pin_type == PinType::COMTRIOUT {
+                    olmcs[n].pin_type = PinType::TRIOUT;
                 }
 
-                if ((olmcs[n].pin_type == COMOUT) || (olmcs[n].pin_type == TRIOUT) || (olmcs[n].pin_type == REGOUT)) && (olmcs[n].active == ACTIVE_HIGH) {
+                if ((olmcs[n].pin_type == PinType::COMOUT) || (olmcs[n].pin_type == PinType::TRIOUT) || (olmcs[n].pin_type == PinType::REGOUT)) && (olmcs[n].active == Active::HIGH) {
                     jedec.xor[9 - n] = true;
                 }
             }

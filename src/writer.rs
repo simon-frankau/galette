@@ -2,6 +2,7 @@ use chips::Chip;
 use jedec::Jedec;
 use jedec::Mode;
 use olmc::OLMC;
+use olmc::PinType;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
@@ -122,8 +123,8 @@ fn make_pin(jedec: &Jedec, pin_names: &[&str], olmcs: &[OLMC]) -> String {
         }
         if let Some(olmc) = gal_type.pin_to_olmc(n) {
             let olmc = &olmcs[olmc];
-            if olmc.pin_type != 0 || olmc.feedback == 0 {
-                if olmc.pin_type != 0 {
+            if olmc.pin_type != PinType::UNDRIVEN || !olmc.feedback {
+                if olmc.pin_type != PinType::UNDRIVEN {
                     buf.push_str("| Output\n");
                 } else {
                     buf.push_str("| NC\n");
