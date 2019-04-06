@@ -3,6 +3,7 @@ use jedec::Jedec;
 use jedec::Mode;
 use olmc;
 use olmc::OLMC;
+use writer;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -51,7 +52,7 @@ fn set_and(
 pub fn set_unused(
     jedec: &mut Jedec,
     olmcs: &[OLMC]
-) -> Result<(), usize> {
+) -> Result<(), i32> {
 
     // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
     for i in 0..jedec.chip.num_olmcs() {
@@ -75,7 +76,7 @@ pub fn set_unused(
                 if olmcs[i].pin_type != olmc::NOTUSED {
                     if olmcs[i].pin_type == olmc::REGOUT && olmcs[i].clock == 0{
                         // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
-                        return Err(i + 14);
+                        return Err(41); // FIXME i + 14);
                     }
 
                     if olmcs[i].clock == 0 {
@@ -447,6 +448,50 @@ pub fn do_it_all(
             return Err(eqn.line_num * 0x10000 + err);
         }
     }
+
+    Ok(())
+}
+
+pub fn do_stuff(
+    gal_type: Chip,
+    sig: &[u8],
+    eqns: &[Equation],
+    file: &str,
+    pin_names: &[&str],
+    config: &::jedec_writer::Config,
+) -> Result<(), i32> {
+    let mut jedec = Jedec::new(gal_type);
+
+    // Set up OLMCs.
+    let mut olmcs = vec!(OLMC {
+        active: 0,
+        pin_type: 0,
+        tri_con: 0,
+        clock: 0,
+        arst: 0,
+        aprst: 0,
+        feedback: 0,
+     };12);
+
+    // Set signature.
+    for x in jedec.sig.iter_mut() {
+        *x = false;
+    }
+
+    // Signature has space for 8 bytes.
+    for i in 0..usize::min(sig.len(), 8) {
+        let c = sig[i];
+        for j in 0..8 {
+            jedec.sig[i * 8 + j] = (c << j) & 0x80 != 0;
+        }
+    }
+
+    do_it_all(&mut jedec, &mut olmcs, eqns, file)?;
+    set_unused(&mut jedec, &olmcs)?;
+
+    let olmc_pin_types = olmcs.iter().map(|x| x.pin_type as i32).collect::<Vec<i32>>();
+
+    writer::write_files(file, config, pin_names, &olmc_pin_types, &jedec).unwrap();
 
     Ok(())
 }
