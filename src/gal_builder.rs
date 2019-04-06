@@ -179,19 +179,15 @@ pub fn mark_input(
     act_pin: &Pin,
 ) {
     if let Some(n) = jedec.chip.pin_to_olmc(act_pin.pin as usize) {
-        if olmcs[n].pin_type == olmc::NOTUSED {
-            olmcs[n].pin_type = olmc::INPUT;
-        }
         olmcs[n].feedback = 1;
     }
 }
 
 // Pin types:
-// NOT USED
-//  -> INPUT if used as input
+// NOT USED (Can also be only used as input)
 //  -> TRIOUT - tristate
 //  -> REGOUT - registered
-//  -> COM_TRI_OUT - unregistered
+//  -> COM_TRI_OUT - combinatorial, might be tristated.
 //     analysed to:
 //     -> COM_OUT
 //     -> TRI_OUT
@@ -234,7 +230,7 @@ fn register_output_base(
 ) -> Result<(), i32> {
     olmc.output = Some(*eqn);
 
-    if olmc.pin_type == 0 || olmc.pin_type == olmc::INPUT {
+    if olmc.pin_type == 0 {
         if act_pin.neg != 0 {
             olmc.active = olmc::ACTIVE_LOW;
         } else {
@@ -279,7 +275,7 @@ fn register_output_enable(
 
     olmc.tri_con = olmc::Tri::Some(*eqn);
 
-    if olmc.pin_type == 0 || olmc.pin_type == olmc::INPUT {
+    if olmc.pin_type == 0 {
         return Err(17);
     }
 
@@ -422,7 +418,7 @@ pub fn do_it_all(
             add_equation(jedec, olmcs, &eqn)?;
         }
 
-        if olmcs[i].pin_type == olmc::NOTUSED || olmcs[i].pin_type == olmc::INPUT {
+        if olmcs[i].pin_type == olmc::NOTUSED {
             jedec.clear_olmc(i);
         }
 
@@ -516,9 +512,7 @@ pub fn do_stuff(
 
     do_it_all(&mut jedec, &mut olmcs, eqns, file)?;
 
-    let olmc_pin_types = olmcs.iter().map(|x| x.pin_type as i32).collect::<Vec<i32>>();
-
-    writer::write_files(file, config, pin_names, &olmc_pin_types, &jedec).unwrap();
+    writer::write_files(file, config, pin_names, &olmcs, &jedec).unwrap();
 
     Ok(())
 }

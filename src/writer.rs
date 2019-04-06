@@ -1,12 +1,12 @@
 use chips::Chip;
 use jedec::Jedec;
 use jedec::Mode;
+use olmc::OLMC;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
 use std::path::PathBuf;
 
-const INPUT: i32 = 2;
 
 fn make_spaces(buf: &mut String, n: usize) {
     for _i in 0..n {
@@ -63,7 +63,7 @@ fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
 // 'make_pin' lists the pin assignments.
 //
 
-fn make_pin(jedec: &Jedec, pin_names: &[&str], olmc_pin_types: &[i32]) -> String {
+fn make_pin(jedec: &Jedec, pin_names: &[&str], olmcs: &[OLMC]) -> String {
     let num_of_pins = pin_names.len();
     let gal_type = jedec.chip;
 
@@ -121,8 +121,9 @@ fn make_pin(jedec: &Jedec, pin_names: &[&str], olmc_pin_types: &[i32]) -> String
             return buf;
         }
         if let Some(olmc) = gal_type.pin_to_olmc(n) {
-            if olmc_pin_types[olmc] != INPUT {
-                if olmc_pin_types[olmc] != 0 {
+            let olmc = &olmcs[olmc];
+            if olmc.pin_type != 0 || olmc.feedback == 0 {
+                if olmc.pin_type != 0 {
                     buf.push_str("| Output\n");
                 } else {
                     buf.push_str("| NC\n");
@@ -247,7 +248,7 @@ pub fn write_files(
     file_name: &str,
     config: &::jedec_writer::Config,
     pin_names: &[&str],
-    olmc_pin_types: &[i32],
+    olmcs: &[OLMC],
     jedec: &Jedec,
 ) -> Result<(), Error> {
     let base = PathBuf::from(file_name);
@@ -260,7 +261,7 @@ pub fn write_files(
     }
 
     if config.gen_pin != 0 {
-        write_file(&base, "pin", &make_pin(jedec, pin_names, olmc_pin_types))?;
+        write_file(&base, "pin", &make_pin(jedec, pin_names, olmcs))?;
     }
 
     if config.gen_chip != 0 {

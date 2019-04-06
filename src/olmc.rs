@@ -56,7 +56,8 @@ pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
     // If we can't use mode 1, use mode 2.
     let chip = jedec.chip;
     for n in 0..8 {
-        if olmcs[n].pin_type == INPUT {
+        // Some pins cannot be used as input or feedback.
+        if olmcs[n].feedback != 0 && olmcs[n].pin_type == 0 {
             if chip == Chip::GAL16V8 {
                 let pin_num = n + 12;
                 if pin_num == 15 || pin_num == 16 {
@@ -70,7 +71,8 @@ pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
                 }
             }
         }
-        if olmcs[n].pin_type == COM_TRI_OUT && olmcs[n].feedback != 0 {
+        // Other pins cannot be used as feedback.
+        if olmcs[n].feedback != 0 && olmcs[n].pin_type == COM_TRI_OUT {
             return Mode::Mode2;
         }
     }
@@ -102,7 +104,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
             }
 
             for n in 0..8 {
-                if olmcs[n].pin_type == INPUT || olmcs[n].pin_type == TRIOUT {
+                if (olmcs[n].pin_type == 0 && olmcs[n].feedback != 0) || olmcs[n].pin_type == TRIOUT {
                     jedec.ac1[7 - n] = true;
                 }
             }
@@ -126,7 +128,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                     jedec.xor[9 - n] = true;
                 }
 
-                if olmcs[n].pin_type == INPUT || olmcs[n].pin_type == TRIOUT {
+                if (olmcs[n].pin_type == 0 && olmcs[n].feedback != 0) || olmcs[n].pin_type == TRIOUT {
                     jedec.s1[9 - n] = true;
                 }
             }
