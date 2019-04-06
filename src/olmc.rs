@@ -3,16 +3,23 @@ use gal_builder;
 use jedec;
 use jedec::Mode;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum Tri {
+    None,
+    Some(gal_builder::Equation),
+    VCC
+}
+
 #[derive(Clone, Debug)]
 pub struct OLMC {
     pub active: u8,
     pub pin_type: u8,
-    pub tri_con: u8,
-    pub clock: u8,
+    pub output: Option<gal_builder::Equation>,
+    pub tri_con: Tri,
+    pub clock: Option<gal_builder::Equation>,
     pub arst: Option<gal_builder::Equation>,
     pub aprst: Option<gal_builder::Equation>,
     pub feedback: u8,
-    pub eqns: Vec<gal_builder::Equation>,
 }
 
 pub const NOTUSED    : u8 =     0;             /* pin not used up to now */
@@ -82,7 +89,8 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                         olmcs[n].pin_type = COMOUT;
                     } else {
                         olmcs[n].pin_type = TRIOUT;
-                        olmcs[n].tri_con = 2; // TRI_VCC;
+                        // Set to VCC.
+                        olmcs[n].tri_con = Tri::VCC;
                     }
                 }
             }

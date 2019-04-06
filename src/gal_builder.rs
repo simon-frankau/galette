@@ -6,7 +6,7 @@ use olmc::OLMC;
 use writer;
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pin {
     neg: i8,
     pin: i8,
@@ -14,7 +14,7 @@ pub struct Pin {
 
 // Config use on the C side.
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Equation {
     pub line_num: i32,
     pub lhs: Pin,
@@ -189,7 +189,12 @@ pub fn mark_input(
 // Pin types:
 // NOT USED
 //  -> INPUT if used as input
-//  -> 
+//  -> TRIOUT - tristate
+//  -> REGOUT - registered
+//  -> COM_TRI_OUT - unregistered
+//     analysed to:
+//     -> COM_OUT
+//     -> TRI_OUT
 
 pub fn register_output(
     eqn: &Equation,
@@ -205,11 +210,11 @@ pub fn register_output(
 
     match suffix {
         SUFFIX_R | SUFFIX_T | SUFFIX_NON =>
-            register_output_base(jedec, &mut olmcs[olmc], act_pin, suffix, olmc >= 10),
+            register_output_base(jedec, &mut olmcs[olmc], act_pin, suffix, olmc >= 10, eqn),
         SUFFIX_E =>
-            register_output_enable(jedec, &mut olmcs[olmc], act_pin),
+            register_output_enable(jedec, &mut olmcs[olmc], act_pin, eqn),
         SUFFIX_CLK =>
-            register_output_clock(&mut olmcs[olmc], act_pin),
+            register_output_clock(&mut olmcs[olmc], act_pin, eqn),
         SUFFIX_ARST =>
             register_output_arst(&mut olmcs[olmc], act_pin, eqn),
         SUFFIX_APRST =>
@@ -225,7 +230,10 @@ fn register_output_base(
     act_pin: &Pin,
     suffix: i32,
     is_arsp: bool, // TODO: Hack for the error message?
+    eqn: &Equation,
 ) -> Result<(), i32> {
+    olmc.output = Some(*eqn);
+
     if olmc.pin_type == 0 || olmc.pin_type == olmc::INPUT {
         if act_pin.neg != 0 {
             olmc.active = olmc::ACTIVE_LOW;
@@ -259,16 +267,17 @@ fn register_output_enable(
     jedec: &Jedec,
     olmc: &mut OLMC,
     act_pin: &Pin,
+    eqn: &Equation,
 ) -> Result<(), i32> {
     if act_pin.neg != 0 {
         return Err(19);
     }
 
-    if olmc.tri_con != 0 {
+    if olmc.tri_con != olmc::Tri::None {
         return Err(22);
     }
 
-    olmc.tri_con = 1;
+    olmc.tri_con = olmc::Tri::Some(*eqn);
 
     if olmc.pin_type == 0 || olmc.pin_type == olmc::INPUT {
         return Err(17);
@@ -288,6 +297,7 @@ fn register_output_enable(
 fn register_output_clock(
     olmc: &mut OLMC,
     act_pin: &Pin,
+    eqn: &Equation,
 ) -> Result<(), i32> {
     if act_pin.neg != 0 {
         return Err(19);
@@ -297,11 +307,11 @@ fn register_output_clock(
         return Err(42);
     }
 
-    if olmc.clock != 0 {
+    if olmc.clock.is_some() {
         return Err(45);
     }
 
-    olmc.clock = 1;
+    olmc.clock = Some(*eqn);
     if olmc.pin_type != olmc::REGOUT {
         return Err(48);
     }
@@ -367,12 +377,6 @@ pub fn do_it_all(
 ) -> Result<(), i32> {
     // Collect marks.
     for eqn in eqns.iter() {
-        let olmc = match jedec.chip.pin_to_olmc(eqn.lhs.pin as usize) {
-            None => return Err(15),
-            Some(olmc) => olmc,
-        };
-        olmcs[olmc].eqns.push(*eqn);
-
         if let Err(err) = register_output(eqn, jedec, olmcs, &eqn.lhs, eqn.suffix) {
             return Err(eqn.line_num * 0x10000 + err); // TODO: Ick.
         }
@@ -402,8 +406,20 @@ pub fn do_it_all(
 
     // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
     for i in 0..jedec.chip.num_olmcs() {
-        for eqn in olmcs[i].eqns.iter() {
-            add_equation(jedec, olmcs, eqn)?;
+        if let Some(eqn) = olmcs[i].output {
+            add_equation(jedec, olmcs, &eqn)?;
+        }
+        if let Some(eqn) = olmcs[i].arst {
+            add_equation(jedec, olmcs, &eqn)?;
+        }
+        if let Some(eqn) = olmcs[i].aprst {
+            add_equation(jedec, olmcs, &eqn)?;
+        }
+        if let Some(eqn) = olmcs[i].clock {
+            add_equation(jedec, olmcs, &eqn)?;
+        }
+        if let olmc::Tri::Some(eqn) = olmcs[i].tri_con {
+            add_equation(jedec, olmcs, &eqn)?;
         }
 
         if olmcs[i].pin_type == olmc::NOTUSED || olmcs[i].pin_type == olmc::INPUT {
@@ -412,12 +428,12 @@ pub fn do_it_all(
 
         if jedec.chip == Chip::GAL20RA10 {
             if olmcs[i].pin_type != olmc::NOTUSED {
-                if olmcs[i].pin_type == olmc::REGOUT && olmcs[i].clock == 0 {
+                if olmcs[i].pin_type == olmc::REGOUT && olmcs[i].clock.is_none() {
                     // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
                     return Err(41); // FIXME i + 14);
                 }
 
-                if olmcs[i].clock == 0 {
+                if olmcs[i].clock.is_none() {
                     let start_row = jedec.chip.start_row_for_olmc(i);
                     jedec.clear_row(start_row, 1);
                 }
@@ -440,8 +456,8 @@ pub fn do_it_all(
     // Special cases
     if jedec.chip == Chip::GAL22V10 {
         {
-            for eqn in olmcs[10].eqns.iter() {
-                add_equation(jedec, olmcs, eqn)?;
+            if let Some(eqn) = olmcs[10].output {
+                add_equation(jedec, olmcs, &eqn)?;
             }
         }
 
@@ -450,8 +466,8 @@ pub fn do_it_all(
         }
 
         {
-            for eqn in olmcs[11].eqns.iter() {
-                add_equation(jedec, olmcs, eqn)?;
+            if let Some(eqn) = olmcs[11].output {
+                add_equation(jedec, olmcs, &eqn)?;
             }
         }
 
@@ -477,12 +493,12 @@ pub fn do_stuff(
     let mut olmcs = vec!(OLMC {
         active: 0,
         pin_type: 0,
-        tri_con: 0,
-        clock: 0,
+        output: None,
+        tri_con: olmc::Tri::None,
+        clock: None,
         arst: None,
         aprst: None,
         feedback: 0,
-        eqns: Vec::new(),
      };12);
 
     // Set signature.
