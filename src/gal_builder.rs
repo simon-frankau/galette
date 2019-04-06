@@ -6,7 +6,7 @@ use olmc::OLMC;
 use writer;
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Pin {
     neg: i8,
     pin: i8,
@@ -14,7 +14,7 @@ pub struct Pin {
 
 // Config use on the C side.
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Equation {
     pub line_num: i32,
     pub lhs: Pin,
@@ -46,61 +46,6 @@ fn set_and(
     }
 
     jedec.fuses[row * row_len + column + neg_off] = false;
-    Ok(())
-}
-
-pub fn set_unused(
-    jedec: &mut Jedec,
-    olmcs: &[OLMC]
-) -> Result<(), i32> {
-
-    // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
-    for i in 0..jedec.chip.num_olmcs() {
-        if olmcs[i].pin_type == olmc::NOTUSED || olmcs[i].pin_type == olmc::INPUT {
-            jedec.clear_olmc(i);
-        }
-    }
-
-    // Special cases
-    match jedec.chip {
-        Chip::GAL22V10 => {
-            if olmcs[10].pin_type == 0    /* set row of AR equal 0 */ {
-                jedec.clear_olmc(10);
-            }
-            if olmcs[11].pin_type == 0    /* set row of SP equal 0 */ {
-                jedec.clear_olmc(11);
-            }
-        }
-        Chip::GAL20RA10 => {
-            for i in 0..jedec.chip.num_olmcs() {
-                if olmcs[i].pin_type != olmc::NOTUSED {
-                    if olmcs[i].pin_type == olmc::REGOUT && olmcs[i].clock == 0{
-                        // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
-                        return Err(41); // FIXME i + 14);
-                    }
-
-                    if olmcs[i].clock == 0 {
-                        let start_row = jedec.chip.start_row_for_olmc(i);
-                        jedec.clear_row(start_row, 1);
-                    }
-
-                    if olmcs[i].pin_type == olmc::REGOUT {
-                        if olmcs[i].arst == olmc::NOTUSED {
-                            let start_row = jedec.chip.start_row_for_olmc(i);
-                            jedec.clear_row(start_row, 2);
-                        }
-
-                        if olmcs[i].aprst == olmc::NOTUSED {
-                            let start_row = jedec.chip.start_row_for_olmc(i);
-                            jedec.clear_row(start_row, 3);
-                        }
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-
     Ok(())
 }
 
@@ -239,6 +184,11 @@ pub fn mark_input(
         olmcs[n].feedback = 1;
     }
 }
+
+// Pin types:
+// NOT USED
+//  -> INPUT if used as input
+//
 
 pub fn register_output(
     jedec: &Jedec,
@@ -413,6 +363,12 @@ pub fn do_it_all(
 ) -> Result<(), i32> {
     // Collect marks.
     for eqn in eqns.iter() {
+        let olmc = match jedec.chip.pin_to_olmc(eqn.lhs.pin as usize) {
+            None => return Err(15),
+            Some(olmc) => olmc,
+        };
+        olmcs[olmc].eqns.push(*eqn);
+
         if let Err(err) = register_output(jedec, olmcs, &eqn.lhs, eqn.suffix) {
             return Err(eqn.line_num * 0x10000 + err); // TODO: Ick.
         }
@@ -440,12 +396,78 @@ pub fn do_it_all(
              "off"); // TODO cfg->JedecSecBit ? "on" : "off");
 
 
-    for eqn in eqns.iter() {
-        let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-        let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+    // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
+    for i in 0..jedec.chip.num_olmcs() {
+        for eqn in olmcs[i].eqns.iter() {
+            let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+            let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
 
-        if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
-            return Err(eqn.line_num * 0x10000 + err);
+            if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
+                return Err(eqn.line_num * 0x10000 + err);
+            }
+        }
+
+        if olmcs[i].pin_type == olmc::NOTUSED || olmcs[i].pin_type == olmc::INPUT {
+            jedec.clear_olmc(i);
+        }
+
+        if jedec.chip == Chip::GAL20RA10 {
+            if olmcs[i].pin_type != olmc::NOTUSED {
+                if olmcs[i].pin_type == olmc::REGOUT && olmcs[i].clock == 0 {
+                    // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
+                    return Err(41); // FIXME i + 14);
+                }
+
+                if olmcs[i].clock == 0 {
+                    let start_row = jedec.chip.start_row_for_olmc(i);
+                    jedec.clear_row(start_row, 1);
+                }
+
+                if olmcs[i].pin_type == olmc::REGOUT {
+                    if olmcs[i].arst == olmc::NOTUSED {
+                        let start_row = jedec.chip.start_row_for_olmc(i);
+                        jedec.clear_row(start_row, 2);
+                    }
+
+                    if olmcs[i].aprst == olmc::NOTUSED {
+                        let start_row = jedec.chip.start_row_for_olmc(i);
+                        jedec.clear_row(start_row, 3);
+                    }
+                }
+            }
+        }
+    }
+
+    // Special cases
+    if jedec.chip == Chip::GAL22V10 {
+        {
+            for eqn in olmcs[10].eqns.iter() {
+                let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+                let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+
+                if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
+                    return Err(eqn.line_num * 0x10000 + err);
+                }
+            }
+        }
+
+        if olmcs[10].pin_type == 0    /* set row of AR equal 0 */ {
+            jedec.clear_olmc(10);
+        }
+
+        {
+            for eqn in olmcs[11].eqns.iter() {
+                let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+                let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+
+                if let Err(err) = add_equation(jedec, olmcs, eqn.line_num, &eqn.lhs, eqn.suffix, rhs, ops) {
+                    return Err(eqn.line_num * 0x10000 + err);
+                }
+            }
+        }
+
+        if olmcs[11].pin_type == 0    /* set row of SP equal 0 */ {
+            jedec.clear_olmc(11);
         }
     }
 
@@ -471,6 +493,7 @@ pub fn do_stuff(
         arst: 0,
         aprst: 0,
         feedback: 0,
+        eqns: Vec::new(),
      };12);
 
     // Set signature.
@@ -487,7 +510,6 @@ pub fn do_stuff(
     }
 
     do_it_all(&mut jedec, &mut olmcs, eqns, file)?;
-    set_unused(&mut jedec, &olmcs)?;
 
     let olmc_pin_types = olmcs.iter().map(|x| x.pin_type as i32).collect::<Vec<i32>>();
 

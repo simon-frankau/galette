@@ -1,7 +1,6 @@
 use chips::Chip;
 use gal_builder;
 use gal_builder::Equation;
-use olmc::OLMC;
 
 use std::ffi::CStr;
 use std::os::raw::c_char;

@@ -1,4 +1,5 @@
 use chips::Chip;
+use gal_builder;
 use jedec;
 use jedec::Mode;
 
@@ -11,6 +12,7 @@ pub struct OLMC {
     pub arst: u8,
     pub aprst: u8,
     pub feedback: u8,
+    pub eqns: Vec<gal_builder::Equation>,
 }
 
 pub const NOTUSED    : u8 =     0;             /* pin not used up to now */
