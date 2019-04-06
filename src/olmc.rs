@@ -2,8 +2,6 @@ use chips::Chip;
 use jedec;
 use jedec::Mode;
 
-// Config use on the C side.
-#[repr(C)]
 #[derive(Clone, Debug)]
 pub struct OLMC {
     pub active: u8,
