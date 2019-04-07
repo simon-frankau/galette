@@ -206,24 +206,13 @@ pub fn do_it_all(
 
     // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
     for i in 0..jedec.chip.num_olmcs() {
-        if let Some(eqn) = blueprint.olmcs[i].output {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
-        }
-        if let Some(eqn) = blueprint.olmcs[i].arst {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
-        }
-        if let Some(eqn) = blueprint.olmcs[i].aprst {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
-        }
-        if let Some(eqn) = blueprint.olmcs[i].clock {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
-        }
-        if let olmc::Tri::Some(eqn) = blueprint.olmcs[i].tri_con {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
+        match blueprint.olmcs[i].output {
+            Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+            None => jedec.clear_olmc(i),
         }
 
-        if blueprint.olmcs[i].pin_type == PinType::UNDRIVEN {
-            jedec.clear_olmc(i);
+        if let olmc::Tri::Some(eqn) = blueprint.olmcs[i].tri_con {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
 
         if jedec.chip == Chip::GAL20RA10 {
@@ -233,20 +222,22 @@ pub fn do_it_all(
                     return Err(41); // FIXME i + 14);
                 }
 
-                if blueprint.olmcs[i].clock.is_none() {
-                    let start_row = jedec.chip.start_row_for_olmc(i);
-                    jedec.clear_row(start_row, 1);
+                let start_row = jedec.chip.start_row_for_olmc(i);
+
+                match blueprint.olmcs[i].clock {
+                    Some(eqn) =>add_equation(jedec, &blueprint.olmcs, &eqn)?,
+                    None => jedec.clear_row(start_row, 1),
                 }
 
                 if blueprint.olmcs[i].pin_type == PinType::REGOUT {
-                    if blueprint.olmcs[i].arst.is_none() {
-                        let start_row = jedec.chip.start_row_for_olmc(i);
-                        jedec.clear_row(start_row, 2);
+                    match blueprint.olmcs[i].arst {
+                        Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+                        None => jedec.clear_row(start_row, 2),
                     }
 
-                    if blueprint.olmcs[i].aprst.is_none() {
-                        let start_row = jedec.chip.start_row_for_olmc(i);
-                        jedec.clear_row(start_row, 3);
+                    match blueprint.olmcs[i].aprst {
+                        Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+                        None => jedec.clear_row(start_row, 3),
                     }
                 }
             }
@@ -255,20 +246,15 @@ pub fn do_it_all(
 
     // Special cases
     if jedec.chip == Chip::GAL22V10 {
-        if let Some(eqn) = blueprint.olmcs[10].output {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
+        // AR
+        match blueprint.olmcs[10].output {
+            Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+            None => jedec.clear_olmc(10),
         }
-
-        if blueprint.olmcs[10].pin_type == PinType::UNDRIVEN    /* set row of AR equal 0 */ {
-            jedec.clear_olmc(10);
-        }
-
-        if let Some(eqn) = blueprint.olmcs[11].output {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
-        }
-
-        if blueprint.olmcs[11].pin_type == PinType::UNDRIVEN    /* set row of SP equal 0 */ {
-            jedec.clear_olmc(11);
+        // SP
+        match blueprint.olmcs[11].output {
+            Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+            None => jedec.clear_olmc(11),
         }
     }
 

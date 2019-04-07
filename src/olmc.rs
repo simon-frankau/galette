@@ -52,144 +52,146 @@ pub struct OLMC {
 //     -> COM_OUT
 //     -> TRI_OUT
 
-pub fn register_output_base(
-    jedec: &Jedec,
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    is_arsp: bool, // TODO: Hack for the error message?
-    eqn: &Equation,
-) -> Result<(), i32> {
-    if olmc.output.is_some() {
-        // Previously defined, so error out.
-        if jedec.chip == Chip::GAL22V10 && is_arsp {
-            return Err(40);
-        } else {
-            return Err(16);
+impl OLMC {
+    pub fn set_base(
+        &mut self,
+        jedec: &Jedec,
+        act_pin: &Pin,
+        is_arsp: bool, // TODO: Hack for the error message?
+        eqn: &Equation,
+    ) -> Result<(), i32> {
+        if self.output.is_some() {
+            // Previously defined, so error out.
+            if jedec.chip == Chip::GAL22V10 && is_arsp {
+                return Err(40);
+            } else {
+                return Err(16);
+            }
         }
+
+        self.output = Some(*eqn);
+
+        self.active = if act_pin.neg != 0 {
+            Active::LOW
+        } else {
+            Active::HIGH
+        };
+
+        self.pin_type = match eqn.suffix {
+            gal_builder::SUFFIX_T => PinType::TRIOUT,
+            gal_builder::SUFFIX_R => PinType::REGOUT,
+            gal_builder::SUFFIX_NON => PinType::COMTRIOUT,
+            _ => panic!("Nope!"),
+        };
+
+        Ok(())
     }
 
-    olmc.output = Some(*eqn);
+    pub fn set_enable(
+        &mut self,
+        jedec: &Jedec,
+        act_pin: &Pin,
+        eqn: &Equation,
+    ) -> Result<(), i32> {
+        if act_pin.neg != 0 {
+            return Err(19);
+        }
 
-    olmc.active = if act_pin.neg != 0 {
-        Active::LOW
-    } else {
-        Active::HIGH
-    };
+        if self.tri_con != Tri::None {
+            return Err(22);
+        }
 
-    olmc.pin_type = match eqn.suffix {
-        gal_builder::SUFFIX_T => PinType::TRIOUT,
-        gal_builder::SUFFIX_R => PinType::REGOUT,
-        gal_builder::SUFFIX_NON => PinType::COMTRIOUT,
-        _ => panic!("Nope!"),
-    };
+        self.tri_con = Tri::Some(*eqn);
 
-    Ok(())
-}
+        if self.pin_type == PinType::UNDRIVEN {
+            return Err(17);
+        }
 
-pub fn register_output_enable(
-    jedec: &Jedec,
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation,
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
+        if self.pin_type == PinType::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
+            return Err(23);
+        }
+
+        if self.pin_type == PinType::COMTRIOUT {
+            return Err(24);
+        }
+
+        Ok(())
     }
 
-    if olmc.tri_con != Tri::None {
-        return Err(22);
+    pub fn set_clock(
+        &mut self,
+        act_pin: &Pin,
+        eqn: &Equation,
+    ) -> Result<(), i32> {
+        if act_pin.neg != 0 {
+            return Err(19);
+        }
+
+        if self.pin_type == PinType::UNDRIVEN {
+            return Err(42);
+        }
+
+        if self.clock.is_some() {
+            return Err(45);
+        }
+
+        self.clock = Some(*eqn);
+        if self.pin_type != PinType::REGOUT {
+            return Err(48);
+        }
+
+        Ok(())
     }
 
-    olmc.tri_con = Tri::Some(*eqn);
+    pub fn set_arst(
+        &mut self,
+        act_pin: &Pin,
+        eqn: &Equation
+    ) -> Result<(), i32> {
+        if act_pin.neg != 0 {
+            return Err(19);
+        }
 
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(17);
+        if self.pin_type == PinType::UNDRIVEN {
+            return Err(43);
+        }
+
+        if self.arst.is_some() {
+            return Err(46);
+        }
+
+        self.arst = Some(*eqn);
+        if self.pin_type != PinType::REGOUT {
+            return Err(48);
+        }
+
+        Ok(())
     }
 
-    if olmc.pin_type == PinType::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
-        return Err(23);
+    pub fn set_aprst(
+        &mut self,
+        act_pin: &Pin,
+        eqn: &Equation,
+    ) -> Result<(), i32> {
+        if act_pin.neg != 0 {
+            return Err(19);
+        }
+
+        if self.pin_type == PinType::UNDRIVEN {
+            return Err(44);
+        }
+
+        if self.aprst.is_some() {
+            return Err(47);
+        }
+
+        self.aprst = Some(*eqn);
+        if self.pin_type != PinType::REGOUT {
+            return Err(48);
+        }
+
+        Ok(())
     }
-
-    if olmc.pin_type == PinType::COMTRIOUT {
-        return Err(24);
-    }
-
-    Ok(())
-}
-
-pub fn register_output_clock(
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation,
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
-    }
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(42);
-    }
-
-    if olmc.clock.is_some() {
-        return Err(45);
-    }
-
-    olmc.clock = Some(*eqn);
-    if olmc.pin_type != PinType::REGOUT {
-        return Err(48);
-    }
-
-    Ok(())
-}
-
-pub fn register_output_arst(
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
-    }
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(43);
-    }
-
-    if olmc.arst.is_some() {
-        return Err(46);
-    }
-
-    olmc.arst = Some(*eqn);
-    if olmc.pin_type != PinType::REGOUT {
-        return Err(48);
-    }
-
-    Ok(())
-}
-
-pub fn register_output_aprst(
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation,
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
-    }
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(44);
-    }
-
-    if olmc.aprst.is_some() {
-        return Err(47);
-    }
-
-    olmc.aprst = Some(*eqn);
-    if olmc.pin_type != PinType::REGOUT {
-        return Err(48);
-    }
-
-    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////
