@@ -207,45 +207,48 @@ impl Jedec {
     ) -> Result<(), i32> {
         let mut bounds = *bounds;
         let pins = &term.pins;
-        // if GND, set row equal 0
-        if pins.len() == 1 && pins[0].len() == 1 && (pins[0][0].pin as usize == self.chip.num_pins() || pins[0][0].pin as usize == self.chip.num_pins() / 2) {
-            if pins[0][0].neg != 0 {
-                // /VCC and /GND are not allowed
-                return Err(term.line_num * 0x10000 + 25);
+        for row in pins.iter() {
+            if bounds.row_offset == bounds.max_row {
+                // too many ORs?
+                return Err(term.line_num * 0x10000 + 30);
             }
 
-            if pins[0][0].pin as usize == self.chip.num_pins() / 2 {
-                self.clear_rows(&Bounds { max_row: bounds.row_offset + 1, .. bounds });
+            for pin in row.iter() {
+                let pin_num = pin.pin;
+
+                if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
+                    return Err(term.line_num * 0x10000 + 28);
+                }
+
+                if let Err(i) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, pin.neg != 0) {
+                    return Err(term.line_num * 0x10000 + i);
+                }
             }
 
+            // Go to next row.
             bounds.row_offset += 1;
-        } else {
-            for row in pins.iter() {
-                if bounds.row_offset == bounds.max_row {
-                    // too many ORs?
-                    return Err(term.line_num * 0x10000 + 30);
-                }
-
-                for pin in row.iter() {
-                    let pin_num = pin.pin;
-
-                    if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
-                        return Err(term.line_num * 0x10000 + 28);
-                    }
-
-                    if let Err(i) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, pin.neg != 0) {
-                        return Err(term.line_num * 0x10000 + i);
-                    }
-                }
-
-                // Go to next row.
-                bounds.row_offset += 1;
-            }
         }
 
         // Then zero the rest...
         self.clear_rows(&bounds);
 
         Ok(())
+    }
+}
+
+// Basic terms
+pub fn true_term(line_num: i32) -> Term {
+    // Empty row is always true (being the AND of nothing).
+    Term {
+        line_num: line_num,
+        pins: vec!(Vec::new()),
+    }
+}
+
+pub fn false_term(line_num: i32) -> Term {
+    // No rows is always false (being the OR of nothing).
+    Term {
+        line_num: line_num,
+        pins: Vec::new(),
     }
 }

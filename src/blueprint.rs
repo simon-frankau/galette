@@ -1,5 +1,7 @@
+use chips::Chip;
 use gal_builder;
 use gal_builder::Equation;
+use jedec;
 use jedec::Jedec;
 use jedec::Term;
 use olmc;
@@ -48,7 +50,7 @@ impl Blueprint {
             }
         }
 
-        let term = eqn_to_term(&eqn);
+        let term = eqn_to_term(jedec.chip, &eqn)?;
 
         // Only pins with OLMCs may be outputs.
         let olmc_num = match jedec.chip.pin_to_olmc(act_pin.pin as usize) {
@@ -74,9 +76,26 @@ impl Blueprint {
     }
 }
 
-fn eqn_to_term(eqn: &Equation) -> Term {
+fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, i32> {
     let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
     let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+
+    if rhs.len() == 1 {
+        let pin = &rhs[0];
+        if pin.pin as usize == chip.num_pins() {
+            // VCC
+            if pin.neg != 0 {
+                return Err(25);
+            }
+            return Ok(jedec::true_term(eqn.line_num));
+        } else if pin.pin as usize == chip.num_pins() / 2 {
+            // GND
+            if pin.neg != 0 {
+                return Err(25);
+            }
+            return Ok(jedec::false_term(eqn.line_num));
+        }
+    }
 
     let mut ors = Vec::new();
     let mut ands = Vec::new();
@@ -90,8 +109,8 @@ fn eqn_to_term(eqn: &Equation) -> Term {
     }
     ors.push(ands);
 
-    Term {
+    Ok(Term {
         line_num: eqn.line_num,
         pins: ors,
-    }
+    })
 }
