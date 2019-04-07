@@ -13,6 +13,7 @@ pub struct Jedec {
     pub s1: Vec<bool>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bounds {
     pub start_row: usize,
     pub max_row: usize,
@@ -218,8 +219,9 @@ impl Jedec {
     pub fn add_term(
         &mut self,
         term: &Term,
-        bounds: &mut Bounds,
+        bounds: &Bounds,
     ) -> Result<(), i32> {
+        let mut bounds = *bounds;
         let rhs = &term.rhs;
         let ops = &term.ops;
         // if GND, set row equal 0

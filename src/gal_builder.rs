@@ -1,6 +1,7 @@
 use blueprint::Blueprint;
 use chips::Chip;
 use jedec;
+use jedec::Bounds;
 use jedec::Jedec;
 use jedec::Mode;
 use olmc;
@@ -68,29 +69,7 @@ pub fn get_bounds(
             }
         }
         Chip::GAL20RA10 => {
-            match suffix {
-                SUFFIX_E => { /* enable is the first row */
-                    row_offset = 0; /* of the OLMC             */
-                    max_row = 1;
-                }
-                SUFFIX_CLK => { /* Clock is the second row */
-                    row_offset = 1; /* of the OLMC             */
-                    max_row = 2;
-                }
-                SUFFIX_ARST => { /* AReset is the third row */
-                    row_offset = 2; /* of the OLMC             */
-                    max_row = 3;
-                }
-                SUFFIX_APRST => { /* APreset is the fourth row */
-                    row_offset = 3; /* of the OLMC               */
-                    max_row = 4;
-                }
-                _ => { /* output equation starts */
-                    if row_offset <= 3 { /* at the fifth row       */
-                        row_offset = 4;
-                    }
-                }
-            }
+            panic!("Nope!");
         }
     }
 
@@ -245,23 +224,21 @@ fn build_gal22v10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i3
 fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
     // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
     for i in 0..jedec.chip.num_olmcs() {
+        let bounds = Bounds {
+            start_row: jedec.chip.start_row_for_olmc(i),
+            max_row: jedec.chip.num_rows_for_olmc(i),
+            row_offset: 0
+        };
+
         match &blueprint.olmcs[i].output {
             Some(term) => {
-                let suffix = match blueprint.olmcs[i].pin_type {
-                    olmc::PinType::COMOUT => SUFFIX_NON,
-                    olmc::PinType::TRIOUT => SUFFIX_T,
-                    olmc::PinType::REGOUT => SUFFIX_R,
-                    _ => panic!("Nope!"),
-                };
-                let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, suffix);
-                jedec.add_term(&term, &mut bounds)?;
+                jedec.add_term(&term, &Bounds { row_offset: 4, .. bounds })?;
             }
             None => jedec.clear_olmc(i),
         }
 
         if let olmc::Tri::Some(term) = &blueprint.olmcs[i].tri_con {
-            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_E);
-            jedec.add_term(&term, &mut bounds)?;
+            jedec.add_term(&term, &Bounds { row_offset: 0, max_row: 1, .. bounds })?;
         }
 
         if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
@@ -274,8 +251,7 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
 
             match &blueprint.olmcs[i].clock {
                 Some(term) => {
-                    let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_CLK);
-                    jedec.add_term(&term, &mut bounds)?;
+                    jedec.add_term(&term, &Bounds { row_offset: 1, max_row: 2, .. bounds })?;
                 }
                 None => jedec.clear_row(start_row, 1),
             }
@@ -283,16 +259,14 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
             if blueprint.olmcs[i].pin_type == PinType::REGOUT {
                 match &blueprint.olmcs[i].arst {
                     Some(term) => {
-                        let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_ARST);
-                        jedec.add_term(&term, &mut bounds)?;
+                        jedec.add_term(&term, &Bounds { row_offset: 2, max_row: 3, .. bounds })?;
                     }
                     None => jedec.clear_row(start_row, 2),
                 }
 
                 match &blueprint.olmcs[i].aprst {
                     Some(term) => {
-                        let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_APRST);
-                        jedec.add_term(&term, &mut bounds)?;
+                        jedec.add_term(&term, &Bounds { row_offset: 3, max_row: 4, .. bounds })?;
                     }
                     None => jedec.clear_row(start_row, 3),
                 }
