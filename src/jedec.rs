@@ -23,8 +23,9 @@ pub struct Bounds {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Term {
     pub line_num: i32,
-    pub rhs: Vec<Pin>,
-    pub ops: Vec<i8>,
+    // Each inner Vec represents an AND term. The overall term is the
+    // OR of the inner terms.
+    pub pins: Vec<Vec<Pin>>,
 }
 
 // Mode enums for the v8s
@@ -205,45 +206,44 @@ impl Jedec {
         bounds: &Bounds,
     ) -> Result<(), i32> {
         let mut bounds = *bounds;
-        let rhs = &term.rhs;
-        let ops = &term.ops;
+        let pins = &term.pins;
         // if GND, set row equal 0
-        if rhs.len() == 1 && (rhs[0].pin as usize == self.chip.num_pins() || rhs[0].pin as usize == self.chip.num_pins() / 2) {
-            if rhs[0].neg != 0 {
+        if pins.len() == 1 && pins[0].len() == 1 && (pins[0][0].pin as usize == self.chip.num_pins() || pins[0][0].pin as usize == self.chip.num_pins() / 2) {
+            if pins[0][0].neg != 0 {
                 // /VCC and /GND are not allowed
                 return Err(term.line_num * 0x10000 + 25);
             }
 
-            if rhs[0].pin as usize == self.chip.num_pins() / 2 {
+            if pins[0][0].pin as usize == self.chip.num_pins() / 2 {
                 self.clear_rows(&Bounds { max_row: bounds.row_offset + 1, .. bounds });
             }
-        } else {
-            for i in 0..rhs.len() {
-                let pin_num = rhs[i].pin;
 
-                if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
-                    return Err(term.line_num * 0x10000 + 28);
+            bounds.row_offset += 1;
+        } else {
+            for row in pins.iter() {
+                if bounds.row_offset == bounds.max_row {
+                    // too many ORs?
+                    return Err(term.line_num * 0x10000 + 30);
                 }
 
-                if ops[i] == 43 || ops[i] == 35 {
-                    // If an OR, go to next row.
-                    bounds.row_offset += 1;
+                for pin in row.iter() {
+                    let pin_num = pin.pin;
 
-                    if bounds.row_offset == bounds.max_row {
-                        // too many ORs?
-                        return Err(term.line_num * 0x10000 + 30);
+                    if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
+                        return Err(term.line_num * 0x10000 + 28);
+                    }
+
+                    if let Err(i) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, pin.neg != 0) {
+                        return Err(term.line_num * 0x10000 + i);
                     }
                 }
 
-                // Set ANDs.
-                if let Err(i) =  self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, rhs[i].neg != 0) {
-                    return Err(term.line_num * 0x10000 + i);
-                }
+                // Go to next row.
+                bounds.row_offset += 1;
             }
         }
 
         // Then zero the rest...
-        bounds.row_offset += 1;
         self.clear_rows(&bounds);
 
         Ok(())

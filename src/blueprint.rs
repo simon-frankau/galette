@@ -78,9 +78,20 @@ fn eqn_to_term(eqn: &Equation) -> Term {
     let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
     let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
 
+    let mut ors = Vec::new();
+    let mut ands = Vec::new();
+
+    for (pin, op) in rhs.iter().zip(ops.iter()) {
+        if *op == 43 || *op == 35 {
+            ors.push(ands);
+            ands = Vec::new();
+        }
+        ands.push(*pin);
+    }
+    ors.push(ands);
+
     Term {
         line_num: eqn.line_num,
-        rhs: rhs.iter().map(|x| *x).collect(),
-        ops: ops.iter().map(|x| *x).collect(),
+        pins: ors,
     }
 }
