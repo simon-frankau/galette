@@ -146,84 +146,10 @@ pub fn do_it_all(
              mode,
              "off"); // TODO cfg->JedecSecBit ? "on" : "off");
 
-
-    // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
-    for i in 0..jedec.chip.num_olmcs() {
-        match &blueprint.olmcs[i].output {
-            Some(term) => {
-                let suffix = match blueprint.olmcs[i].pin_type {
-                    olmc::PinType::COMOUT => SUFFIX_NON,
-                    olmc::PinType::TRIOUT => SUFFIX_T,
-                    olmc::PinType::REGOUT => SUFFIX_R,
-                    _ => panic!("Nope!"),
-                };
-                let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, suffix);
-                jedec.add_term(&term, &mut bounds)?;
-            }
-            None => jedec.clear_olmc(i),
-        }
-
-        if let olmc::Tri::Some(term) = &blueprint.olmcs[i].tri_con {
-            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_E);
-            jedec.add_term(&term, &mut bounds)?;
-        }
-
-        if jedec.chip == Chip::GAL20RA10 {
-            if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
-                if blueprint.olmcs[i].pin_type == PinType::REGOUT && blueprint.olmcs[i].clock.is_none() {
-                    // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
-                    return Err(41); // FIXME i + 14);
-                }
-
-                let start_row = jedec.chip.start_row_for_olmc(i);
-
-                match &blueprint.olmcs[i].clock {
-                    Some(term) => {
-                        let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_CLK);
-                        jedec.add_term(&term, &mut bounds)?;
-                    }
-                    None => jedec.clear_row(start_row, 1),
-                }
-
-                if blueprint.olmcs[i].pin_type == PinType::REGOUT {
-                    match &blueprint.olmcs[i].arst {
-                        Some(term) => {
-                            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_ARST);
-                            jedec.add_term(&term, &mut bounds)?;
-                        }
-                        None => jedec.clear_row(start_row, 2),
-                    }
-
-                    match &blueprint.olmcs[i].aprst {
-                        Some(term) => {
-                            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_APRST);
-                            jedec.add_term(&term, &mut bounds)?;
-                        }
-                        None => jedec.clear_row(start_row, 3),
-                    }
-                }
-            }
-        }
-    }
-
-    // Special cases
-    if jedec.chip == Chip::GAL22V10 {
-        // AR
-        match &blueprint.olmcs[10].output {
-            Some(term) => {
-                let mut bounds = get_bounds(jedec, 10, &blueprint.olmcs, SUFFIX_NON);
-                jedec.add_term(&term, &mut bounds)?;
-            }
-            None => jedec.clear_olmc(10),
-        }
-        // SP
-        match &blueprint.olmcs[11].output {
-            Some(term) => {
-                let mut bounds = get_bounds(jedec, 11, &blueprint.olmcs, SUFFIX_NON);
-                jedec.add_term(&term, &mut bounds)?;
-            }
-            None => jedec.clear_olmc(11),
-        }
+    match jedec.chip {
+        Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(jedec, blueprint)?,
+        Chip::GAL22V10 => build_gal22v10(jedec, blueprint)?,
+        Chip::GAL20RA10 => build_gal20ra10(jedec, blueprint)?,
     }
 
     Ok(())
@@ -257,6 +183,122 @@ pub fn do_stuff(
     do_it_all(&mut jedec, &mut blueprint, eqns, file)?;
 
     writer::write_files(file, config, pin_names, &blueprint.olmcs, &jedec).unwrap();
+
+    Ok(())
+}
+
+fn build_galxvx(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
+    // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
+    for i in 0..jedec.chip.num_olmcs() {
+        match &blueprint.olmcs[i].output {
+            Some(term) => {
+                let suffix = match blueprint.olmcs[i].pin_type {
+                    olmc::PinType::COMOUT => SUFFIX_NON,
+                    olmc::PinType::TRIOUT => SUFFIX_T,
+                    olmc::PinType::REGOUT => SUFFIX_R,
+                    _ => panic!("Nope!"),
+                };
+                let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, suffix);
+                jedec.add_term(&term, &mut bounds)?;
+            }
+            None => jedec.clear_olmc(i),
+        }
+
+        if let olmc::Tri::Some(term) = &blueprint.olmcs[i].tri_con {
+            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_E);
+            jedec.add_term(&term, &mut bounds)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn build_galxv8(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
+    build_galxvx(jedec, blueprint)?;
+
+    Ok(())
+}
+
+fn build_gal22v10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
+    build_galxvx(jedec, blueprint)?;
+
+    // AR
+    match &blueprint.olmcs[10].output {
+        Some(term) => {
+            let mut bounds = get_bounds(jedec, 10, &blueprint.olmcs, SUFFIX_NON);
+            jedec.add_term(&term, &mut bounds)?;
+        }
+        None => jedec.clear_olmc(10),
+    }
+    // SP
+    match &blueprint.olmcs[11].output {
+        Some(term) => {
+            let mut bounds = get_bounds(jedec, 11, &blueprint.olmcs, SUFFIX_NON);
+            jedec.add_term(&term, &mut bounds)?;
+        }
+        None => jedec.clear_olmc(11),
+    }
+
+    Ok(())
+}
+
+fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
+    // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
+    for i in 0..jedec.chip.num_olmcs() {
+        match &blueprint.olmcs[i].output {
+            Some(term) => {
+                let suffix = match blueprint.olmcs[i].pin_type {
+                    olmc::PinType::COMOUT => SUFFIX_NON,
+                    olmc::PinType::TRIOUT => SUFFIX_T,
+                    olmc::PinType::REGOUT => SUFFIX_R,
+                    _ => panic!("Nope!"),
+                };
+                let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, suffix);
+                jedec.add_term(&term, &mut bounds)?;
+            }
+            None => jedec.clear_olmc(i),
+        }
+
+        if let olmc::Tri::Some(term) = &blueprint.olmcs[i].tri_con {
+            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_E);
+            jedec.add_term(&term, &mut bounds)?;
+        }
+
+        if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
+            if blueprint.olmcs[i].pin_type == PinType::REGOUT && blueprint.olmcs[i].clock.is_none() {
+                // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
+                return Err(41); // FIXME i + 14);
+            }
+
+            let start_row = jedec.chip.start_row_for_olmc(i);
+
+            match &blueprint.olmcs[i].clock {
+                Some(term) => {
+                    let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_CLK);
+                    jedec.add_term(&term, &mut bounds)?;
+                }
+                None => jedec.clear_row(start_row, 1),
+            }
+
+            if blueprint.olmcs[i].pin_type == PinType::REGOUT {
+                match &blueprint.olmcs[i].arst {
+                    Some(term) => {
+                        let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_ARST);
+                        jedec.add_term(&term, &mut bounds)?;
+                    }
+                    None => jedec.clear_row(start_row, 2),
+                }
+
+                match &blueprint.olmcs[i].aprst {
+                    Some(term) => {
+                        let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_APRST);
+                        jedec.add_term(&term, &mut bounds)?;
+                    }
+                    None => jedec.clear_row(start_row, 3),
+                }
+            }
+        }
+    }
 
     Ok(())
 }
