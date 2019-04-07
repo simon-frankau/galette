@@ -1,3 +1,5 @@
+use jedec::Bounds;
+
 #[derive(PartialEq,Clone,Copy)]
 pub enum Chip {
     GAL16V8,
@@ -149,6 +151,14 @@ impl Chip {
             OLMC_SIZE_22V10[olmc_num] as usize
         } else {
             OLMC_SIZE_DEFAULT as usize
+        }
+    }
+
+    pub fn get_bounds(&self, olmc_num: usize) -> Bounds {
+        Bounds {
+            start_row: self.start_row_for_olmc(olmc_num),
+            max_row: self.num_rows_for_olmc(olmc_num),
+            row_offset: 0
         }
     }
 }

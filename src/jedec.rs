@@ -92,28 +92,11 @@ impl Jedec {
         }
     }
 
-    pub fn clear_row(&mut self, start_row: usize, row_offset: usize) {
+    pub fn clear_rows(&mut self, bounds: &Bounds) {
         let num_cols = self.chip.num_cols();
-        let start = (start_row + row_offset) * num_cols;
-        for i in start .. start + num_cols {
-            self.fuses[i] = false;
-        }
-    }
-
-    fn clear_rows(&mut self, start_row: usize, row_offset: usize, max_row: usize) {
-        let num_cols = self.chip.num_cols();
-        let start = (start_row + row_offset) * num_cols;
-        let end = (start_row + max_row) * num_cols;
+        let start = (bounds.start_row + bounds.row_offset) * num_cols;
+        let end = (bounds.start_row + bounds.max_row) * num_cols;
         for i in start .. end {
-            self.fuses[i] = false;
-        }
-    }
-
-    pub fn clear_olmc(&mut self, olmc: usize) {
-        let num_cols = self.chip.num_cols();
-        let start = self.chip.start_row_for_olmc(olmc);
-        let end = start + self.chip.num_rows_for_olmc(olmc);
-        for i in start * num_cols .. end * num_cols {
             self.fuses[i] = false;
         }
     }
@@ -232,7 +215,7 @@ impl Jedec {
             }
 
             if rhs[0].pin as usize == self.chip.num_pins() / 2 {
-                self.clear_row(bounds.start_row, bounds.row_offset);
+                self.clear_rows(&Bounds { max_row: bounds.row_offset + 1, .. bounds });
             }
         } else {
             for i in 0..rhs.len() {
@@ -261,7 +244,7 @@ impl Jedec {
 
         // Then zero the rest...
         bounds.row_offset += 1;
-        self.clear_rows(bounds.start_row, bounds.row_offset, bounds.max_row);
+        self.clear_rows(&bounds);
 
         Ok(())
     }
