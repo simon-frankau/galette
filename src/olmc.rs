@@ -5,6 +5,7 @@ use gal_builder::Pin;
 use jedec;
 use jedec::Jedec;
 use jedec::Mode;
+use jedec::Term;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tri {
@@ -32,11 +33,11 @@ pub enum Active {
 pub struct OLMC {
     pub active: Active,
     pub pin_type: PinType,
-    pub output: Option<gal_builder::Equation>,
+    pub output: Option<jedec::Term>,
     pub tri_con: Tri,
-    pub clock: Option<gal_builder::Equation>,
-    pub arst: Option<gal_builder::Equation>,
-    pub aprst: Option<gal_builder::Equation>,
+    pub clock: Option<jedec::Term>,
+    pub arst: Option<jedec::Term>,
+    pub aprst: Option<jedec::Term>,
     pub feedback: bool,
 }
 
@@ -69,7 +70,7 @@ impl OLMC {
             }
         }
 
-        self.output = Some(*eqn);
+        self.output = Some(eqn_to_term(eqn));
 
         self.active = if act_pin.neg != 0 {
             Active::LOW
@@ -135,7 +136,7 @@ impl OLMC {
             return Err(45);
         }
 
-        self.clock = Some(*eqn);
+        self.clock = Some(eqn_to_term(eqn));
         if self.pin_type != PinType::REGOUT {
             return Err(48);
         }
@@ -160,7 +161,7 @@ impl OLMC {
             return Err(46);
         }
 
-        self.arst = Some(*eqn);
+        self.arst = Some(eqn_to_term(eqn));
         if self.pin_type != PinType::REGOUT {
             return Err(48);
         }
@@ -185,12 +186,23 @@ impl OLMC {
             return Err(47);
         }
 
-        self.aprst = Some(*eqn);
+        self.aprst = Some(eqn_to_term(eqn));
         if self.pin_type != PinType::REGOUT {
             return Err(48);
         }
 
         Ok(())
+    }
+}
+
+fn eqn_to_term(eqn: &Equation) -> Term {
+    let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+    let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+
+    jedec::Term {
+        line_num: eqn.line_num,
+        rhs: rhs.iter().map(|x| *x).collect(),
+        ops: ops.iter().map(|x| *x).collect(),
     }
 }
 

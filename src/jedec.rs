@@ -19,7 +19,9 @@ pub struct Bounds {
     pub row_offset: usize,
 }
 
+    #[derive(Clone, Debug, PartialEq)]
 pub struct Term {
+    pub line_num: i32,
     pub rhs: Vec<Pin>,
     pub ops: Vec<i8>,
 }
@@ -217,7 +219,6 @@ impl Jedec {
         &mut self,
         term: &Term,
         bounds: &mut Bounds,
-        line_num: i32,
     ) -> Result<(), i32> {
         let rhs = &term.rhs;
         let ops = &term.ops;
@@ -225,7 +226,7 @@ impl Jedec {
         if rhs.len() == 1 && (rhs[0].pin as usize == self.chip.num_pins() || rhs[0].pin as usize == self.chip.num_pins() / 2) {
             if rhs[0].neg != 0 {
                 // /VCC and /GND are not allowed
-                return Err(line_num * 0x10000 + 25);
+                return Err(term.line_num * 0x10000 + 25);
             }
 
             if rhs[0].pin as usize == self.chip.num_pins() / 2 {
@@ -236,7 +237,7 @@ impl Jedec {
                 let pin_num = rhs[i].pin;
 
                 if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
-                    return Err(line_num * 0x10000 + 28);
+                    return Err(term.line_num * 0x10000 + 28);
                 }
 
                 if ops[i] == 43 || ops[i] == 35 {
@@ -245,13 +246,13 @@ impl Jedec {
 
                     if bounds.row_offset == bounds.max_row {
                         // too many ORs?
-                        return Err(line_num * 0x10000 + 30);
+                        return Err(term.line_num * 0x10000 + 30);
                     }
                 }
 
                 // Set ANDs.
                 if let Err(i) =  self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, rhs[i].neg != 0) {
-                    return Err(line_num * 0x10000 + i);
+                    return Err(term.line_num * 0x10000 + i);
                 }
             }
         }

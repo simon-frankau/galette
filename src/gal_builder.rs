@@ -109,11 +109,12 @@ pub fn add_equation(
     let mut bounds = get_bounds(jedec, act_olmc, olmcs, eqn.suffix);
 
     let term = jedec::Term {
+        line_num: eqn.line_num,
         rhs: rhs.iter().map(|x| *x).collect(),
         ops: ops.iter().map(|x| *x).collect(),
     };
 
-    jedec.add_term(&term, &mut bounds, eqn.line_num)
+    jedec.add_term(&term, &mut bounds)
 }
 
 pub fn do_it_all(
@@ -148,8 +149,17 @@ pub fn do_it_all(
 
     // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
     for i in 0..jedec.chip.num_olmcs() {
-        match blueprint.olmcs[i].output {
-            Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+        match &blueprint.olmcs[i].output {
+            Some(term) => {
+                let suffix = match blueprint.olmcs[i].pin_type {
+                    olmc::PinType::COMOUT => SUFFIX_NON,
+                    olmc::PinType::TRIOUT => SUFFIX_T,
+                    olmc::PinType::REGOUT => SUFFIX_R,
+                    _ => panic!("Nope!"),
+                };
+                let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, suffix);
+                jedec.add_term(&term, &mut bounds)?;
+            }
             None => jedec.clear_olmc(i),
         }
 
@@ -166,19 +176,28 @@ pub fn do_it_all(
 
                 let start_row = jedec.chip.start_row_for_olmc(i);
 
-                match blueprint.olmcs[i].clock {
-                    Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+                match &blueprint.olmcs[i].clock {
+                    Some(term) => {
+                        let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_CLK);
+                        jedec.add_term(&term, &mut bounds)?;
+                    }
                     None => jedec.clear_row(start_row, 1),
                 }
 
                 if blueprint.olmcs[i].pin_type == PinType::REGOUT {
-                    match blueprint.olmcs[i].arst {
-                        Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+                    match &blueprint.olmcs[i].arst {
+                        Some(term) => {
+                            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_ARST);
+                            jedec.add_term(&term, &mut bounds)?;
+                        }
                         None => jedec.clear_row(start_row, 2),
                     }
 
-                    match blueprint.olmcs[i].aprst {
-                        Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+                    match &blueprint.olmcs[i].aprst {
+                        Some(term) => {
+                            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_APRST);
+                            jedec.add_term(&term, &mut bounds)?;
+                        }
                         None => jedec.clear_row(start_row, 3),
                     }
                 }
@@ -189,13 +208,19 @@ pub fn do_it_all(
     // Special cases
     if jedec.chip == Chip::GAL22V10 {
         // AR
-        match blueprint.olmcs[10].output {
-            Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+        match &blueprint.olmcs[10].output {
+            Some(term) => {
+                let mut bounds = get_bounds(jedec, 10, &blueprint.olmcs, SUFFIX_NON);
+                jedec.add_term(&term, &mut bounds)?;
+            }
             None => jedec.clear_olmc(10),
         }
         // SP
-        match blueprint.olmcs[11].output {
-            Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
+        match &blueprint.olmcs[11].output {
+            Some(term) => {
+                let mut bounds = get_bounds(jedec, 11, &blueprint.olmcs, SUFFIX_NON);
+                jedec.add_term(&term, &mut bounds)?;
+            }
             None => jedec.clear_olmc(11),
         }
     }
