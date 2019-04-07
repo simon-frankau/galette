@@ -163,8 +163,9 @@ pub fn do_it_all(
             None => jedec.clear_olmc(i),
         }
 
-        if let olmc::Tri::Some(eqn) = blueprint.olmcs[i].tri_con {
-            add_equation(jedec, &blueprint.olmcs, &eqn)?;
+        if let olmc::Tri::Some(term) = &blueprint.olmcs[i].tri_con {
+            let mut bounds = get_bounds(jedec, i, &blueprint.olmcs, SUFFIX_E);
+            jedec.add_term(&term, &mut bounds)?;
         }
 
         if jedec.chip == Chip::GAL20RA10 {

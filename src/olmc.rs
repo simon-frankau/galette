@@ -1,6 +1,5 @@
 use chips::Chip;
 use gal_builder;
-use gal_builder::Equation;
 use gal_builder::Pin;
 use jedec;
 use jedec::Jedec;
@@ -10,7 +9,7 @@ use jedec::Term;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tri {
     None,
-    Some(gal_builder::Equation),
+    Some(jedec::Term),
     VCC
 }
 
@@ -59,7 +58,8 @@ impl OLMC {
         jedec: &Jedec,
         act_pin: &Pin,
         is_arsp: bool, // TODO: Hack for the error message?
-        eqn: &Equation,
+        term: Term,
+        suffix: i32,
     ) -> Result<(), i32> {
         if self.output.is_some() {
             // Previously defined, so error out.
@@ -70,7 +70,7 @@ impl OLMC {
             }
         }
 
-        self.output = Some(eqn_to_term(eqn));
+        self.output = Some(term);
 
         self.active = if act_pin.neg != 0 {
             Active::LOW
@@ -78,7 +78,7 @@ impl OLMC {
             Active::HIGH
         };
 
-        self.pin_type = match eqn.suffix {
+        self.pin_type = match suffix {
             gal_builder::SUFFIX_T => PinType::TRIOUT,
             gal_builder::SUFFIX_R => PinType::REGOUT,
             gal_builder::SUFFIX_NON => PinType::COMTRIOUT,
@@ -92,7 +92,7 @@ impl OLMC {
         &mut self,
         jedec: &Jedec,
         act_pin: &Pin,
-        eqn: &Equation,
+        term: Term,
     ) -> Result<(), i32> {
         if act_pin.neg != 0 {
             return Err(19);
@@ -102,7 +102,7 @@ impl OLMC {
             return Err(22);
         }
 
-        self.tri_con = Tri::Some(*eqn);
+        self.tri_con = Tri::Some(term);
 
         if self.pin_type == PinType::UNDRIVEN {
             return Err(17);
@@ -122,7 +122,7 @@ impl OLMC {
     pub fn set_clock(
         &mut self,
         act_pin: &Pin,
-        eqn: &Equation,
+        term: Term,
     ) -> Result<(), i32> {
         if act_pin.neg != 0 {
             return Err(19);
@@ -136,7 +136,7 @@ impl OLMC {
             return Err(45);
         }
 
-        self.clock = Some(eqn_to_term(eqn));
+        self.clock = Some(term);
         if self.pin_type != PinType::REGOUT {
             return Err(48);
         }
@@ -147,7 +147,7 @@ impl OLMC {
     pub fn set_arst(
         &mut self,
         act_pin: &Pin,
-        eqn: &Equation
+        term: Term
     ) -> Result<(), i32> {
         if act_pin.neg != 0 {
             return Err(19);
@@ -161,7 +161,7 @@ impl OLMC {
             return Err(46);
         }
 
-        self.arst = Some(eqn_to_term(eqn));
+        self.arst = Some(term);
         if self.pin_type != PinType::REGOUT {
             return Err(48);
         }
@@ -172,7 +172,7 @@ impl OLMC {
     pub fn set_aprst(
         &mut self,
         act_pin: &Pin,
-        eqn: &Equation,
+        term: Term,
     ) -> Result<(), i32> {
         if act_pin.neg != 0 {
             return Err(19);
@@ -186,23 +186,12 @@ impl OLMC {
             return Err(47);
         }
 
-        self.aprst = Some(eqn_to_term(eqn));
+        self.aprst = Some(term);
         if self.pin_type != PinType::REGOUT {
             return Err(48);
         }
 
         Ok(())
-    }
-}
-
-fn eqn_to_term(eqn: &Equation) -> Term {
-    let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-    let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
-
-    jedec::Term {
-        line_num: eqn.line_num,
-        rhs: rhs.iter().map(|x| *x).collect(),
-        ops: ops.iter().map(|x| *x).collect(),
     }
 }
 

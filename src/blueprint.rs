@@ -1,6 +1,7 @@
 use gal_builder;
 use gal_builder::Equation;
 use jedec::Jedec;
+use jedec::Term;
 use olmc;
 use olmc::OLMC;
 use olmc::PinType;
@@ -47,6 +48,8 @@ impl Blueprint {
             }
         }
 
+        let term = eqn_to_term(&eqn);
+
         // Only pins with OLMCs may be outputs.
         let olmc_num = match jedec.chip.pin_to_olmc(act_pin.pin as usize) {
             None => return Err(15),
@@ -56,17 +59,28 @@ impl Blueprint {
 
         match eqn.suffix {
             gal_builder::SUFFIX_R | gal_builder::SUFFIX_T | gal_builder::SUFFIX_NON =>
-                olmc.set_base(jedec, act_pin, olmc_num >= 10, eqn),
+                olmc.set_base(jedec, act_pin, olmc_num >= 10, term, eqn.suffix),
             gal_builder::SUFFIX_E =>
-                olmc.set_enable(jedec, act_pin, eqn),
+                olmc.set_enable(jedec, act_pin, term),
             gal_builder::SUFFIX_CLK =>
-                olmc.set_clock(act_pin, eqn),
+                olmc.set_clock(act_pin, term),
             gal_builder::SUFFIX_ARST =>
-                olmc.set_arst(act_pin, eqn),
+                olmc.set_arst(act_pin, term),
             gal_builder::SUFFIX_APRST =>
-                olmc.set_aprst(act_pin, eqn),
+                olmc.set_aprst(act_pin, term),
             _ =>
                 panic!("Nope"),
         }
+    }
+}
+
+fn eqn_to_term(eqn: &Equation) -> Term {
+    let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
+    let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
+
+    Term {
+        line_num: eqn.line_num,
+        rhs: rhs.iter().map(|x| *x).collect(),
+        ops: ops.iter().map(|x| *x).collect(),
     }
 }

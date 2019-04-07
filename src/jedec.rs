@@ -19,7 +19,7 @@ pub struct Bounds {
     pub row_offset: usize,
 }
 
-    #[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Term {
     pub line_num: i32,
     pub rhs: Vec<Pin>,
