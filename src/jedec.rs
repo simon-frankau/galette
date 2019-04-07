@@ -2,7 +2,6 @@ use chips::Chip;
 
 pub struct Jedec {
     pub chip: Chip,
-    pub magic: i32,
     pub fuses: Vec<bool>,
     pub xor: Vec<bool>,
     pub sig: Vec<bool>,
@@ -58,9 +57,6 @@ const PIN_TO_COL_20RA10: [i32; 24] = [
 ];
 
 
-// This structure is passed across the C boundary, so let's be careful.
-const MAGIC: i32 = 0x12345678;
-
 impl Jedec {
     pub fn new(gal_type: Chip) -> Jedec {
 
@@ -69,7 +65,6 @@ impl Jedec {
 
         Jedec {
             chip: gal_type,
-            magic: MAGIC,
             fuses: vec![true; fuse_size],
             // One xor bit per OLMC.
             xor: vec![false; num_olmcs],
@@ -80,10 +75,6 @@ impl Jedec {
             ac0: false,
             s1: vec![false; 10],
         }
-    }
-
-    pub fn check_magic(&self) {
-        assert!(self.magic == MAGIC);
     }
 
     pub fn clear_row(&mut self, start_row: usize, row_offset: usize) {

@@ -1,3 +1,4 @@
+pub mod blueprint;
 pub mod chips;
 pub mod gal_builder;
 pub mod interop;

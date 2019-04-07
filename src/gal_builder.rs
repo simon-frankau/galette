@@ -1,3 +1,4 @@
+use blueprint::Blueprint;
 use chips::Chip;
 use jedec::Jedec;
 use jedec::Mode;
@@ -9,8 +10,8 @@ use writer;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pin {
-    neg: i8,
-    pin: i8,
+    pub neg: i8,
+    pub pin: i8,
 }
 
 // Config use on the C side.
@@ -50,14 +51,13 @@ fn set_and(
     Ok(())
 }
 
-const SUFFIX_NON: i32 =              0;	/* possible suffixes */
-const SUFFIX_T: i32 =                1;
-const SUFFIX_R: i32 =                2;
-const SUFFIX_E: i32 =                3;
-const SUFFIX_CLK: i32 =              4;
-const SUFFIX_APRST: i32 =            5;
-const SUFFIX_ARST: i32 =             6;
-
+pub const SUFFIX_NON: i32 =              0;	/* possible suffixes */
+pub const SUFFIX_T: i32 =                1;
+pub const SUFFIX_R: i32 =                2;
+pub const SUFFIX_E: i32 =                3;
+pub const SUFFIX_CLK: i32 =              4;
+pub const SUFFIX_APRST: i32 =            5;
+pub const SUFFIX_ARST: i32 =             6;
 
 pub fn get_bounds(
     jedec: &Jedec,
@@ -174,221 +174,24 @@ pub fn add_equation(
     Ok(())
 }
 
-pub fn mark_input(
-    jedec: &Jedec,
-    olmcs: &mut [OLMC],
-    act_pin: &Pin,
-) {
-    if let Some(n) = jedec.chip.pin_to_olmc(act_pin.pin as usize) {
-        olmcs[n].feedback = true;
-    }
-}
-
-// Pin types:
-// NOT USED (Can also be only used as input)
-//  -> TRIOUT - tristate
-//  -> REGOUT - registered
-//  -> COMTRIOUT - combinatorial, might be tristated.
-//     analysed to:
-//     -> COM_OUT
-//     -> TRI_OUT
-
-pub fn register_output(
-    eqn: &Equation,
-    jedec: &Jedec,
-    olmcs: &mut [OLMC],
-    act_pin: &Pin,
-    suffix: i32,
-) -> Result<(), i32> {
-    let olmc = match jedec.chip.pin_to_olmc(act_pin.pin as usize) {
-        None => return Err(15),
-        Some(olmc) => olmc,
-    };
-
-    match suffix {
-        SUFFIX_R | SUFFIX_T | SUFFIX_NON =>
-            register_output_base(jedec, &mut olmcs[olmc], act_pin, suffix, olmc >= 10, eqn),
-        SUFFIX_E =>
-            register_output_enable(jedec, &mut olmcs[olmc], act_pin, eqn),
-        SUFFIX_CLK =>
-            register_output_clock(&mut olmcs[olmc], act_pin, eqn),
-        SUFFIX_ARST =>
-            register_output_arst(&mut olmcs[olmc], act_pin, eqn),
-        SUFFIX_APRST =>
-            register_output_aprst(&mut olmcs[olmc], act_pin, eqn),
-        _ =>
-            panic!("Nope"),
-    }
-}
-
-fn register_output_base(
-    jedec: &Jedec,
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    suffix: i32,
-    is_arsp: bool, // TODO: Hack for the error message?
-    eqn: &Equation,
-) -> Result<(), i32> {
-    olmc.output = Some(*eqn);
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        if act_pin.neg != 0 {
-            olmc.active = olmc::Active::LOW;
-        } else {
-            olmc.active = olmc::Active::HIGH;
-        }
-
-        if suffix == SUFFIX_T {
-            olmc.pin_type = PinType::TRIOUT;
-        }
-
-        if suffix == SUFFIX_R {
-            olmc.pin_type = PinType::REGOUT;
-        }
-
-        if suffix == SUFFIX_NON {
-            olmc.pin_type = PinType::COMTRIOUT;
-        }
-    } else {
-        if jedec.chip == Chip::GAL22V10 && is_arsp {
-            return Err(40);
-        } else {
-            return Err(16);
-        }
-    }
-
-    Ok(())
-}
-
-fn register_output_enable(
-    jedec: &Jedec,
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation,
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
-    }
-
-    if olmc.tri_con != olmc::Tri::None {
-        return Err(22);
-    }
-
-    olmc.tri_con = olmc::Tri::Some(*eqn);
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(17);
-    }
-
-    if olmc.pin_type == PinType::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
-        return Err(23);
-    }
-
-    if olmc.pin_type == PinType::COMTRIOUT {
-        return Err(24);
-    }
-
-    Ok(())
-}
-
-fn register_output_clock(
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation,
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
-    }
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(42);
-    }
-
-    if olmc.clock.is_some() {
-        return Err(45);
-    }
-
-    olmc.clock = Some(*eqn);
-    if olmc.pin_type != PinType::REGOUT {
-        return Err(48);
-    }
-
-    Ok(())
-}
-
-fn register_output_arst(
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
-    }
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(43);
-    }
-
-    if olmc.arst.is_some() {
-        return Err(46);
-    }
-
-    olmc.arst = Some(*eqn);
-    if olmc.pin_type != PinType::REGOUT {
-        return Err(48);
-    }
-
-    Ok(())
-}
-
-fn register_output_aprst(
-    olmc: &mut OLMC,
-    act_pin: &Pin,
-    eqn: &Equation,
-) -> Result<(), i32> {
-    if act_pin.neg != 0 {
-        return Err(19);
-    }
-
-    if olmc.pin_type == PinType::UNDRIVEN {
-        return Err(44);
-    }
-
-    if olmc.aprst.is_some() {
-        return Err(47);
-    }
-
-    olmc.aprst = Some(*eqn);
-    if olmc.pin_type != PinType::REGOUT {
-        return Err(48);
-    }
-
-    Ok(())
-}
-
 pub fn do_it_all(
     jedec: &mut Jedec,
-    olmcs: &mut [OLMC],
+    blueprint: &mut Blueprint,
     eqns: &[Equation],
     file: &str,
 ) -> Result<(), i32> {
-    // Collect marks.
+
+    // Convert equations into data on the OLMCs.
     for eqn in eqns.iter() {
-        if let Err(err) = register_output(eqn, jedec, olmcs, &eqn.lhs, eqn.suffix) {
+        if let Err(err) = blueprint.add_equation(eqn, jedec) {
             return Err(eqn.line_num * 0x10000 + err); // TODO: Ick.
-        }
-
-        let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-
-        for input in rhs.iter() {
-            mark_input(jedec, olmcs, input);
         }
     }
 
     // Complete second pass from in-memory structure.
     println!("Assembler Phase 2 for \"{}\"", file);
 
-    let mode = match olmc::analyse_mode(jedec, olmcs) {
+    let mode = match olmc::analyse_mode(jedec, &mut blueprint.olmcs) {
         Some(Mode::Mode1) => 1,
         Some(Mode::Mode2) => 2,
         Some(Mode::Mode3) => 3,
@@ -403,45 +206,45 @@ pub fn do_it_all(
 
     // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
     for i in 0..jedec.chip.num_olmcs() {
-        if let Some(eqn) = olmcs[i].output {
-            add_equation(jedec, olmcs, &eqn)?;
+        if let Some(eqn) = blueprint.olmcs[i].output {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
-        if let Some(eqn) = olmcs[i].arst {
-            add_equation(jedec, olmcs, &eqn)?;
+        if let Some(eqn) = blueprint.olmcs[i].arst {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
-        if let Some(eqn) = olmcs[i].aprst {
-            add_equation(jedec, olmcs, &eqn)?;
+        if let Some(eqn) = blueprint.olmcs[i].aprst {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
-        if let Some(eqn) = olmcs[i].clock {
-            add_equation(jedec, olmcs, &eqn)?;
+        if let Some(eqn) = blueprint.olmcs[i].clock {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
-        if let olmc::Tri::Some(eqn) = olmcs[i].tri_con {
-            add_equation(jedec, olmcs, &eqn)?;
+        if let olmc::Tri::Some(eqn) = blueprint.olmcs[i].tri_con {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
 
-        if olmcs[i].pin_type == PinType::UNDRIVEN {
+        if blueprint.olmcs[i].pin_type == PinType::UNDRIVEN {
             jedec.clear_olmc(i);
         }
 
         if jedec.chip == Chip::GAL20RA10 {
-            if olmcs[i].pin_type != PinType::UNDRIVEN {
-                if olmcs[i].pin_type == PinType::REGOUT && olmcs[i].clock.is_none() {
+            if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
+                if blueprint.olmcs[i].pin_type == PinType::REGOUT && blueprint.olmcs[i].clock.is_none() {
                     // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
                     return Err(41); // FIXME i + 14);
                 }
 
-                if olmcs[i].clock.is_none() {
+                if blueprint.olmcs[i].clock.is_none() {
                     let start_row = jedec.chip.start_row_for_olmc(i);
                     jedec.clear_row(start_row, 1);
                 }
 
-                if olmcs[i].pin_type == PinType::REGOUT {
-                    if olmcs[i].arst.is_none() {
+                if blueprint.olmcs[i].pin_type == PinType::REGOUT {
+                    if blueprint.olmcs[i].arst.is_none() {
                         let start_row = jedec.chip.start_row_for_olmc(i);
                         jedec.clear_row(start_row, 2);
                     }
 
-                    if olmcs[i].aprst.is_none() {
+                    if blueprint.olmcs[i].aprst.is_none() {
                         let start_row = jedec.chip.start_row_for_olmc(i);
                         jedec.clear_row(start_row, 3);
                     }
@@ -452,23 +255,19 @@ pub fn do_it_all(
 
     // Special cases
     if jedec.chip == Chip::GAL22V10 {
-        {
-            if let Some(eqn) = olmcs[10].output {
-                add_equation(jedec, olmcs, &eqn)?;
-            }
+        if let Some(eqn) = blueprint.olmcs[10].output {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
 
-        if olmcs[10].pin_type == PinType::UNDRIVEN    /* set row of AR equal 0 */ {
+        if blueprint.olmcs[10].pin_type == PinType::UNDRIVEN    /* set row of AR equal 0 */ {
             jedec.clear_olmc(10);
         }
 
-        {
-            if let Some(eqn) = olmcs[11].output {
-                add_equation(jedec, olmcs, &eqn)?;
-            }
+        if let Some(eqn) = blueprint.olmcs[11].output {
+            add_equation(jedec, &blueprint.olmcs, &eqn)?;
         }
 
-        if olmcs[11].pin_type == PinType::UNDRIVEN    /* set row of SP equal 0 */ {
+        if blueprint.olmcs[11].pin_type == PinType::UNDRIVEN    /* set row of SP equal 0 */ {
             jedec.clear_olmc(11);
         }
     }
@@ -486,17 +285,7 @@ pub fn do_stuff(
 ) -> Result<(), i32> {
     let mut jedec = Jedec::new(gal_type);
 
-    // Set up OLMCs.
-    let mut olmcs = vec!(OLMC {
-        active: olmc::Active::LOW,
-        pin_type: PinType::UNDRIVEN,
-        output: None,
-        tri_con: olmc::Tri::None,
-        clock: None,
-        arst: None,
-        aprst: None,
-        feedback: false,
-     };12);
+    let mut blueprint = Blueprint::new();
 
     // Set signature.
     for x in jedec.sig.iter_mut() {
@@ -511,9 +300,9 @@ pub fn do_stuff(
         }
     }
 
-    do_it_all(&mut jedec, &mut olmcs, eqns, file)?;
+    do_it_all(&mut jedec, &mut blueprint, eqns, file)?;
 
-    writer::write_files(file, config, pin_names, &olmcs, &jedec).unwrap();
+    writer::write_files(file, config, pin_names, &blueprint.olmcs, &jedec).unwrap();
 
     Ok(())
 }

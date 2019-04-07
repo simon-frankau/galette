@@ -1,6 +1,9 @@
 use chips::Chip;
 use gal_builder;
+use gal_builder::Equation;
+use gal_builder::Pin;
 use jedec;
+use jedec::Jedec;
 use jedec::Mode;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -36,6 +39,161 @@ pub struct OLMC {
     pub aprst: Option<gal_builder::Equation>,
     pub feedback: bool,
 }
+
+////////////////////////////////////////////////////////////////////////
+// Build OLMCs
+
+// Pin types:
+// NOT USED (Can also be only used as input)
+//  -> TRIOUT - tristate
+//  -> REGOUT - registered
+//  -> COMTRIOUT - combinatorial, might be tristated.
+//     analysed to:
+//     -> COM_OUT
+//     -> TRI_OUT
+
+pub fn register_output_base(
+    jedec: &Jedec,
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+    is_arsp: bool, // TODO: Hack for the error message?
+    eqn: &Equation,
+) -> Result<(), i32> {
+    if olmc.output.is_some() {
+        // Previously defined, so error out.
+        if jedec.chip == Chip::GAL22V10 && is_arsp {
+            return Err(40);
+        } else {
+            return Err(16);
+        }
+    }
+
+    olmc.output = Some(*eqn);
+
+    olmc.active = if act_pin.neg != 0 {
+        Active::LOW
+    } else {
+        Active::HIGH
+    };
+
+    olmc.pin_type = match eqn.suffix {
+        gal_builder::SUFFIX_T => PinType::TRIOUT,
+        gal_builder::SUFFIX_R => PinType::REGOUT,
+        gal_builder::SUFFIX_NON => PinType::COMTRIOUT,
+        _ => panic!("Nope!"),
+    };
+
+    Ok(())
+}
+
+pub fn register_output_enable(
+    jedec: &Jedec,
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+    eqn: &Equation,
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.tri_con != Tri::None {
+        return Err(22);
+    }
+
+    olmc.tri_con = Tri::Some(*eqn);
+
+    if olmc.pin_type == PinType::UNDRIVEN {
+        return Err(17);
+    }
+
+    if olmc.pin_type == PinType::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
+        return Err(23);
+    }
+
+    if olmc.pin_type == PinType::COMTRIOUT {
+        return Err(24);
+    }
+
+    Ok(())
+}
+
+pub fn register_output_clock(
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+    eqn: &Equation,
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.pin_type == PinType::UNDRIVEN {
+        return Err(42);
+    }
+
+    if olmc.clock.is_some() {
+        return Err(45);
+    }
+
+    olmc.clock = Some(*eqn);
+    if olmc.pin_type != PinType::REGOUT {
+        return Err(48);
+    }
+
+    Ok(())
+}
+
+pub fn register_output_arst(
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+    eqn: &Equation
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.pin_type == PinType::UNDRIVEN {
+        return Err(43);
+    }
+
+    if olmc.arst.is_some() {
+        return Err(46);
+    }
+
+    olmc.arst = Some(*eqn);
+    if olmc.pin_type != PinType::REGOUT {
+        return Err(48);
+    }
+
+    Ok(())
+}
+
+pub fn register_output_aprst(
+    olmc: &mut OLMC,
+    act_pin: &Pin,
+    eqn: &Equation,
+) -> Result<(), i32> {
+    if act_pin.neg != 0 {
+        return Err(19);
+    }
+
+    if olmc.pin_type == PinType::UNDRIVEN {
+        return Err(44);
+    }
+
+    if olmc.aprst.is_some() {
+        return Err(47);
+    }
+
+    olmc.aprst = Some(*eqn);
+    if olmc.pin_type != PinType::REGOUT {
+        return Err(48);
+    }
+
+    Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////
+// Analyse OLMCs
 
 // Get the mode for GAL16V8 and GAL20V8, set the flags appropriately
 pub fn analyse_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
@@ -114,7 +272,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
             }
 
             for n in 0..8 {
-                if ((olmcs[n].pin_type == PinType::COMOUT) || (olmcs[n].pin_type == PinType::TRIOUT) || (olmcs[n].pin_type == PinType::REGOUT)) && (olmcs[n].active == Active::HIGH) {
+                if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
                     jedec.xor[7 - n] = true;
                 }
             }
@@ -128,7 +286,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                     olmcs[n].pin_type = PinType::TRIOUT;
                 }
 
-                if ((olmcs[n].pin_type == PinType::COMOUT) || (olmcs[n].pin_type == PinType::TRIOUT) || (olmcs[n].pin_type == PinType::REGOUT)) && (olmcs[n].active == Active::HIGH) {
+                if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
                     jedec.xor[9 - n] = true;
                 }
 
@@ -144,7 +302,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                     olmcs[n].pin_type = PinType::TRIOUT;
                 }
 
-                if ((olmcs[n].pin_type == PinType::COMOUT) || (olmcs[n].pin_type == PinType::TRIOUT) || (olmcs[n].pin_type == PinType::REGOUT)) && (olmcs[n].active == Active::HIGH) {
+                if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
                     jedec.xor[9 - n] = true;
                 }
             }
