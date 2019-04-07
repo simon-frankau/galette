@@ -1,4 +1,5 @@
 use chips::Chip;
+use gal_builder::Pin;
 
 pub struct Jedec {
     pub chip: Chip,
@@ -10,6 +11,17 @@ pub struct Jedec {
     pub syn: bool,
     pub ac0: bool,
     pub s1: Vec<bool>,
+}
+
+pub struct Bounds {
+    pub start_row: usize,
+    pub max_row: usize,
+    pub row_offset: usize,
+}
+
+pub struct Term {
+    pub rhs: Vec<Pin>,
+    pub ops: Vec<i8>,
 }
 
 // Mode enums for the v8s
@@ -85,7 +97,7 @@ impl Jedec {
         }
     }
 
-    pub fn clear_rows(&mut self, start_row: usize, row_offset: usize, max_row: usize) {
+    fn clear_rows(&mut self, start_row: usize, row_offset: usize, max_row: usize) {
         let num_cols = self.chip.num_cols();
         let start = (start_row + row_offset) * num_cols;
         let end = (start_row + max_row) * num_cols;
@@ -131,7 +143,7 @@ impl Jedec {
         }
     }
 
-    pub fn pin_to_column(&self, pin_num: usize) -> Result<usize, String> {
+    fn pin_to_column(&self, pin_num: usize) -> Result<usize, String> {
         let column_lookup: &[i32] = match self.chip {
             Chip::GAL16V8 => match self.get_mode() {
                 Mode::Mode1 => &PIN_TO_COL_16_MODE1,
@@ -174,5 +186,80 @@ impl Jedec {
             Chip::GAL22V10 => "GAL22V10",
             Chip::GAL20RA10 => "GAL20RA10",
         }
+    }
+
+    // Add an 'and' term to a fuse map.
+    fn set_and(
+        &mut self,
+        row: usize,
+        pin_num: usize,
+        negation: bool,
+    ) -> Result<(), i32> {
+        let chip = self.chip;
+        let row_len = chip.num_cols();
+        let column = match self.pin_to_column(pin_num) {
+            Ok(x) => x,
+            Err(_) => return Err(26),
+        };
+
+        // Is it a registered OLMC pin?
+        // If yes, then correct the negation.
+        let mut neg_off = if negation { 1 } else { 0 };
+        if chip == Chip::GAL22V10 && (pin_num >= 14 && pin_num <= 23) && !self.s1[23 - pin_num] {
+            neg_off = 1 - neg_off;
+        }
+
+        self.fuses[row * row_len + column + neg_off] = false;
+        Ok(())
+    }
+
+    pub fn add_term(
+        &mut self,
+        term: &Term,
+        bounds: &mut Bounds,
+        line_num: i32,
+    ) -> Result<(), i32> {
+        let rhs = &term.rhs;
+        let ops = &term.ops;
+        // if GND, set row equal 0
+        if rhs.len() == 1 && (rhs[0].pin as usize == self.chip.num_pins() || rhs[0].pin as usize == self.chip.num_pins() / 2) {
+            if rhs[0].neg != 0 {
+                // /VCC and /GND are not allowed
+                return Err(line_num * 0x10000 + 25);
+            }
+
+            if rhs[0].pin as usize == self.chip.num_pins() / 2 {
+                self.clear_row(bounds.start_row, bounds.row_offset);
+            }
+        } else {
+            for i in 0..rhs.len() {
+                let pin_num = rhs[i].pin;
+
+                if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
+                    return Err(line_num * 0x10000 + 28);
+                }
+
+                if ops[i] == 43 || ops[i] == 35 {
+                    // If an OR, go to next row.
+                    bounds.row_offset += 1;
+
+                    if bounds.row_offset == bounds.max_row {
+                        // too many ORs?
+                        return Err(line_num * 0x10000 + 30);
+                    }
+                }
+
+                // Set ANDs.
+                if let Err(i) =  self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, rhs[i].neg != 0) {
+                    return Err(line_num * 0x10000 + i);
+                }
+            }
+        }
+
+        // Then zero the rest...
+        bounds.row_offset += 1;
+        self.clear_rows(bounds.start_row, bounds.row_offset, bounds.max_row);
+
+        Ok(())
     }
 }

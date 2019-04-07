@@ -1,5 +1,6 @@
 use blueprint::Blueprint;
 use chips::Chip;
+use jedec;
 use jedec::Jedec;
 use jedec::Mode;
 use olmc;
@@ -26,31 +27,6 @@ pub struct Equation {
     pub ops: *const i8
 }
 
-// Add an 'and' term to a fuse map.
-fn set_and(
-    jedec: &mut Jedec,
-    row: usize,
-    pin_num: usize,
-    negation: bool,
-) -> Result<(), i32> {
-    let chip = jedec.chip;
-    let row_len = chip.num_cols();
-    let column = match jedec.pin_to_column(pin_num) {
-        Ok(x) => x,
-        Err(_) => return Err(26),
-    };
-
-    // Is it a registered OLMC pin?
-    // If yes, then correct the negation.
-    let mut neg_off = if negation { 1 } else { 0 };
-    if chip == Chip::GAL22V10 && (pin_num >= 14 && pin_num <= 23) && !jedec.s1[23 - pin_num] {
-        neg_off = 1 - neg_off;
-    }
-
-    jedec.fuses[row * row_len + column + neg_off] = false;
-    Ok(())
-}
-
 pub const SUFFIX_NON: i32 =              0;	/* possible suffixes */
 pub const SUFFIX_T: i32 =                1;
 pub const SUFFIX_R: i32 =                2;
@@ -64,7 +40,7 @@ pub fn get_bounds(
     act_olmc: usize,
     olmcs: &[OLMC],
     suffix: i32
-) -> (usize, usize, usize) {
+) -> jedec::Bounds {
     let start_row = jedec.chip.start_row_for_olmc(act_olmc);
     let mut max_row = jedec.chip.num_rows_for_olmc(act_olmc);
     let mut row_offset = 0;
@@ -118,7 +94,7 @@ pub fn get_bounds(
         }
     }
 
-    (start_row, max_row, row_offset)
+    jedec::Bounds { start_row: start_row, max_row: max_row, row_offset: row_offset }
 }
 
 pub fn add_equation(
@@ -130,48 +106,14 @@ pub fn add_equation(
     let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
 
     let act_olmc = jedec.chip.pin_to_olmc(eqn.lhs.pin as usize).unwrap();
-    let (start_row, max_row, mut row_offset) = get_bounds(jedec, act_olmc, olmcs, eqn.suffix);
+    let mut bounds = get_bounds(jedec, act_olmc, olmcs, eqn.suffix);
 
-    // if GND, set row equal 0
-    if rhs.len() == 1 && (rhs[0].pin as usize == jedec.chip.num_pins() || rhs[0].pin as usize == jedec.chip.num_pins() / 2) {
-        if rhs[0].neg != 0 {
-            // /VCC and /GND are not allowed
-            return Err(eqn.line_num * 0x10000 + 25);
-        }
+    let term = jedec::Term {
+        rhs: rhs.iter().map(|x| *x).collect(),
+        ops: ops.iter().map(|x| *x).collect(),
+    };
 
-        if rhs[0].pin as usize == jedec.chip.num_pins() / 2 {
-            jedec.clear_row(start_row, row_offset);
-        }
-    } else {
-        for i in 0..rhs.len() {
-            let pin_num = rhs[i].pin;
-
-            if pin_num as usize == jedec.chip.num_pins() || pin_num as usize == jedec.chip.num_pins() / 2 {
-                return Err(eqn.line_num * 0x10000 + 28);
-            }
-
-            if ops[i] == 43 || ops[i] == 35 {
-                // If an OR, go to next row.
-                row_offset += 1;
-
-                if row_offset == max_row {
-                    // too many ORs?
-                    return Err(eqn.line_num * 0x10000 + 30);
-                }
-            }
-
-            // Set ANDs.
-            if let Err(i) =  set_and(jedec, start_row + row_offset, pin_num as usize, rhs[i].neg != 0) {
-                return Err(eqn.line_num * 0x10000 + i);
-            }
-        }
-    }
-
-    // Then zero the rest...
-    row_offset += 1;
-    jedec.clear_rows(start_row, row_offset, max_row);
-
-    Ok(())
+    jedec.add_term(&term, &mut bounds, eqn.line_num)
 }
 
 pub fn do_it_all(
@@ -225,7 +167,7 @@ pub fn do_it_all(
                 let start_row = jedec.chip.start_row_for_olmc(i);
 
                 match blueprint.olmcs[i].clock {
-                    Some(eqn) =>add_equation(jedec, &blueprint.olmcs, &eqn)?,
+                    Some(eqn) => add_equation(jedec, &blueprint.olmcs, &eqn)?,
                     None => jedec.clear_row(start_row, 1),
                 }
 
