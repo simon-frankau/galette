@@ -99,7 +99,7 @@ pub fn do_stuff(
 ) -> Result<(), i32> {
     let mut jedec = Jedec::new(gal_type);
 
-    let mut blueprint = Blueprint::new();
+    let mut blueprint = Blueprint::new(gal_type);
 
     // Set signature.
     for x in jedec.sig.iter_mut() {
@@ -122,8 +122,7 @@ pub fn do_stuff(
 }
 
 fn build_galxvx(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
-    // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
-    for i in 0..jedec.chip.num_olmcs() {
+    for i in 0..blueprint.olmcs.len() {
         let bounds = jedec.chip.get_bounds(i);
 
         match &blueprint.olmcs[i].output {
@@ -152,19 +151,18 @@ fn build_gal22v10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i3
     build_galxvx(jedec, blueprint)?;
 
     // AR
-    let ar_bounds = jedec.chip.get_bounds(10);
-    jedec.add_term_opt(&blueprint.olmcs[10].output, &ar_bounds)?;
+    let ar_bounds = Bounds { start_row: 0, max_row: 1, row_offset: 0 };
+    jedec.add_term_opt(&blueprint.ar, &ar_bounds)?;
 
     // SP
-    let sp_bounds = jedec.chip.get_bounds(11);
-    jedec.add_term_opt(&blueprint.olmcs[11].output, &sp_bounds)?;
+    let sp_bounds = Bounds { start_row: 131, max_row: 1, row_offset: 0 };
+    jedec.add_term_opt(&blueprint.sp, &sp_bounds)?;
 
     Ok(())
 }
 
 fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
-    // NB: Length of num_olmcs may be incorrect because that includes AR, SP, etc.
-    for i in 0..jedec.chip.num_olmcs() {
+    for i in 0..blueprint.olmcs.len() {
         let bounds = jedec.chip.get_bounds(i);
 
         match &blueprint.olmcs[i].output {

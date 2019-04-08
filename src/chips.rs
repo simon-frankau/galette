@@ -6,7 +6,6 @@
 //
 
 // TODO: Make sure all the 'pub' methods are used.
-// TODO: Remove AR and SP special cases.
 
 // 'Bounds' encodes the range of rows that can be used to encode a
 // particular term. It is returned by 'get_bounds'.
@@ -105,16 +104,13 @@ const GAL20RA10_DATA: ChipData = ChipData {
 
 // Number of rows for each OLMC in the 22V10's fuse table (only 22V10
 // is non-uniform).
-//
-// The last two OLMCs aren't connected to pins, but represent SP
-// and AR.
-const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
+const OLMC_SIZE_22V10: [i32; 10] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9];
 // And for all the other chips, they have 8 rows per OLMC:
 const OLMC_SIZE_DEFAULT: i32 = 8;
 
 // Map OLMC number to starting row within the fuse table
 const OLMC_ROWS_XXV8: [i32; 8] = [56, 48, 40, 32, 24, 16, 8, 0];
-const OLMC_ROWS_22V10: [i32; 12] = [122, 111, 98, 83, 66, 49, 34, 21, 10, 1, 0, 131];
+const OLMC_ROWS_22V10: [i32; 10] = [122, 111, 98, 83, 66, 49, 34, 21, 10, 1];
 const OLMC_ROWS_20RA10: [i32; 10] = [72, 64, 56, 48, 40, 32, 24, 16, 8, 0];
 
 impl Chip {
@@ -154,9 +150,7 @@ impl Chip {
 
     pub fn pin_to_olmc(&self, pin: usize) -> Option<usize> {
         let data = self.get_chip_data();
-        if data.min_olmc_pin <= pin && pin <= data.max_olmc_pin ||
-            // TODO: Horrible hack for AR and SP.
-            (*self == Chip::GAL22V10 && (pin == 24 || pin == 25)) {
+        if data.min_olmc_pin <= pin && pin <= data.max_olmc_pin {
             Some(pin - data.min_olmc_pin)
         } else {
             None

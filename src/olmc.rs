@@ -48,19 +48,13 @@ pub struct OLMC {
 impl OLMC {
     pub fn set_base(
         &mut self,
-        jedec: &Jedec,
         act_pin: &Pin,
-        is_arsp: bool, // TODO: Hack for the error message?
         term: Term,
         suffix: i32,
     ) -> Result<(), i32> {
         if self.output.is_some() {
             // Previously defined, so error out.
-            if jedec.chip == Chip::GAL22V10 && is_arsp {
-                return Err(40);
-            } else {
-                return Err(16);
-            }
+            return Err(16);
         }
 
         self.output = Some(term);

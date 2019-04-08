@@ -117,10 +117,6 @@ fn make_pin(jedec: &Jedec, pin_names: &[&str], olmcs: &[OLMC]) -> String {
             flag = true;
         }
 
-        // TODO: Nasty hack for AR/SP with 'n < 24'
-        if n == 24 {
-            return buf;
-        }
         if let Some(olmc) = gal_type.pin_to_olmc(n) {
             let olmc = &olmcs[olmc];
             if olmc.pin_type != PinType::UNDRIVEN || !olmc.feedback {
