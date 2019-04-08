@@ -20,7 +20,7 @@ impl Blueprint {
             active: olmc::Active::LOW,
             pin_type: PinType::UNDRIVEN,
             output: None,
-            tri_con: olmc::Tri::None,
+            tri_con: None,
             clock: None,
             arst: None,
             aprst: None,

@@ -133,7 +133,7 @@ fn build_galxvx(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32>
             None => jedec.clear_rows(&bounds),
         }
 
-        if let olmc::Tri::Some(term) = &blueprint.olmcs[i].tri_con {
+        if let Some(term) = &blueprint.olmcs[i].tri_con {
             jedec.add_term(&term, &Bounds { row_offset: 0, max_row: 1, ..bounds })?;
         }
     }
@@ -178,7 +178,7 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
             None => jedec.clear_rows(&bounds),
         }
 
-        if let olmc::Tri::Some(term) = &blueprint.olmcs[i].tri_con {
+        if let Some(term) = &blueprint.olmcs[i].tri_con {
             jedec.add_term(&term, &Bounds { row_offset: 0, max_row: 1, .. bounds })?;
         }
 

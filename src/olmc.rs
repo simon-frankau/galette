@@ -6,13 +6,6 @@ use jedec::Jedec;
 use jedec::Mode;
 use jedec::Term;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Tri {
-    None,
-    Some(jedec::Term),
-    VCC
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PinType {
     UNDRIVEN,
@@ -33,7 +26,7 @@ pub struct OLMC {
     pub active: Active,
     pub pin_type: PinType,
     pub output: Option<jedec::Term>,
-    pub tri_con: Tri,
+    pub tri_con: Option<jedec::Term>,
     pub clock: Option<jedec::Term>,
     pub arst: Option<jedec::Term>,
     pub aprst: Option<jedec::Term>,
@@ -98,11 +91,11 @@ impl OLMC {
             return Err(19);
         }
 
-        if self.tri_con != Tri::None {
+        if self.tri_con != None {
             return Err(22);
         }
 
-        self.tri_con = Tri::Some(term);
+        self.tri_con = Some(term);
 
         if self.pin_type == PinType::UNDRIVEN {
             return Err(17);
@@ -257,7 +250,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                     } else {
                         olmcs[n].pin_type = PinType::TRIOUT;
                         // Set to VCC.
-                        olmcs[n].tri_con = Tri::VCC;
+                        olmcs[n].tri_con = Some(jedec::true_term(olmcs[n].output.as_ref().unwrap().line_num));
                     }
                 }
             }
