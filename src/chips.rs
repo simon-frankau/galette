@@ -1,6 +1,28 @@
-use jedec::Bounds;
+//
+// chips.rs: GAL Chip parameterisation data
+//
+// This file provides an abstraction layer over the different
+// supported GALs, in those cases where they can be handled uniformly.
+//
 
-#[derive(PartialEq,Clone,Copy)]
+// TODO: Make sure all the 'pub' methods are used.
+// TODO: Remove AR and SP special cases.
+
+// 'Bounds' encodes the range of rows that can be used to encode a
+// particular term. It is returned by 'get_bounds'.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Bounds {
+    pub start_row: usize,
+    pub max_row: usize,
+    pub row_offset: usize,
+}
+
+// 'Chip' is the main enum that can be matched on for chip-specific
+// behaviour, or method calls made on it to extract per-chip
+// parameters. Some things vary across the differing GAL{16,20}V8 modes,
+// and those things can't be queried on 'Chip'. Look them up on 'Jedec'
+// instead.
+#[derive(Clone,Copy, Debug, PartialEq)]
 pub enum Chip {
     GAL16V8,
     GAL20V8,
@@ -8,34 +30,30 @@ pub enum Chip {
     GAL20RA10,
 }
 
-// Number of rows for each OLMC in the 22V10's fuse table (only 22V10
-// is non-uniform).
-//
-// The last two OLMCs aren't connected to pins, but represent SP
-// and AR.
-const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
-// And for everything else...
-const OLMC_SIZE_DEFAULT: i32 = 8;
-
-// Map OLMC number to starting row within the fuse table
-const OLMC_ROWS_XXV8: [i32; 8] = [56, 48, 40, 32, 24, 16, 8, 0];
-const OLMC_ROWS_22V10: [i32; 12] = [122, 111, 98, 83, 66, 49, 34, 21, 10, 1, 0, 131];
-const OLMC_ROWS_20RA10: [i32; 10] = [72, 64, 56, 48, 40, 32, 24, 16, 8, 0];
-
+// 'ChipData' stores these per-chip-type parameters, so that the
+// queries can be data-driven.
 struct ChipData {
+    // Human-readable name.
     name: &'static str,
+    // Number of pins on the package.
     num_pins: usize,
-    // Size of the main fuse array.
+    // Size of the main fuse array, in number of rows (each row
+    // represents an OR-term).
     num_rows: usize,
+    // Number of columns per row. Each column represents an element of
+    // the AND term - an input, or its negation.
     num_cols: usize,
     // Total size of the bitstream.
     // TODO: Should be calculated.
     total_size: usize,
-    // Range of pins that are backed by OLMCs
+    // Range of pins that are backed by OLMCs (and can act as
+    // programmable outputs).
     min_olmc_pin: usize,
     max_olmc_pin: usize,
-    // Mapping from OLMC number to starting row in the fuse grid.
+    // Mapping from OLMC number to starting row number in the fuse grid.
     olmc_map: &'static [i32],
+    // NB: Number of rows per OLMC depends on the GAL type, and isn't in
+    // ChipData.
 }
 
 const GAL16V8_DATA: ChipData = ChipData {
@@ -82,6 +100,23 @@ const GAL20RA10_DATA: ChipData = ChipData {
     olmc_map: &OLMC_ROWS_20RA10,
 };
 
+// These constants are used to get the fuse row bounds associated with
+// the OLMCs.
+
+// Number of rows for each OLMC in the 22V10's fuse table (only 22V10
+// is non-uniform).
+//
+// The last two OLMCs aren't connected to pins, but represent SP
+// and AR.
+const OLMC_SIZE_22V10: [i32; 12] = [9, 11, 13, 15, 17, 17, 15, 13, 11, 9, 1, 1];
+// And for all the other chips, they have 8 rows per OLMC:
+const OLMC_SIZE_DEFAULT: i32 = 8;
+
+// Map OLMC number to starting row within the fuse table
+const OLMC_ROWS_XXV8: [i32; 8] = [56, 48, 40, 32, 24, 16, 8, 0];
+const OLMC_ROWS_22V10: [i32; 12] = [122, 111, 98, 83, 66, 49, 34, 21, 10, 1, 0, 131];
+const OLMC_ROWS_20RA10: [i32; 10] = [72, 64, 56, 48, 40, 32, 24, 16, 8, 0];
+
 impl Chip {
     fn get_chip_data(&self) -> &ChipData {
         match self {
@@ -120,7 +155,7 @@ impl Chip {
     pub fn pin_to_olmc(&self, pin: usize) -> Option<usize> {
         let data = self.get_chip_data();
         if data.min_olmc_pin <= pin && pin <= data.max_olmc_pin ||
-           // TODO: Horrible hack for AR and SP.
+            // TODO: Horrible hack for AR and SP.
             (*self == Chip::GAL22V10 && (pin == 24 || pin == 25)) {
             Some(pin - data.min_olmc_pin)
         } else {

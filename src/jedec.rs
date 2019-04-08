@@ -1,6 +1,8 @@
 use chips::Chip;
 use gal_builder::Pin;
 
+pub use chips::Bounds;
+
 pub struct Jedec {
     pub chip: Chip,
     pub fuses: Vec<bool>,
@@ -11,13 +13,6 @@ pub struct Jedec {
     pub syn: bool,
     pub ac0: bool,
     pub s1: Vec<bool>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Bounds {
-    pub start_row: usize,
-    pub max_row: usize,
-    pub row_offset: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]
