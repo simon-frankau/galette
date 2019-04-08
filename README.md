@@ -33,3 +33,10 @@ Running from the lowest layer of dependency to the highest, we have:
 
  * **chips.rs** An abstraction layer over the different GAL types.
  * TODO
+
+## TODOs
+
+ * Better documentation. :)
+ * Better error-handling
+ * Built in parser
+ * Set of test cases

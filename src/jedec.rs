@@ -1,8 +1,41 @@
+//
+// jedec.rs: Fuse state
+//
+// The Jedec structure holds the fuse state for a GAL. Some helper
+// methods are provided to program sets of fuses, but the fuses can
+// also be directly manipulated.
+//
+
 use chips::Chip;
-use gal_builder::Pin;
 
 pub use chips::Bounds;
 
+// A 'Pin' represents an input to an equation - a potentially negated
+// pin (represented by pin number).
+//
+// TODO: Use more appropriate types when C-interoperability goes away.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Pin {
+    pub neg: i8,
+    pub pin: i8,
+}
+
+// A 'Term' represents a set of OR'd together sub-terms which are the
+// ANDing of inputs and their negations. Special cases support
+// true and false values (see 'true_term' and 'false_term' below.
+//
+// Terms are programmed into the Jedec structure.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Term {
+    pub line_num: i32,
+    // Each inner Vec represents an AND term. The overall term is the
+    // OR of the inner terms.
+    pub pins: Vec<Vec<Pin>>,
+}
+
+// The 'Jedec' struct represents the fuse state of the GAL that we're
+// going to program.
 pub struct Jedec {
     pub chip: Chip,
     pub fuses: Vec<bool>,
@@ -15,25 +48,25 @@ pub struct Jedec {
     pub s1: Vec<bool>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Term {
-    pub line_num: i32,
-    // Each inner Vec represents an AND term. The overall term is the
-    // OR of the inner terms.
-    pub pins: Vec<Vec<Pin>>,
-}
-
-// Mode enums for the v8s
+// The GAL16V8 and GAL20V8 could run in one of three modes,
+// interpreting the fuse array differently. This enum
+// tracks the mode that's been set.
 #[derive(PartialEq,Clone,Copy)]
 pub enum Mode {
+    // Combinatorial outputs
     Mode1,
+    // Tristate outputs
     Mode2,
+    // Tristate or registered outputs
     Mode3,
 }
 
-// Map pin number to column within the fuse table. The mappings depend
-// on the mode settings for the v8s, so they're here rather than in
-// chips.rs. -1 if it can't be used.
+// Map input pin number to column within the fuse table. The mappings
+// depend on the mode settings for the GALxxV8s, so they're here rather
+// than in chips.rs. -1 if it can't be used.
+
+// TODO: Perhaps encode errorr reasons for not being able to use pin,
+// rather than just simply -1?
 
 // GAL16V8
 const PIN_TO_COL_16_MODE1: [i32; 20] = [
@@ -67,8 +100,8 @@ const PIN_TO_COL_20RA10: [i32; 24] = [
     -1, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, -1, -1, 38, 34, 30, 26, 22, 18, 14, 10, 6, 2, -1,
 ];
 
-
 impl Jedec {
+    // Generate an empty fuse structure.
     pub fn new(gal_type: Chip) -> Jedec {
 
         let fuse_size = gal_type.logic_size();
@@ -88,15 +121,7 @@ impl Jedec {
         }
     }
 
-    fn clear_rows(&mut self, bounds: &Bounds) {
-        let num_cols = self.chip.num_cols();
-        let start = (bounds.start_row + bounds.row_offset) * num_cols;
-        let end = (bounds.start_row + bounds.max_row) * num_cols;
-        for i in start .. end {
-            self.fuses[i] = false;
-        }
-    }
-
+    // Set the fuses associated with mode for GALxxV8s.
     pub fn set_mode(&mut self, mode: Mode) {
         assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
         match mode {
@@ -115,6 +140,7 @@ impl Jedec {
         }
     }
 
+    // Retrive the mode from the mode fuses.
     pub fn get_mode(&self) -> Mode {
         assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
         match (self.syn, self.ac0) {
@@ -125,6 +151,65 @@ impl Jedec {
         }
     }
 
+    // Enter a term into the given set of rows of the main logic array.
+    pub fn add_term(
+        &mut self,
+        term: &Term,
+        bounds: &Bounds,
+    ) -> Result<(), i32> {
+        let mut bounds = *bounds;
+        for row in term.pins.iter() {
+            if bounds.row_offset == bounds.max_row {
+                // too many ORs?
+                return Err(term.line_num * 0x10000 + 30);
+            }
+
+            for input in row.iter() {
+                let pin_num = input.pin;
+
+                // TODO: Should be part of set_and.
+                if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
+                    return Err(term.line_num * 0x10000 + 28);
+                }
+
+                if let Err(i) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg != 0) {
+                    return Err(term.line_num * 0x10000 + i);
+                }
+            }
+
+            // Go to next row.
+            bounds.row_offset += 1;
+        }
+
+        // Zero the unused part of the relevant space.
+        self.clear_rows(&bounds);
+
+        Ok(())
+    }
+
+    // Like add_term, but setting the term to false if no Term is provided.
+    pub fn add_term_opt(
+        &mut self,
+        term: &Option<Term>,
+        bounds: &Bounds,
+    ) -> Result<(), i32> {
+        match term {
+            Some(term) => self.add_term(term, bounds),
+            None => self.add_term(&false_term(0), bounds),
+        }
+    }
+
+    // Clear out a set of rows, so they don't contribute to the term.
+    fn clear_rows(&mut self, bounds: &Bounds) {
+        let num_cols = self.chip.num_cols();
+        let start = (bounds.start_row + bounds.row_offset) * num_cols;
+        let end = (bounds.start_row + bounds.max_row) * num_cols;
+        for i in start .. end {
+            self.fuses[i] = false;
+        }
+    }
+
+    // Map the input pin number to the fuse column number.
     fn pin_to_column(&self, pin_num: usize) -> Result<usize, String> {
         let column_lookup: &[i32] = match self.chip {
             Chip::GAL16V8 => match self.get_mode() {
@@ -153,6 +238,7 @@ impl Jedec {
         Ok(column as usize)
     }
 
+    // Get the name of the chip for error messages.
     fn name_for_error(&self) -> &str {
         match self.chip {
             Chip::GAL16V8 => match self.get_mode() {
@@ -170,7 +256,7 @@ impl Jedec {
         }
     }
 
-    // Add an 'and' term to a fuse map.
+    // Add an 'AND' term to a fuse map.
     fn set_and(
         &mut self,
         row: usize,
@@ -186,6 +272,7 @@ impl Jedec {
 
         // Is it a registered OLMC pin?
         // If yes, then correct the negation.
+        // TODO: This feels pretty messy.
         let mut neg_off = if negation { 1 } else { 0 };
         if chip == Chip::GAL22V10 && (pin_num >= 14 && pin_num <= 23) && !self.s1[23 - pin_num] {
             neg_off = 1 - neg_off;
@@ -193,52 +280,6 @@ impl Jedec {
 
         self.fuses[row * row_len + column + neg_off] = false;
         Ok(())
-    }
-
-    pub fn add_term(
-        &mut self,
-        term: &Term,
-        bounds: &Bounds,
-    ) -> Result<(), i32> {
-        let mut bounds = *bounds;
-        let pins = &term.pins;
-        for row in pins.iter() {
-            if bounds.row_offset == bounds.max_row {
-                // too many ORs?
-                return Err(term.line_num * 0x10000 + 30);
-            }
-
-            for pin in row.iter() {
-                let pin_num = pin.pin;
-
-                if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
-                    return Err(term.line_num * 0x10000 + 28);
-                }
-
-                if let Err(i) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, pin.neg != 0) {
-                    return Err(term.line_num * 0x10000 + i);
-                }
-            }
-
-            // Go to next row.
-            bounds.row_offset += 1;
-        }
-
-        // Then zero the rest...
-        self.clear_rows(&bounds);
-
-        Ok(())
-    }
-
-    pub fn add_term_opt(
-        &mut self,
-        term: &Option<Term>,
-        bounds: &Bounds,
-    ) -> Result<(), i32> {
-        match term {
-            Some(term) => self.add_term(term, bounds),
-            None => self.add_term(&false_term(0), bounds),
-        }
     }
 }
 

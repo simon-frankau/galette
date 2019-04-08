@@ -8,12 +8,7 @@ use olmc;
 use olmc::PinType;
 use writer;
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Pin {
-    pub neg: i8,
-    pub pin: i8,
-}
+pub use jedec::Pin;
 
 // Config use on the C side.
 #[repr(C)]
