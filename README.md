@@ -32,7 +32,7 @@ This is the result.
 Running from the lowest layer of dependency to the highest, we have:
 
  * **chips.rs** An abstraction layer over the different GAL types.
- * TODO
+ * **gal.rs** Contains the GAL structure with is programmed with fuse data.
 
 ## TODOs
 

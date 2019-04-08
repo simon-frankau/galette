@@ -19,7 +19,7 @@ pub struct Bounds {
 // 'Chip' is the main enum that can be matched on for chip-specific
 // behaviour, or method calls made on it to extract per-chip
 // parameters. Some things vary across the differing GAL{16,20}V8 modes,
-// and those things can't be queried on 'Chip'. Look them up on 'Jedec'
+// and those things can't be queried on 'Chip'. Look them up on 'GAL'
 // instead.
 #[derive(Clone,Copy, Debug, PartialEq)]
 pub enum Chip {

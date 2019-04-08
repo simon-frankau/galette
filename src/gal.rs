@@ -1,7 +1,7 @@
 //
-// jedec.rs: Fuse state
+// gal.rs: Fuse state
 //
-// The Jedec structure holds the fuse state for a GAL. Some helper
+// The GAL structure holds the fuse state for a GAL. Some helper
 // methods are provided to program sets of fuses, but the fuses can
 // also be directly manipulated.
 //
@@ -25,7 +25,7 @@ pub struct Pin {
 // ANDing of inputs and their negations. Special cases support
 // true and false values (see 'true_term' and 'false_term' below.
 //
-// Terms are programmed into the Jedec structure.
+// Terms are programmed into the GAL structure.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Term {
     pub line_num: i32,
@@ -34,9 +34,9 @@ pub struct Term {
     pub pins: Vec<Vec<Pin>>,
 }
 
-// The 'Jedec' struct represents the fuse state of the GAL that we're
+// The 'GAL' struct represents the fuse state of the GAL that we're
 // going to program.
-pub struct Jedec {
+pub struct GAL {
     pub chip: Chip,
     pub fuses: Vec<bool>,
     pub xor: Vec<bool>,
@@ -100,14 +100,14 @@ const PIN_TO_COL_20RA10: [i32; 24] = [
     -1, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, -1, -1, 38, 34, 30, 26, 22, 18, 14, 10, 6, 2, -1,
 ];
 
-impl Jedec {
+impl GAL {
     // Generate an empty fuse structure.
-    pub fn new(gal_type: Chip) -> Jedec {
+    pub fn new(gal_type: Chip) -> GAL {
 
         let fuse_size = gal_type.logic_size();
         let num_olmcs = gal_type.num_olmcs();
 
-        Jedec {
+        GAL {
             chip: gal_type,
             fuses: vec![true; fuse_size],
             // One xor bit per OLMC.

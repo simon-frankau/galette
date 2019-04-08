@@ -1,9 +1,9 @@
 use chips::Chip;
 use gal_builder;
 use gal_builder::Equation;
-use jedec;
-use jedec::Jedec;
-use jedec::Term;
+use gal;
+use gal::GAL;
+use gal::Term;
 use olmc;
 use olmc::OLMC;
 use olmc::PinType;
@@ -41,7 +41,7 @@ impl Blueprint {
     pub fn add_equation(
         &mut self,
         eqn: &Equation,
-        jedec: &Jedec,
+        gal: &GAL,
     ) -> Result<(), i32> {
         let olmcs = &mut self.olmcs;
         let act_pin = &eqn.lhs;
@@ -50,12 +50,12 @@ impl Blueprint {
         // (Note they may actually be used as undriven inputs.)
         let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
         for input in rhs.iter() {
-            if let Some(i) = jedec.chip.pin_to_olmc(input.pin as usize) {
+            if let Some(i) = gal.chip.pin_to_olmc(input.pin as usize) {
                 olmcs[i].feedback = true;
             }
         }
 
-        let term = eqn_to_term(jedec.chip, &eqn)?;
+        let term = eqn_to_term(gal.chip, &eqn)?;
 
         // AR/SP special cases:
         match act_pin.pin {
@@ -75,7 +75,7 @@ impl Blueprint {
         }
 
         // Only pins with OLMCs may be outputs.
-        let olmc_num = match jedec.chip.pin_to_olmc(act_pin.pin as usize) {
+        let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
             None => return Err(15),
             Some(i) => i,
         };
@@ -85,7 +85,7 @@ impl Blueprint {
             gal_builder::SUFFIX_R | gal_builder::SUFFIX_T | gal_builder::SUFFIX_NON =>
                 olmc.set_base(act_pin, term, eqn.suffix),
             gal_builder::SUFFIX_E =>
-                olmc.set_enable(jedec, act_pin, term),
+                olmc.set_enable(gal, act_pin, term),
             gal_builder::SUFFIX_CLK =>
                 olmc.set_clock(act_pin, term),
             gal_builder::SUFFIX_ARST =>
@@ -109,13 +109,13 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, i32> {
             if pin.neg != 0 {
                 return Err(25);
             }
-            return Ok(jedec::true_term(eqn.line_num));
+            return Ok(gal::true_term(eqn.line_num));
         } else if pin.pin as usize == chip.num_pins() / 2 {
             // GND
             if pin.neg != 0 {
                 return Err(25);
             }
-            return Ok(jedec::false_term(eqn.line_num));
+            return Ok(gal::false_term(eqn.line_num));
         }
     }
 

@@ -1,7 +1,7 @@
 extern crate itertools;
 
 use chips::Chip;
-use jedec::Jedec;
+use gal::GAL;
 use self::itertools::Itertools;
 
 // Config use on the C side.
@@ -111,9 +111,9 @@ impl<'a> FuseBuilder<'a> {
 
 pub fn make_jedec(
     config: &Config,
-    jedec: &Jedec,
+    gal: &GAL,
 ) -> String {
-    let gal_type = jedec.chip;
+    let gal_type = gal.chip;
     let row_len = gal_type.num_cols();
 
     let mut buf = String::new();
@@ -142,7 +142,7 @@ pub fn make_jedec(
         let mut fuse_builder = FuseBuilder::new(&mut buf);
 
         // Break the fuse map into chunks representing rows.
-        for row in &jedec.fuses.iter().chunks(row_len) {
+        for row in &gal.fuses.iter().chunks(row_len) {
             let (mut check_iter, mut print_iter) = row.tee();
 
             // Only write out non-zero bits.
@@ -156,19 +156,19 @@ pub fn make_jedec(
 
         // XOR bits are interleaved with S1 bits on GAL22V10.
         if gal_type != Chip::GAL22V10 {
-            fuse_builder.add(&jedec.xor)
+            fuse_builder.add(&gal.xor)
         } else {
-            let bits = itertools::interleave(jedec.xor.iter(), jedec.s1.iter());
+            let bits = itertools::interleave(gal.xor.iter(), gal.s1.iter());
             fuse_builder.add_iter(bits);
         }
 
-        fuse_builder.add(&jedec.sig);
+        fuse_builder.add(&gal.sig);
 
         if (gal_type == Chip::GAL16V8) || (gal_type == Chip::GAL20V8) {
-            fuse_builder.add(&jedec.ac1);
-            fuse_builder.add(&jedec.pt);
-            fuse_builder.add(&[jedec.syn]);
-            fuse_builder.add(&[jedec.ac0]);
+            fuse_builder.add(&gal.ac1);
+            fuse_builder.add(&gal.pt);
+            fuse_builder.add(&[gal.syn]);
+            fuse_builder.add(&[gal.ac0]);
         }
 
         // Fuse checksum.

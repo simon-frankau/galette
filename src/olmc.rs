@@ -1,10 +1,10 @@
 use chips::Chip;
 use gal_builder;
 use gal_builder::Pin;
-use jedec;
-use jedec::Jedec;
-use jedec::Mode;
-use jedec::Term;
+use gal;
+use gal::GAL;
+use gal::Mode;
+use gal::Term;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PinType {
@@ -25,11 +25,11 @@ pub enum Active {
 pub struct OLMC {
     pub active: Active,
     pub pin_type: PinType,
-    pub output: Option<jedec::Term>,
-    pub tri_con: Option<jedec::Term>,
-    pub clock: Option<jedec::Term>,
-    pub arst: Option<jedec::Term>,
-    pub aprst: Option<jedec::Term>,
+    pub output: Option<gal::Term>,
+    pub tri_con: Option<gal::Term>,
+    pub clock: Option<gal::Term>,
+    pub arst: Option<gal::Term>,
+    pub aprst: Option<gal::Term>,
     pub feedback: bool,
 }
 
@@ -77,7 +77,7 @@ impl OLMC {
 
     pub fn set_enable(
         &mut self,
-        jedec: &Jedec,
+        gal: &GAL,
         act_pin: &Pin,
         term: Term,
     ) -> Result<(), i32> {
@@ -95,7 +95,7 @@ impl OLMC {
             return Err(17);
         }
 
-        if self.pin_type == PinType::REGOUT && (jedec.chip == Chip::GAL16V8 || jedec.chip == Chip::GAL20V8) {
+        if self.pin_type == PinType::REGOUT && (gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8) {
             return Err(23);
         }
 
@@ -186,13 +186,13 @@ impl OLMC {
 // Analyse OLMCs
 
 // Get the mode for GAL16V8 and GAL20V8, set the flags appropriately
-pub fn analyse_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
-    let mode = get_mode_v8(jedec, olmcs);
-    jedec.set_mode(mode);
+pub fn analyse_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
+    let mode = get_mode_v8(gal, olmcs);
+    gal.set_mode(mode);
     return mode;
 }
 
-pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
+pub fn get_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
     // If there's a registered pin, it's mode 3.
     for n in 0..8 {
         if olmcs[n].pin_type == PinType::REGOUT {
@@ -206,7 +206,7 @@ pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
         }
     }
     // If we can't use mode 1, use mode 2.
-    let chip = jedec.chip;
+    let chip = gal.chip;
     for n in 0..8 {
         // Some pins cannot be used as input or feedback.
         if olmcs[n].feedback && olmcs[n].pin_type == PinType::UNDRIVEN {
@@ -232,10 +232,10 @@ pub fn get_mode_v8(jedec: &mut jedec::Jedec, olmcs: &[OLMC]) -> Mode {
     return Mode::Mode1;
 }
 
-pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jedec::Mode> {
-    match jedec.chip {
+pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode> {
+    match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
-            let mode = analyse_mode_v8(jedec, olmcs);
+            let mode = analyse_mode_v8(gal, olmcs);
 
             for n in 0..8 {
                 if olmcs[n].pin_type == PinType::COMTRIOUT {
@@ -244,7 +244,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                     } else {
                         olmcs[n].pin_type = PinType::TRIOUT;
                         // Set to VCC.
-                        olmcs[n].tri_con = Some(jedec::true_term(olmcs[n].output.as_ref().unwrap().line_num));
+                        olmcs[n].tri_con = Some(gal::true_term(olmcs[n].output.as_ref().unwrap().line_num));
                     }
                 }
             }
@@ -252,18 +252,18 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
             // SYN and AC0 already defined.
 
             for n in 0..64 {
-                jedec.pt[n] = true;
+                gal.pt[n] = true;
             }
 
             for n in 0..8 {
                 if (olmcs[n].pin_type == PinType::UNDRIVEN && olmcs[n].feedback) || olmcs[n].pin_type == PinType::TRIOUT {
-                    jedec.ac1[7 - n] = true;
+                    gal.ac1[7 - n] = true;
                 }
             }
 
             for n in 0..8 {
                 if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
-                    jedec.xor[7 - n] = true;
+                    gal.xor[7 - n] = true;
                 }
             }
 
@@ -277,11 +277,11 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                 }
 
                 if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
-                    jedec.xor[9 - n] = true;
+                    gal.xor[9 - n] = true;
                 }
 
                 if (olmcs[n].pin_type == PinType::UNDRIVEN && olmcs[n].feedback) || olmcs[n].pin_type == PinType::TRIOUT {
-                    jedec.s1[9 - n] = true;
+                    gal.s1[9 - n] = true;
                 }
             }
         }
@@ -293,7 +293,7 @@ pub fn analyse_mode(jedec: &mut jedec::Jedec, olmcs: &mut [OLMC]) -> Option<jede
                 }
 
                 if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
-                    jedec.xor[9 - n] = true;
+                    gal.xor[9 - n] = true;
                 }
             }
         }

@@ -1,14 +1,14 @@
 use blueprint::Blueprint;
 use chips::Chip;
-use jedec;
-use jedec::Bounds;
-use jedec::Jedec;
-use jedec::Mode;
+use gal;
+use gal::Bounds;
+use gal::GAL;
+use gal::Mode;
 use olmc;
 use olmc::PinType;
 use writer;
 
-pub use jedec::Pin;
+pub use gal::Pin;
 
 // Config use on the C side.
 #[repr(C)]
@@ -32,10 +32,10 @@ pub const SUFFIX_ARST: i32 =             6;
 
 // Adjust the bounds for the main term of there's a tristate enable
 // term in the first row.
-pub fn tristate_adjust(jedec: &Jedec,pin_type: PinType, bounds: &Bounds) -> Bounds {
-    match jedec.chip {
+pub fn tristate_adjust(gal: &GAL,pin_type: PinType, bounds: &Bounds) -> Bounds {
+    match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
-            if jedec.get_mode() != Mode::Mode1 && pin_type != PinType::REGOUT {
+            if gal.get_mode() != Mode::Mode1 && pin_type != PinType::REGOUT {
                 Bounds { row_offset: 1, ..*bounds }
             } else {
                 *bounds
@@ -47,7 +47,7 @@ pub fn tristate_adjust(jedec: &Jedec,pin_type: PinType, bounds: &Bounds) -> Boun
 }
 
 pub fn do_it_all(
-    jedec: &mut Jedec,
+    gal: &mut GAL,
     blueprint: &mut Blueprint,
     eqns: &[Equation],
     file: &str,
@@ -55,7 +55,7 @@ pub fn do_it_all(
 
     // Convert equations into data on the OLMCs.
     for eqn in eqns.iter() {
-        if let Err(err) = blueprint.add_equation(eqn, jedec) {
+        if let Err(err) = blueprint.add_equation(eqn, gal) {
             return Err(eqn.line_num * 0x10000 + err); // TODO: Ick.
         }
     }
@@ -63,7 +63,7 @@ pub fn do_it_all(
     // Complete second pass from in-memory structure.
     println!("Assembler Phase 2 for \"{}\"", file);
 
-    let mode = match olmc::analyse_mode(jedec, &mut blueprint.olmcs) {
+    let mode = match olmc::analyse_mode(gal, &mut blueprint.olmcs) {
         Some(Mode::Mode1) => 1,
         Some(Mode::Mode2) => 2,
         Some(Mode::Mode3) => 3,
@@ -71,14 +71,14 @@ pub fn do_it_all(
     };
 
     println!("GAL {}; Operation mode {}; Security fuse {}",
-             &jedec.chip.name()[3..],
+             &gal.chip.name()[3..],
              mode,
              "off"); // TODO cfg->JedecSecBit ? "on" : "off");
 
-    match jedec.chip {
-        Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(jedec, blueprint)?,
-        Chip::GAL22V10 => build_gal22v10(jedec, blueprint)?,
-        Chip::GAL20RA10 => build_gal20ra10(jedec, blueprint)?,
+    match gal.chip {
+        Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(gal, blueprint)?,
+        Chip::GAL22V10 => build_gal22v10(gal, blueprint)?,
+        Chip::GAL20RA10 => build_gal20ra10(gal, blueprint)?,
     }
 
     Ok(())
@@ -92,12 +92,12 @@ pub fn do_stuff(
     pin_names: &[&str],
     config: &::jedec_writer::Config,
 ) -> Result<(), i32> {
-    let mut jedec = Jedec::new(gal_type);
+    let mut gal = GAL::new(gal_type);
 
     let mut blueprint = Blueprint::new(gal_type);
 
     // Set signature.
-    for x in jedec.sig.iter_mut() {
+    for x in gal.sig.iter_mut() {
         *x = false;
     }
 
@@ -105,70 +105,70 @@ pub fn do_stuff(
     for i in 0..usize::min(sig.len(), 8) {
         let c = sig[i];
         for j in 0..8 {
-            jedec.sig[i * 8 + j] = (c << j) & 0x80 != 0;
+            gal.sig[i * 8 + j] = (c << j) & 0x80 != 0;
         }
     }
 
-    do_it_all(&mut jedec, &mut blueprint, eqns, file)?;
+    do_it_all(&mut gal, &mut blueprint, eqns, file)?;
 
-    writer::write_files(file, config, pin_names, &blueprint.olmcs, &jedec).unwrap();
+    writer::write_files(file, config, pin_names, &blueprint.olmcs, &gal).unwrap();
 
     Ok(())
 }
 
-fn build_galxvx(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
+fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
     for i in 0..blueprint.olmcs.len() {
-        let bounds = jedec.chip.get_bounds(i);
+        let bounds = gal.chip.get_bounds(i);
 
         match &blueprint.olmcs[i].output {
             Some(term) => {
-                let bounds = tristate_adjust(jedec, blueprint.olmcs[i].pin_type, &bounds);
-                jedec.add_term(&term, &bounds)?;
+                let bounds = tristate_adjust(gal, blueprint.olmcs[i].pin_type, &bounds);
+                gal.add_term(&term, &bounds)?;
             }
-            None => jedec.add_term(&jedec::false_term(0), &bounds)?,
+            None => gal.add_term(&gal::false_term(0), &bounds)?,
         }
 
         if let Some(term) = &blueprint.olmcs[i].tri_con {
-            jedec.add_term(&term, &Bounds { row_offset: 0, max_row: 1, ..bounds })?;
+            gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, ..bounds })?;
         }
     }
 
     Ok(())
 }
 
-fn build_galxv8(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
-    build_galxvx(jedec, blueprint)?;
+fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
+    build_galxvx(gal, blueprint)?;
 
     Ok(())
 }
 
-fn build_gal22v10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
-    build_galxvx(jedec, blueprint)?;
+fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
+    build_galxvx(gal, blueprint)?;
 
     // AR
     let ar_bounds = Bounds { start_row: 0, max_row: 1, row_offset: 0 };
-    jedec.add_term_opt(&blueprint.ar, &ar_bounds)?;
+    gal.add_term_opt(&blueprint.ar, &ar_bounds)?;
 
     // SP
     let sp_bounds = Bounds { start_row: 131, max_row: 1, row_offset: 0 };
-    jedec.add_term_opt(&blueprint.sp, &sp_bounds)?;
+    gal.add_term_opt(&blueprint.sp, &sp_bounds)?;
 
     Ok(())
 }
 
-fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32> {
+fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
     for i in 0..blueprint.olmcs.len() {
-        let bounds = jedec.chip.get_bounds(i);
+        let bounds = gal.chip.get_bounds(i);
 
         match &blueprint.olmcs[i].output {
             Some(term) => {
-                jedec.add_term(&term, &Bounds { row_offset: 4, .. bounds })?;
+                gal.add_term(&term, &Bounds { row_offset: 4, .. bounds })?;
             }
-            None => jedec.add_term(&jedec::false_term(0), &bounds)?,
+            None => gal.add_term(&gal::false_term(0), &bounds)?,
         }
 
         if let Some(term) = &blueprint.olmcs[i].tri_con {
-            jedec.add_term(&term, &Bounds { row_offset: 0, max_row: 1, .. bounds })?;
+            gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, .. bounds })?;
         }
 
         if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
@@ -178,14 +178,14 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
             }
 
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
-            jedec.add_term_opt(&blueprint.olmcs[i].clock, &clock_bounds)?;
+            gal.add_term_opt(&blueprint.olmcs[i].clock, &clock_bounds)?;
 
             if blueprint.olmcs[i].pin_type == PinType::REGOUT {
                 let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
-                jedec.add_term_opt(&blueprint.olmcs[i].arst, &arst_bounds)?;
+                gal.add_term_opt(&blueprint.olmcs[i].arst, &arst_bounds)?;
 
                 let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
-                jedec.add_term_opt(&blueprint.olmcs[i].aprst, &aprst_bounds)?;
+                gal.add_term_opt(&blueprint.olmcs[i].aprst, &aprst_bounds)?;
             }
         }
     }
