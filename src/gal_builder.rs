@@ -1,5 +1,6 @@
 use blueprint::Blueprint;
 use chips::Chip;
+use jedec;
 use jedec::Bounds;
 use jedec::Jedec;
 use jedec::Mode;
@@ -130,7 +131,7 @@ fn build_galxvx(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i32>
                 let bounds = tristate_adjust(jedec, blueprint.olmcs[i].pin_type, &bounds);
                 jedec.add_term(&term, &bounds)?;
             }
-            None => jedec.clear_rows(&bounds),
+            None => jedec.add_term(&jedec::false_term(0), &bounds)?,
         }
 
         if let Some(term) = &blueprint.olmcs[i].tri_con {
@@ -154,13 +155,13 @@ fn build_gal22v10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i3
     let ar_bounds = jedec.chip.get_bounds(10);
     match &blueprint.olmcs[10].output {
         Some(term) => jedec.add_term(&term, &ar_bounds)?,
-        None => jedec.clear_rows(&ar_bounds),
+        None => jedec.add_term(&jedec::false_term(0), &ar_bounds)?,
     }
     // SP
     let sp_bounds = jedec.chip.get_bounds(11);
     match &blueprint.olmcs[11].output {
         Some(term) => jedec.add_term(&term, &sp_bounds)?,
-        None => jedec.clear_rows(&sp_bounds),
+        None => jedec.add_term(&jedec::false_term(0), &sp_bounds)?,
     }
 
     Ok(())
@@ -175,7 +176,7 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
             Some(term) => {
                 jedec.add_term(&term, &Bounds { row_offset: 4, .. bounds })?;
             }
-            None => jedec.clear_rows(&bounds),
+            None => jedec.add_term(&jedec::false_term(0), &bounds)?,
         }
 
         if let Some(term) = &blueprint.olmcs[i].tri_con {
@@ -193,7 +194,9 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
                 Some(term) => {
                     jedec.add_term(&term, &clock_bounds)?;
                 }
-                None => jedec.clear_rows(&clock_bounds),
+                None => {
+                    jedec.add_term(&jedec::false_term(0), &clock_bounds)?;
+                }
             }
 
             if blueprint.olmcs[i].pin_type == PinType::REGOUT {
@@ -202,7 +205,7 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
                     Some(term) => {
                         jedec.add_term(&term, &arst_bounds)?;
                     }
-                    None => jedec.clear_rows(&arst_bounds),
+                    None => jedec.add_term(&jedec::false_term(0), &arst_bounds)?,
                 }
 
                 let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
@@ -210,7 +213,7 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
                     Some(term) => {
                         jedec.add_term(&term, &aprst_bounds)?;
                     }
-                    None => jedec.clear_rows(&aprst_bounds),
+                    None => jedec.add_term(&jedec::false_term(0), &aprst_bounds)?,
                 }
             }
         }

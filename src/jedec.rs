@@ -93,7 +93,7 @@ impl Jedec {
         }
     }
 
-    pub fn clear_rows(&mut self, bounds: &Bounds) {
+    fn clear_rows(&mut self, bounds: &Bounds) {
         let num_cols = self.chip.num_cols();
         let start = (bounds.start_row + bounds.row_offset) * num_cols;
         let end = (bounds.start_row + bounds.max_row) * num_cols;
