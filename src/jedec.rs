@@ -234,6 +234,17 @@ impl Jedec {
 
         Ok(())
     }
+
+    pub fn add_term_opt(
+        &mut self,
+        term: &Option<Term>,
+        bounds: &Bounds,
+    ) -> Result<(), i32> {
+        match term {
+            Some(term) => self.add_term(term, bounds),
+            None => self.add_term(&false_term(0), bounds),
+        }
+    }
 }
 
 // Basic terms

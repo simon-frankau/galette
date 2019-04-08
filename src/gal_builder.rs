@@ -153,16 +153,11 @@ fn build_gal22v10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i3
 
     // AR
     let ar_bounds = jedec.chip.get_bounds(10);
-    match &blueprint.olmcs[10].output {
-        Some(term) => jedec.add_term(&term, &ar_bounds)?,
-        None => jedec.add_term(&jedec::false_term(0), &ar_bounds)?,
-    }
+    jedec.add_term_opt(&blueprint.olmcs[10].output, &ar_bounds)?;
+
     // SP
     let sp_bounds = jedec.chip.get_bounds(11);
-    match &blueprint.olmcs[11].output {
-        Some(term) => jedec.add_term(&term, &sp_bounds)?,
-        None => jedec.add_term(&jedec::false_term(0), &sp_bounds)?,
-    }
+    jedec.add_term_opt(&blueprint.olmcs[11].output, &sp_bounds)?;
 
     Ok(())
 }
@@ -190,31 +185,14 @@ fn build_gal20ra10(jedec: &mut Jedec, blueprint: &mut Blueprint) -> Result<(), i
             }
 
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
-            match &blueprint.olmcs[i].clock {
-                Some(term) => {
-                    jedec.add_term(&term, &clock_bounds)?;
-                }
-                None => {
-                    jedec.add_term(&jedec::false_term(0), &clock_bounds)?;
-                }
-            }
+            jedec.add_term_opt(&blueprint.olmcs[i].clock, &clock_bounds)?;
 
             if blueprint.olmcs[i].pin_type == PinType::REGOUT {
                 let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
-                match &blueprint.olmcs[i].arst {
-                    Some(term) => {
-                        jedec.add_term(&term, &arst_bounds)?;
-                    }
-                    None => jedec.add_term(&jedec::false_term(0), &arst_bounds)?,
-                }
+                jedec.add_term_opt(&blueprint.olmcs[i].arst, &arst_bounds)?;
 
                 let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
-                match &blueprint.olmcs[i].aprst {
-                    Some(term) => {
-                        jedec.add_term(&term, &aprst_bounds)?;
-                    }
-                    None => jedec.add_term(&jedec::false_term(0), &aprst_bounds)?,
-                }
+                jedec.add_term_opt(&blueprint.olmcs[i].aprst, &aprst_bounds)?;
             }
         }
     }
