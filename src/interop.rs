@@ -1,4 +1,5 @@
 use chips::Chip;
+use errors;
 use gal_builder;
 use gal_builder::Equation;
 
@@ -39,6 +40,6 @@ pub extern "C" fn do_stuff_c(
 
     unsafe { match gal_builder::do_stuff(gal_type, sig, eqns, file_name.to_str().unwrap(), &pin_names, &(*config)) {
         Ok(()) => 0,
-        Err(i) => i,
+        Err(i) => { errors::print_error(i); i }
     } }
 }

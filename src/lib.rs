@@ -1,5 +1,6 @@
 pub mod blueprint;
 pub mod chips;
+pub mod errors;
 pub mod gal;
 pub mod gal_builder;
 pub mod interop;
