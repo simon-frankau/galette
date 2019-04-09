@@ -1,4 +1,13 @@
 
+pub struct Error {
+    pub code: ErrorCode,
+    pub line: i32,
+}
+
+pub enum ErrorCode {
+    Code(i32),
+}
+
 const ERROR_CODES: [&str; 49] = [
     "error in source file found",
     "Line  1: type of GAL expected",
@@ -51,8 +60,12 @@ const ERROR_CODES: [&str; 49] = [
     "use of .CLK, .ARST, .APRST only allowed for registered outputs"
 ];
 
-pub fn print_error(err_code: i32) {
-    let line_num = err_code >> 16;
-    let err_code= err_code & 0xffff;
-    println!("Error in line {}: {}", line_num, ERROR_CODES[err_code as usize]);
+fn error_string(err_code: ErrorCode) -> &'static str {
+    match err_code {
+        ErrorCode::Code(i) => ERROR_CODES[i as usize],
+    }
+}
+
+pub fn print_error(err: Error) {
+    println!("Error in line {}: {}", err.line, error_string(err.code));
 }

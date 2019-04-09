@@ -1,5 +1,7 @@
 use blueprint::Blueprint;
 use chips::Chip;
+use errors::Error;
+use errors::ErrorCode;
 use gal;
 use gal::Bounds;
 use gal::GAL;
@@ -51,12 +53,12 @@ pub fn do_it_all(
     blueprint: &mut Blueprint,
     eqns: &[Equation],
     file: &str,
-) -> Result<(), i32> {
+) -> Result<(), Error> {
 
     // Convert equations into data on the OLMCs.
     for eqn in eqns.iter() {
         if let Err(err) = blueprint.add_equation(eqn, gal) {
-            return Err(eqn.line_num * 0x10000 + err); // TODO: Ick.
+            return Err(Error { code: err, line: eqn.line_num });
         }
     }
 
@@ -91,7 +93,7 @@ pub fn do_stuff(
     file: &str,
     pin_names: &[&str],
     config: &::jedec_writer::Config,
-) -> Result<(), i32> {
+) -> Result<(), Error> {
     let mut gal = GAL::new(gal_type);
 
     let mut blueprint = Blueprint::new(gal_type);
@@ -116,7 +118,7 @@ pub fn do_stuff(
     Ok(())
 }
 
-fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
+fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     for i in 0..blueprint.olmcs.len() {
         let bounds = gal.chip.get_bounds(i);
 
@@ -136,13 +138,13 @@ fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
     Ok(())
 }
 
-fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
+fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     build_galxvx(gal, blueprint)?;
 
     Ok(())
 }
 
-fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
+fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     build_galxvx(gal, blueprint)?;
 
     // AR
@@ -156,7 +158,7 @@ fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
     Ok(())
 }
 
-fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> {
+fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     for i in 0..blueprint.olmcs.len() {
         let bounds = gal.chip.get_bounds(i);
 
@@ -174,7 +176,7 @@ fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), i32> 
         if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
             if blueprint.olmcs[i].pin_type == PinType::REGOUT && blueprint.olmcs[i].clock.is_none() {
                 // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
-                return Err(41); // FIXME i + 14);
+                return Err(Error { code: ErrorCode::Code(41), line: 0 }); // FIXME i + 14);
             }
 
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };

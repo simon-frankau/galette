@@ -1,4 +1,5 @@
 use chips::Chip;
+use errors::ErrorCode;
 use gal_builder;
 use gal_builder::Equation;
 use gal;
@@ -42,7 +43,7 @@ impl Blueprint {
         &mut self,
         eqn: &Equation,
         gal: &GAL,
-    ) -> Result<(), i32> {
+    ) -> Result<(), ErrorCode> {
         let olmcs = &mut self.olmcs;
         let act_pin = &eqn.lhs;
 
@@ -61,13 +62,13 @@ impl Blueprint {
         match act_pin.pin {
             24 => {
                 if self.ar.is_some() {
-                    return Err(40);
+                    return Err(ErrorCode::Code(40));
                 }
                 self.ar = Some(term); return Ok(());
             }
             25 => {
                 if self.sp.is_some() {
-                    return Err(40);
+                    return Err(ErrorCode::Code(40));
                 }
                 self.sp = Some(term); return Ok(());
             }
@@ -76,7 +77,7 @@ impl Blueprint {
 
         // Only pins with OLMCs may be outputs.
         let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
-            None => return Err(15),
+            None => return Err(ErrorCode::Code(15)),
             Some(i) => i,
         };
         let olmc = &mut olmcs[olmc_num];
@@ -98,7 +99,7 @@ impl Blueprint {
     }
 }
 
-fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, i32> {
+fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
     let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
     let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
 
@@ -107,13 +108,13 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, i32> {
         if pin.pin as usize == chip.num_pins() {
             // VCC
             if pin.neg != 0 {
-                return Err(25);
+                return Err(ErrorCode::Code(25));
             }
             return Ok(gal::true_term(eqn.line_num));
         } else if pin.pin as usize == chip.num_pins() / 2 {
             // GND
             if pin.neg != 0 {
-                return Err(25);
+                return Err(ErrorCode::Code(25));
             }
             return Ok(gal::false_term(eqn.line_num));
         }

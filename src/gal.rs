@@ -7,6 +7,8 @@
 //
 
 use chips::Chip;
+use errors::Error;
+use errors::ErrorCode;
 
 pub use chips::Bounds;
 
@@ -156,12 +158,12 @@ impl GAL {
         &mut self,
         term: &Term,
         bounds: &Bounds,
-    ) -> Result<(), i32> {
+    ) -> Result<(), Error> {
         let mut bounds = *bounds;
         for row in term.pins.iter() {
             if bounds.row_offset == bounds.max_row {
                 // too many ORs?
-                return Err(term.line_num * 0x10000 + 30);
+                return Err(Error { code: ErrorCode::Code(30), line: term.line_num });
             }
 
             for input in row.iter() {
@@ -169,11 +171,11 @@ impl GAL {
 
                 // TODO: Should be part of set_and.
                 if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
-                    return Err(term.line_num * 0x10000 + 28);
+                    return Err(Error { code: ErrorCode::Code(28), line: term.line_num });
                 }
 
-                if let Err(i) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg != 0) {
-                    return Err(term.line_num * 0x10000 + i);
+                if let Err(code) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg != 0) {
+                    return Err(Error { code: code, line: term.line_num });
                 }
             }
 
@@ -192,7 +194,7 @@ impl GAL {
         &mut self,
         term: &Option<Term>,
         bounds: &Bounds,
-    ) -> Result<(), i32> {
+    ) -> Result<(), Error> {
         match term {
             Some(term) => self.add_term(term, bounds),
             None => self.add_term(&false_term(0), bounds),
@@ -262,12 +264,12 @@ impl GAL {
         row: usize,
         pin_num: usize,
         negation: bool,
-    ) -> Result<(), i32> {
+    ) -> Result<(), ErrorCode> {
         let chip = self.chip;
         let row_len = chip.num_cols();
         let column = match self.pin_to_column(pin_num) {
             Ok(x) => x,
-            Err(_) => return Err(26),
+            Err(_) => return Err(ErrorCode::Code(26)),
         };
 
         // Is it a registered OLMC pin?

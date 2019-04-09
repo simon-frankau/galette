@@ -40,6 +40,6 @@ pub extern "C" fn do_stuff_c(
 
     unsafe { match gal_builder::do_stuff(gal_type, sig, eqns, file_name.to_str().unwrap(), &pin_names, &(*config)) {
         Ok(()) => 0,
-        Err(i) => { errors::print_error(i); i }
+        Err(e) => { errors::print_error(e); 1 }
     } }
 }

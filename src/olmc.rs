@@ -1,4 +1,5 @@
 use chips::Chip;
+use errors::ErrorCode;
 use gal_builder;
 use gal_builder::Pin;
 use gal;
@@ -51,10 +52,10 @@ impl OLMC {
         act_pin: &Pin,
         term: Term,
         suffix: i32,
-    ) -> Result<(), i32> {
+    ) -> Result<(), ErrorCode> {
         if self.output.is_some() {
             // Previously defined, so error out.
-            return Err(16);
+            return Err(ErrorCode::Code(16));
         }
 
         self.output = Some(term);
@@ -80,27 +81,27 @@ impl OLMC {
         gal: &GAL,
         act_pin: &Pin,
         term: Term,
-    ) -> Result<(), i32> {
+    ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(19);
+            return Err(ErrorCode::Code(19));
         }
 
         if self.tri_con != None {
-            return Err(22);
+            return Err(ErrorCode::Code(22));
         }
 
         self.tri_con = Some(term);
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(17);
+            return Err(ErrorCode::Code(17));
         }
 
         if self.pin_type == PinType::REGOUT && (gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8) {
-            return Err(23);
+            return Err(ErrorCode::Code(23));
         }
 
         if self.pin_type == PinType::COMTRIOUT {
-            return Err(24);
+            return Err(ErrorCode::Code(24));
         }
 
         Ok(())
@@ -110,22 +111,22 @@ impl OLMC {
         &mut self,
         act_pin: &Pin,
         term: Term,
-    ) -> Result<(), i32> {
+    ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(19);
+            return Err(ErrorCode::Code(19));
         }
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(42);
+            return Err(ErrorCode::Code(42));
         }
 
         if self.clock.is_some() {
-            return Err(45);
+            return Err(ErrorCode::Code(45));
         }
 
         self.clock = Some(term);
         if self.pin_type != PinType::REGOUT {
-            return Err(48);
+            return Err(ErrorCode::Code(48));
         }
 
         Ok(())
@@ -135,22 +136,22 @@ impl OLMC {
         &mut self,
         act_pin: &Pin,
         term: Term
-    ) -> Result<(), i32> {
+    ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(19);
+            return Err(ErrorCode::Code(19));
         }
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(43);
+            return Err(ErrorCode::Code(43));
         }
 
         if self.arst.is_some() {
-            return Err(46);
+            return Err(ErrorCode::Code(46));
         }
 
         self.arst = Some(term);
         if self.pin_type != PinType::REGOUT {
-            return Err(48);
+            return Err(ErrorCode::Code(48));
         }
 
         Ok(())
@@ -160,22 +161,22 @@ impl OLMC {
         &mut self,
         act_pin: &Pin,
         term: Term,
-    ) -> Result<(), i32> {
+    ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(19);
+            return Err(ErrorCode::Code(19));
         }
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(44);
+            return Err(ErrorCode::Code(44));
         }
 
         if self.aprst.is_some() {
-            return Err(47);
+            return Err(ErrorCode::Code(47));
         }
 
         self.aprst = Some(term);
         if self.pin_type != PinType::REGOUT {
-            return Err(48);
+            return Err(ErrorCode::Code(48));
         }
 
         Ok(())
