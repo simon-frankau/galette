@@ -62,13 +62,13 @@ impl Blueprint {
         match act_pin.pin {
             24 => {
                 if self.ar.is_some() {
-                    return Err(ErrorCode::Code(40));
+                    return Err(ErrorCode::REPEATED_AR_SP);
                 }
                 self.ar = Some(term); return Ok(());
             }
             25 => {
                 if self.sp.is_some() {
-                    return Err(ErrorCode::Code(40));
+                    return Err(ErrorCode::REPEATED_AR_SP);
                 }
                 self.sp = Some(term); return Ok(());
             }
@@ -77,7 +77,7 @@ impl Blueprint {
 
         // Only pins with OLMCs may be outputs.
         let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
-            None => return Err(ErrorCode::Code(15)),
+            None => return Err(ErrorCode::NOT_AN_OUTPUT),
             Some(i) => i,
         };
         let olmc = &mut olmcs[olmc_num];
@@ -108,13 +108,13 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
         if pin.pin as usize == chip.num_pins() {
             // VCC
             if pin.neg != 0 {
-                return Err(ErrorCode::Code(25));
+                return Err(ErrorCode::INVERTED_POWER);
             }
             return Ok(gal::true_term(eqn.line_num));
         } else if pin.pin as usize == chip.num_pins() / 2 {
             // GND
             if pin.neg != 0 {
-                return Err(ErrorCode::Code(25));
+                return Err(ErrorCode::INVERTED_POWER);
             }
             return Ok(gal::false_term(eqn.line_num));
         }

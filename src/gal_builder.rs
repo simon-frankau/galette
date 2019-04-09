@@ -176,7 +176,7 @@ fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error
         if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
             if blueprint.olmcs[i].pin_type == PinType::REGOUT && blueprint.olmcs[i].clock.is_none() {
                 // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
-                return Err(Error { code: ErrorCode::Code(41), line: 0 }); // FIXME i + 14);
+                return Err(Error { code: ErrorCode::NO_CLK, line: 0 }); // FIXME i + 14);
             }
 
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };

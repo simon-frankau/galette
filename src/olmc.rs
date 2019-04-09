@@ -55,7 +55,7 @@ impl OLMC {
     ) -> Result<(), ErrorCode> {
         if self.output.is_some() {
             // Previously defined, so error out.
-            return Err(ErrorCode::Code(16));
+            return Err(ErrorCode::REPEATED_OUTPUT);
         }
 
         self.output = Some(term);
@@ -83,25 +83,25 @@ impl OLMC {
         term: Term,
     ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(ErrorCode::Code(19));
+            return Err(ErrorCode::INVERTED_CONTROL);
         }
 
         if self.tri_con != None {
-            return Err(ErrorCode::Code(22));
+            return Err(ErrorCode::REPEATED_TRISTATE);
         }
 
         self.tri_con = Some(term);
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(ErrorCode::Code(17));
+            return Err(ErrorCode::PREMATURE_ENABLE);
         }
 
         if self.pin_type == PinType::REGOUT && (gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8) {
-            return Err(ErrorCode::Code(23));
+            return Err(ErrorCode::TRISTATE_REG);
         }
 
         if self.pin_type == PinType::COMTRIOUT {
-            return Err(ErrorCode::Code(24));
+            return Err(ErrorCode::UNMATCHED_TRISTATE);
         }
 
         Ok(())
@@ -113,20 +113,20 @@ impl OLMC {
         term: Term,
     ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(ErrorCode::Code(19));
+            return Err(ErrorCode::INVERTED_CONTROL);
         }
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(ErrorCode::Code(42));
+            return Err(ErrorCode::PREMATURE_CLK);
         }
 
         if self.clock.is_some() {
-            return Err(ErrorCode::Code(45));
+            return Err(ErrorCode::REPEATED_CLK);
         }
 
         self.clock = Some(term);
         if self.pin_type != PinType::REGOUT {
-            return Err(ErrorCode::Code(48));
+            return Err(ErrorCode::INVALID_CONTROL);
         }
 
         Ok(())
@@ -138,11 +138,11 @@ impl OLMC {
         term: Term
     ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(ErrorCode::Code(19));
+            return Err(ErrorCode::INVERTED_CONTROL);
         }
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(ErrorCode::Code(43));
+            return Err(ErrorCode::PREMATURE_ARST);
         }
 
         if self.arst.is_some() {
@@ -151,7 +151,7 @@ impl OLMC {
 
         self.arst = Some(term);
         if self.pin_type != PinType::REGOUT {
-            return Err(ErrorCode::Code(48));
+            return Err(ErrorCode::INVALID_CONTROL);
         }
 
         Ok(())
@@ -163,11 +163,11 @@ impl OLMC {
         term: Term,
     ) -> Result<(), ErrorCode> {
         if act_pin.neg != 0 {
-            return Err(ErrorCode::Code(19));
+            return Err(ErrorCode::INVERTED_CONTROL);
         }
 
         if self.pin_type == PinType::UNDRIVEN {
-            return Err(ErrorCode::Code(44));
+            return Err(ErrorCode::PREMATURE_APRST);
         }
 
         if self.aprst.is_some() {
@@ -176,7 +176,7 @@ impl OLMC {
 
         self.aprst = Some(term);
         if self.pin_type != PinType::REGOUT {
-            return Err(ErrorCode::Code(48));
+            return Err(ErrorCode::INVALID_CONTROL);
         }
 
         Ok(())
