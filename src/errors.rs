@@ -13,6 +13,7 @@ pub enum ErrorCode {
     BAD_PIN_COUNT,
     BAD_POWER,
     BAD_GAL_TYPE,
+    BAD_TOKEN,
     INVALID_CONTROL,
     INVERTED_CONTROL,
     INVERTED_POWER,
@@ -33,6 +34,7 @@ pub enum ErrorCode {
     REPEATED_TRISTATE,
     TOO_MANY_PRODUCTS,
     TRISTATE_REG,
+    UNKNOWN_PIN,
     UNMATCHED_TRISTATE,
 }
 
@@ -97,6 +99,7 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::BAD_PIN => "illegal character in pin declaration",
         ErrorCode::BAD_PIN_COUNT => "wrong number of pins",
         ErrorCode::BAD_POWER => "use of VCC and GND is not allowed in equations",
+        ErrorCode::BAD_TOKEN => "unexpected token",
         ErrorCode::INVALID_CONTROL => "use of .CLK, .ARST, .APRST only allowed for registered outputs",
         ErrorCode::INVERTED_CONTROL => ".E, .CLK, .ARST and .APRST is not allowed to be negated",
         ErrorCode::INVERTED_POWER => "use GND, VCC instead of /VCC, /GND",
@@ -116,6 +119,7 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::REPEATED_TRISTATE => "tristate control is defined twice",
         ErrorCode::TOO_MANY_PRODUCTS => "too many product terms",
         ErrorCode::TRISTATE_REG => "GAL16V8/20V8: tri. control for reg. output is not allowed",
+        ErrorCode::UNKNOWN_PIN => "unknown pinname",
         ErrorCode::UNMATCHED_TRISTATE => "tristate control without previous '.T'",
     }
 }

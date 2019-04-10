@@ -1,6 +1,9 @@
 use chips::Chip;
 use errors::ErrorCode;
+use gal::Pin;
+use gal_builder::Equation;
 
+use std::collections::HashMap;
 use std::fs;
 use std::iter::Peekable;
 
@@ -23,7 +26,7 @@ pub struct Content {
     pub chip: Chip,
     pub sig: Vec<u8>,
     pub pins: Vec<(String, bool)>,
-    pub eqns: Vec<Vec<Token>>,
+    pub eqns: Vec<Equation>,
 }
 
 fn remove_comment<'a>(s: &'a str) -> &'a str {
@@ -142,7 +145,7 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
     where I: Iterator<Item = &'a str>
 {
     let mut pins = Vec::new();
-    for _ in 0..1 {
+    for _ in 0..2 {
         match line_iter.next() {
             Some(line) => {
                 let tokens = tokenise(line)?;
@@ -173,6 +176,40 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
     Ok(pins)
 }
 
+pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str) -> Result<Equation, ErrorCode>
+{
+    let mut token_iter = tokenise(line)?.into_iter();
+
+    // TODO: Suffix, line number, rhs, all the rest!
+    let lhs = match token_iter.next() {
+        Some(Token::pin(name)) => {
+            let (pin_num, pin_neg) = pin_map.get(&name.name).ok_or(ErrorCode::UNKNOWN_PIN)?;
+            Pin { pin: *pin_num as i8, neg: if name.neg != *pin_neg { 1 } else { 0 } }
+        }
+        _ => return Err(ErrorCode::BAD_TOKEN),
+    };
+
+    Ok(Equation {
+        line_num: 0,
+        lhs: lhs,
+        suffix: 0,
+        num_rhs: 0,
+        rhs: std::ptr::null(),
+        ops: std::ptr::null(),
+    })
+}
+/*
+pub struct Equation {
+    pub line_num: i32,
+    pub lhs: Pin,
+    pub suffix: i32,
+    pub num_rhs: i32,
+    pub rhs: *const Pin,
+    pub ops: *const i8
+}
+
+*/
+
 pub fn parse_stuff(file_name: &str) -> Result<Content, ErrorCode> {
     let data = fs::read_to_string(file_name).expect("Unable to read file");
 
@@ -188,7 +225,13 @@ pub fn parse_stuff(file_name: &str) -> Result<Content, ErrorCode> {
         .take_while(|x| *x != "DESCRIPTION");
 
     let pins = parse_pins(gal_type, &mut line_iter)?;
-    let equations = line_iter.map(tokenise).collect::<Result<Vec<Vec<Token>>, ErrorCode>>()?;
+    let mut pin_map = (1..).zip(pins.clone().into_iter()).map(|(pin_num, (name, neg))| (name, (pin_num, neg))).collect::<HashMap<_, _>>();
+    if gal_type == Chip::GAL22V10 {
+        pin_map.insert(String::from("AR"), (24, false));
+        pin_map.insert(String::from("SP"), (25, false));
+    }
+
+    let equations = line_iter.map(|line| parse_equation(&pin_map, line)).collect::<Result<Vec<Equation>, ErrorCode>>()?;
 
     Ok(Content{
         chip: gal_type,

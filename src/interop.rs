@@ -52,10 +52,16 @@ pub extern "C" fn do_stuff_c(
         Ok(c) => {
             assert!(c.chip == gal_type);
             assert!(c.sig == sig);
+            assert!(c.pins.len() == pin_names.len());
             for (pin, name) in pin_names.iter().zip(c.pins.iter()) {
                 let mut full_name = if name.1 { String::from("/") } else { String::new() };
                 full_name.push_str(&name.0);
                 assert!(&full_name == *pin);
+            }
+            assert!(c.eqns.len() == eqns.len());
+            for (l, r) in c.eqns.iter().zip(eqns.iter()) {
+                // println!("{:?} {:?}", l.lhs, r.lhs);
+                assert!(l.lhs == r.lhs);
             }
         }
         Err(e) => {
