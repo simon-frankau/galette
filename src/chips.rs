@@ -5,6 +5,8 @@
 // supported GALs, in those cases where they can be handled uniformly.
 //
 
+use errors::ErrorCode;
+
 // TODO: Make sure all the 'pub' methods are used.
 
 // 'Bounds' encodes the range of rows that can be used to encode a
@@ -114,6 +116,16 @@ const OLMC_ROWS_22V10: [i32; 10] = [122, 111, 98, 83, 66, 49, 34, 21, 10, 1];
 const OLMC_ROWS_20RA10: [i32; 10] = [72, 64, 56, 48, 40, 32, 24, 16, 8, 0];
 
 impl Chip {
+    pub fn from_name(name: &str) -> Result<Chip, ErrorCode> {
+        match name {
+            "GAL16V8" => Ok(Chip::GAL16V8),
+            "GAL20V8" => Ok(Chip::GAL20V8),
+            "GAL22V10" => Ok(Chip::GAL22V10),
+            "GAL20RA10" => Ok(Chip::GAL20RA10),
+            _ => Err(ErrorCode::BAD_GAL_TYPE),
+        }
+    }
+
     fn get_chip_data(&self) -> &ChipData {
         match self {
             Chip::GAL16V8 => &GAL16V8_DATA,

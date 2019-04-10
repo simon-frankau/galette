@@ -2,6 +2,7 @@ use chips::Chip;
 use errors;
 use gal_builder;
 use gal_builder::Equation;
+use parser;
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -14,6 +15,15 @@ pub fn i32_to_chip(gal_type: i32) -> Chip {
         4 => Chip::GAL20RA10,
         _ => panic!("Nope")
     }
+}
+
+#[no_mangle]
+pub extern "C" fn parse_stuff_c(
+    file_name: *const c_char,
+) -> i32 {
+    let file_name = unsafe {CStr::from_ptr(file_name) };
+// TODO
+    0
 }
 
 #[no_mangle]
@@ -37,6 +47,21 @@ pub extern "C" fn do_stuff_c(
         .iter()
         .map(|x| unsafe { CStr::from_ptr(*x).to_str().unwrap() })
         .collect::<Vec<_>>();
+
+    match parser::parse_stuff(file_name.to_str().unwrap()) {
+        Ok(c) => {
+            assert!(c.chip == gal_type);
+            assert!(c.sig == sig);
+            for (pin, name) in pin_names.iter().zip(c.pins.iter()) {
+                let mut full_name = if name.1 { String::from("/") } else { String::new() };
+                full_name.push_str(&name.0);
+                assert!(&full_name == *pin);
+            }
+        }
+        Err(e) => {
+            errors::print_error(errors::Error{ code: e, line: 0 });
+        },
+    }
 
     unsafe { match gal_builder::do_stuff(gal_type, sig, eqns, file_name.to_str().unwrap(), &pin_names, &(*config)) {
         Ok(()) => 0,
