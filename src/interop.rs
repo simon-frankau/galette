@@ -62,7 +62,18 @@ pub extern "C" fn do_stuff_c(
             for (l, r) in c.eqns.iter().zip(eqns.iter()) {
                 assert!(l.lhs == r.lhs);
                 assert!(l.suffix == r.suffix);
-                // println!("{:?} {:?}", l.suffix, r.suffix);
+
+                let rhs = unsafe { std::slice::from_raw_parts(r.rhs, r.num_rhs as usize) };
+                let ops = unsafe { std::slice::from_raw_parts(r.ops, r.num_rhs as usize) };
+
+                assert!(rhs.len() == l.rhs.len());
+                for (l2, r2) in rhs.iter().zip(l.rhs.iter()) {
+                    assert!(l2 == r2);
+                }
+                assert!(ops.len() == l.ops.len());
+                for (l2, r2) in ops.iter().zip(l.ops.iter()) {
+                    assert!((*l2 == 43) == (*r2 == 43));
+                }
             }
         }
         Err(e) => {

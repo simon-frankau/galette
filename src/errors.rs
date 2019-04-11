@@ -21,6 +21,7 @@ pub enum ErrorCode {
     NOT_AN_INPUT,
     NOT_AN_OUTPUT,
     NO_CLK,
+    NO_EQUALS,
     NO_PIN_NAME,
     // TODO: I don't really believe in these.
     PREMATURE_APRST,
@@ -109,6 +110,7 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::NOT_AN_OUTPUT => "this pin can't be used as output",
         ErrorCode::NO_CLK => "missing clock definition (.CLK) of registered output",
         ErrorCode::NO_PIN_NAME => "pinname expected after '/'",
+        ErrorCode::NO_EQUALS => "'=' expected",
         ErrorCode::PREMATURE_APRST => "before using .APRST the output must be defined",
         ErrorCode::PREMATURE_ARST => "before using .ARST, the output must be defined",
         ErrorCode::PREMATURE_CLK => "before using .CLK, the output must be defined",

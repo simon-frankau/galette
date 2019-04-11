@@ -2,7 +2,6 @@ use chips::Chip;
 use errors::ErrorCode;
 use gal::Pin;
 use gal_builder;
-use gal_builder::Equation;
 
 use std::collections::HashMap;
 use std::fs;
@@ -27,7 +26,17 @@ pub struct Content {
     pub chip: Chip,
     pub sig: Vec<u8>,
     pub pins: Vec<(String, bool)>,
-    pub eqns: Vec<Equation>,
+    pub eqns: Vec<Equation2>,
+}
+
+// Hack to own the memory
+#[derive(Clone, Debug, PartialEq)]
+pub struct Equation2 {
+    pub line_num: i32,
+    pub lhs: Pin,
+    pub suffix: i32,
+    pub rhs: Vec<Pin>,
+    pub ops: Vec<i8>,
 }
 
 fn remove_comment<'a>(s: &'a str) -> &'a str {
@@ -193,11 +202,30 @@ fn ext_to_suffix(s: &Option<String>) -> Result<i32, ErrorCode> {
    })
 }
 
-pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str) -> Result<Equation, ErrorCode>
+fn parse_pin<I>(pin_map: &HashMap<String, (i32, bool)>, iter: &mut I) -> Result<Pin, ErrorCode>
+    where I: Iterator<Item=Token>
+{
+    let pin = match iter.next() {
+        Some(Token::pin(pin)) => pin,
+        _ => return Err(ErrorCode::BAD_TOKEN),
+    };
+
+    if pin.ext.is_some() {
+        return Err(ErrorCode::BAD_PIN);
+    }
+
+    let (pin_num, pin_neg) = pin_map.get(&pin.name).ok_or(ErrorCode::UNKNOWN_PIN)?;
+
+    Ok(Pin {
+        pin: *pin_num as i8,
+        neg: if pin.neg != *pin_neg { 1 } else { 0 },
+    })
+}
+
+pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str) -> Result<Equation2, ErrorCode>
 {
     let mut token_iter = tokenise(line)?.into_iter();
 
-    // TODO: Suffix, line number, rhs, all the rest!
     let (lhs, suffix) = match token_iter.next() {
         Some(Token::pin(name)) => {
             let (pin_num, pin_neg) = pin_map.get(&name.name).ok_or(ErrorCode::UNKNOWN_PIN)?;
@@ -208,26 +236,38 @@ pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str) -> Res
         _ => return Err(ErrorCode::BAD_TOKEN),
     };
 
-    Ok(Equation {
+    match token_iter.next() {
+        Some(Token::equals) => (),
+        _ => return Err(ErrorCode::NO_EQUALS),
+    }
+
+    let mut rhs = vec![parse_pin(&pin_map, &mut token_iter)?];
+    let mut ops = vec![0];
+
+    loop {
+        match token_iter.next() {
+            Some(Token::and) => {
+                ops.push(1);
+                rhs.push(parse_pin(&pin_map, &mut token_iter)?);
+            }
+            Some(Token::or) => {
+                ops.push(43);
+                rhs.push(parse_pin(&pin_map, &mut token_iter)?);
+            }
+            None => break,
+            _ => return Err(ErrorCode::BAD_TOKEN),
+       }
+    }
+
+    // TODO: line number.
+    Ok(Equation2 {
         line_num: 0,
         lhs: lhs,
         suffix: suffix,
-        num_rhs: 0,
-        rhs: std::ptr::null(),
-        ops: std::ptr::null(),
+        rhs: rhs,
+        ops: ops,
     })
 }
-/*
-pub struct Equation {
-    pub line_num: i32,
-    pub lhs: Pin,
-    pub suffix: i32,
-    pub num_rhs: i32,
-    pub rhs: *const Pin,
-    pub ops: *const i8
-}
-
-*/
 
 pub fn parse_stuff(file_name: &str) -> Result<Content, ErrorCode> {
     let data = fs::read_to_string(file_name).expect("Unable to read file");
@@ -250,7 +290,7 @@ pub fn parse_stuff(file_name: &str) -> Result<Content, ErrorCode> {
         pin_map.insert(String::from("SP"), (25, false));
     }
 
-    let equations = line_iter.map(|line| parse_equation(&pin_map, line)).collect::<Result<Vec<Equation>, ErrorCode>>()?;
+    let equations = line_iter.map(|line| parse_equation(&pin_map, line)).collect::<Result<Vec<Equation2>, ErrorCode>>()?;
 
     Ok(Content{
         chip: gal_type,
