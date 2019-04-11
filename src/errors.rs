@@ -8,8 +8,12 @@ pub struct Error {
 #[derive(Clone, Copy, Debug)]
 pub enum ErrorCode {
     Code(i32),
+    ARSP_SUFFIX,
+    ARSP_AS_PIN_NAME,
+    BAD_ARSP,
     BAD_CHAR,
     BAD_EOF,
+    BAD_NC,
     BAD_PIN,
     BAD_PIN_COUNT,
     BAD_POWER,
@@ -17,6 +21,7 @@ pub enum ErrorCode {
     BAD_SUFFIX,
     BAD_TOKEN,
     INVALID_CONTROL,
+    INVERTED_ARSP,
     INVERTED_CONTROL,
     INVERTED_POWER,
     NOT_AN_INPUT,
@@ -96,6 +101,10 @@ const ERROR_CODES: [&str; 49] = [
 fn error_string(err_code: ErrorCode) -> &'static str {
     match err_code {
         ErrorCode::Code(i) => ERROR_CODES[i as usize],
+        ErrorCode::ARSP_AS_PIN_NAME => "GAL22V10: AR and SP is not allowed as pinname",
+        ErrorCode::ARSP_SUFFIX => "AR, SP: no suffix allowed",
+        ErrorCode::BAD_ARSP => "use of AR and SP is not allowed in equations",
+        ErrorCode::BAD_NC => "NC (Not Connected) is not allowed in logic equations",
         ErrorCode::BAD_CHAR => "bad character in input",
         ErrorCode::BAD_EOF => "unexpected end of file",
         ErrorCode::BAD_GAL_TYPE => "Line  1: type of GAL expected",
@@ -104,6 +113,7 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::BAD_POWER => "use of VCC and GND is not allowed in equations",
         ErrorCode::BAD_SUFFIX => "unknown suffix found",
         ErrorCode::BAD_TOKEN => "unexpected token",
+        ErrorCode::INVERTED_ARSP => "negation of AR and SP is not allowed",
         ErrorCode::INVALID_CONTROL => "use of .CLK, .ARST, .APRST only allowed for registered outputs",
         ErrorCode::INVERTED_CONTROL => ".E, .CLK, .ARST and .APRST is not allowed to be negated",
         ErrorCode::INVERTED_POWER => "use GND, VCC instead of /VCC, /GND",

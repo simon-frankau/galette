@@ -1,7 +1,6 @@
 use chips::Chip;
 use errors;
 use gal_builder;
-use gal_builder::Equation3;
 use parser;
 
 use std::ffi::CStr;
@@ -23,8 +22,14 @@ pub extern "C" fn do_stuff_c(
     config: *const ::jedec_writer::Config,
 ) -> i32 {
     let file_name = unsafe {CStr::from_ptr(file_name) };
+    let file_name = file_name.to_str().unwrap();
 
-    let c = parser::parse_stuff(file_name.to_str().unwrap()).expect("oh no");
+    println!("Assembler Phase 1 for \"{}\"", file_name);
+    let c = match parser::parse_stuff(file_name) {
+        Ok(c) => c,
+        Err(e) => { errors::print_error(e); return 1; }
+    };
+
     let mut pin_names = Vec::new();
     for (name, neg) in c.pins.iter() {
         let mut full_name = if *neg { String::from("/") } else { String::new() };
@@ -33,7 +38,7 @@ pub extern "C" fn do_stuff_c(
     }
     let pin_names_ref = pin_names.iter().map(String::as_ref).collect::<Vec<&str>>();
 
-    unsafe { match gal_builder::do_stuff(c.chip, &c.sig, &c.eqns, file_name.to_str().unwrap(), &pin_names_ref, &(*config)) {
+    unsafe { match gal_builder::do_stuff(c.chip, &c.sig, &c.eqns, file_name, &pin_names_ref, &(*config)) {
         Ok(()) => 0,
         Err(e) => { errors::print_error(e); 1 }
     } }

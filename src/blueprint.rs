@@ -8,6 +8,7 @@ use olmc;
 use olmc::OLMC;
 use olmc::PinType;
 use parser::Equation;
+use parser::PinOrArSp;
 
 // Blueprint stores everything we need to construct the GAL.
 pub struct Blueprint {
@@ -58,42 +59,44 @@ impl Blueprint {
         let term = eqn_to_term(gal.chip, &eqn)?;
 
         // AR/SP special cases:
-        match act_pin.pin {
-            24 => {
+        match act_pin {
+            PinOrArSp::Ar => {
                 if self.ar.is_some() {
                     return Err(ErrorCode::REPEATED_AR_SP);
                 }
-                self.ar = Some(term); return Ok(());
+                self.ar = Some(term);
+                 Ok(())
             }
-            25 => {
+            PinOrArSp::Sp => {
                 if self.sp.is_some() {
                     return Err(ErrorCode::REPEATED_AR_SP);
                 }
-                self.sp = Some(term); return Ok(());
+                self.sp = Some(term);
+                Ok(())
             }
-            _ => {}
-        }
+            PinOrArSp::Pin((act_pin, suffix)) => {
+                // Only pins with OLMCs may be outputs.
+                let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
+                    None => return Err(ErrorCode::NOT_AN_OUTPUT),
+                    Some(i) => i,
+                };
+                let olmc = &mut olmcs[olmc_num];
 
-        // Only pins with OLMCs may be outputs.
-        let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
-            None => return Err(ErrorCode::NOT_AN_OUTPUT),
-            Some(i) => i,
-        };
-        let olmc = &mut olmcs[olmc_num];
-
-        match eqn.suffix {
-            gal_builder::SUFFIX_R | gal_builder::SUFFIX_T | gal_builder::SUFFIX_NON =>
-                olmc.set_base(act_pin, term, eqn.suffix),
-            gal_builder::SUFFIX_E =>
-                olmc.set_enable(gal, act_pin, term),
-            gal_builder::SUFFIX_CLK =>
-                olmc.set_clock(act_pin, term),
-            gal_builder::SUFFIX_ARST =>
-                olmc.set_arst(act_pin, term),
-            gal_builder::SUFFIX_APRST =>
-                olmc.set_aprst(act_pin, term),
-            _ =>
-                panic!("Nope"),
+                match *suffix {
+                    gal_builder::SUFFIX_R | gal_builder::SUFFIX_T | gal_builder::SUFFIX_NON =>
+                        olmc.set_base(act_pin, term, *suffix),
+                    gal_builder::SUFFIX_E =>
+                        olmc.set_enable(gal, act_pin, term),
+                    gal_builder::SUFFIX_CLK =>
+                        olmc.set_clock(act_pin, term),
+                    gal_builder::SUFFIX_ARST =>
+                        olmc.set_arst(act_pin, term),
+                    gal_builder::SUFFIX_APRST =>
+                        olmc.set_aprst(act_pin, term),
+                    _ =>
+                        panic!("Nope"),
+                }
+            }
         }
     }
 }

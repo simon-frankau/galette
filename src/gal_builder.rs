@@ -13,18 +13,6 @@ use writer;
 
 pub use gal::Pin;
 
-// Config use on the C side.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Equation3 {
-    pub line_num: u32,
-    pub lhs: Pin,
-    pub suffix: i32,
-    pub num_rhs: i32,
-    pub rhs: *const Pin,
-    pub ops: *const i8
-}
-
 pub const SUFFIX_NON: i32 =              0;	/* possible suffixes */
 pub const SUFFIX_T: i32 =                1;
 pub const SUFFIX_R: i32 =                2;
