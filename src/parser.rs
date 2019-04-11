@@ -32,7 +32,7 @@ pub struct Content {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PinOrArSp {
-    Pin((Pin, i32)),
+    Pin((Pin, u32)),
     Ar,
     Sp,
 }
@@ -43,7 +43,7 @@ pub struct Equation {
     pub line_num: u32,
     pub lhs: PinOrArSp,
     pub rhs: Vec<Pin>,
-    pub ops: Vec<i8>,
+    pub is_or: Vec<bool>,
 }
 
 fn remove_comment<'a>((s, line): (&'a str, u32)) -> (&'a str, u32) {
@@ -193,7 +193,7 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
     Ok(pins)
 }
 
-fn ext_to_suffix(s: &Option<String>) -> Result<i32, ErrorCode> {
+fn ext_to_suffix(s: &Option<String>) -> Result<u32, ErrorCode> {
    Ok(if let Some(s) = s {
        match s.as_str() {
            "T" => gal_builder::SUFFIX_T,
@@ -209,7 +209,7 @@ fn ext_to_suffix(s: &Option<String>) -> Result<i32, ErrorCode> {
    })
 }
 
-fn lookup_pin(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, pin_name: &str) -> Result<(i32, bool), ErrorCode> {
+fn lookup_pin(chip: Chip, pin_map: &HashMap<String, (u32, bool)>, pin_name: &str) -> Result<(u32, bool), ErrorCode> {
     pin_map.get(pin_name).map(|x| *x).ok_or_else(|| {
         match pin_name {
             "NC" => ErrorCode::BAD_NC,
@@ -220,7 +220,7 @@ fn lookup_pin(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, pin_name: &str
     })
 }
 
-fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, iter: &mut I) -> Result<Pin, ErrorCode>
+fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, (u32, bool)>, iter: &mut I) -> Result<Pin, ErrorCode>
     where I: Iterator<Item=Token>
 {
     let pin = match iter.next() {
@@ -235,12 +235,12 @@ fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, iter: &mut I
     let (pin_num, pin_neg) = lookup_pin(chip, &pin_map, &pin.name)?;
 
     Ok(Pin {
-        pin: pin_num as i8,
-        neg: if pin.neg != pin_neg { 1 } else { 0 },
+        pin: pin_num,
+        neg: pin.neg != pin_neg,
     })
 }
 
-pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
+pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (u32, bool)>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
 {
     let mut token_iter = tokenise(line)?.into_iter();
 
@@ -260,7 +260,7 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, line: 
                 }
             } else {
                 let (pin_num, pin_neg) = lookup_pin(chip, &pin_map, &pin.name)?;
-                let pin_def = Pin { pin: pin_num as i8, neg: if pin.neg != pin_neg { 1 } else { 0 } };
+                let pin_def = Pin { pin: pin_num, neg: pin.neg != pin_neg };
                 let suffix = ext_to_suffix(&pin.ext)?;
                 PinOrArSp::Pin((pin_def, suffix))
             }
@@ -274,16 +274,16 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, line: 
     }
 
     let mut rhs = vec![parse_pin(chip, &pin_map, &mut token_iter)?];
-    let mut ops = vec![0];
+    let mut is_or = vec![false];
 
     loop {
         match token_iter.next() {
             Some(Token::and) => {
-                ops.push(1);
+                is_or.push(false);
                 rhs.push(parse_pin(chip, &pin_map, &mut token_iter)?);
             }
             Some(Token::or) => {
-                ops.push(43);
+                is_or.push(true);
                 rhs.push(parse_pin(chip, &pin_map, &mut token_iter)?);
             }
             None => break,
@@ -295,11 +295,11 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, line: 
         line_num: line_num,
         lhs: lhs,
         rhs: rhs,
-        ops: ops,
+        is_or: is_or,
     })
 }
 
-fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, (i32, bool)>, ErrorCode>
+fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, (u32, bool)>, ErrorCode>
 {
     let num_pins = gal_type.num_pins();
     if pins[num_pins - 1] != (String::from("VCC"), false) {

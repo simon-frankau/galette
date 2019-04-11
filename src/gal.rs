@@ -19,8 +19,8 @@ pub use chips::Bounds;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pin {
-    pub neg: i8,
-    pub pin: i8,
+    pub neg: bool,
+    pub pin: u32,
 }
 
 // A 'Term' represents a set of OR'd together sub-terms which are the
@@ -174,7 +174,7 @@ impl GAL {
                     return Err(Error { code: ErrorCode::BAD_POWER, line: term.line_num });
                 }
 
-                if let Err(code) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg != 0) {
+                if let Err(code) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg) {
                     return Err(Error { code: code, line: term.line_num });
                 }
             }

@@ -106,13 +106,13 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
         let pin = &eqn.rhs[0];
         if pin.pin as usize == chip.num_pins() {
             // VCC
-            if pin.neg != 0 {
+            if pin.neg {
                 return Err(ErrorCode::INVERTED_POWER);
             }
             return Ok(gal::true_term(eqn.line_num));
         } else if pin.pin as usize == chip.num_pins() / 2 {
             // GND
-            if pin.neg != 0 {
+            if pin.neg {
                 return Err(ErrorCode::INVERTED_POWER);
             }
             return Ok(gal::false_term(eqn.line_num));
@@ -122,8 +122,8 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
     let mut ors = Vec::new();
     let mut ands = Vec::new();
 
-    for (pin, op) in eqn.rhs.iter().zip(eqn.ops.iter()) {
-        if *op == 43 || *op == 35 {
+    for (pin, is_or) in eqn.rhs.iter().zip(eqn.is_or.iter()) {
+        if *is_or {
             ors.push(ands);
             ands = Vec::new();
         }

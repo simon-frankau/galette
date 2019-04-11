@@ -51,7 +51,7 @@ impl OLMC {
         &mut self,
         act_pin: &Pin,
         term: Term,
-        suffix: i32,
+        suffix: u32,
     ) -> Result<(), ErrorCode> {
         if self.output.is_some() {
             // Previously defined, so error out.
@@ -60,7 +60,7 @@ impl OLMC {
 
         self.output = Some(term);
 
-        self.active = if act_pin.neg != 0 {
+        self.active = if act_pin.neg {
             Active::LOW
         } else {
             Active::HIGH
@@ -82,7 +82,7 @@ impl OLMC {
         act_pin: &Pin,
         term: Term,
     ) -> Result<(), ErrorCode> {
-        if act_pin.neg != 0 {
+        if act_pin.neg {
             return Err(ErrorCode::INVERTED_CONTROL);
         }
 
@@ -112,7 +112,7 @@ impl OLMC {
         act_pin: &Pin,
         term: Term,
     ) -> Result<(), ErrorCode> {
-        if act_pin.neg != 0 {
+        if act_pin.neg {
             return Err(ErrorCode::INVERTED_CONTROL);
         }
 
@@ -137,7 +137,7 @@ impl OLMC {
         act_pin: &Pin,
         term: Term
     ) -> Result<(), ErrorCode> {
-        if act_pin.neg != 0 {
+        if act_pin.neg {
             return Err(ErrorCode::INVERTED_CONTROL);
         }
 
@@ -162,7 +162,7 @@ impl OLMC {
         act_pin: &Pin,
         term: Term,
     ) -> Result<(), ErrorCode> {
-        if act_pin.neg != 0 {
+        if act_pin.neg {
             return Err(ErrorCode::INVERTED_CONTROL);
         }
 
