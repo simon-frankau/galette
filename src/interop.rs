@@ -60,8 +60,9 @@ pub extern "C" fn do_stuff_c(
             }
             assert!(c.eqns.len() == eqns.len());
             for (l, r) in c.eqns.iter().zip(eqns.iter()) {
-                // println!("{:?} {:?}", l.lhs, r.lhs);
                 assert!(l.lhs == r.lhs);
+                assert!(l.suffix == r.suffix);
+                // println!("{:?} {:?}", l.suffix, r.suffix);
             }
         }
         Err(e) => {

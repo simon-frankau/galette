@@ -1,6 +1,7 @@
 use chips::Chip;
 use errors::ErrorCode;
 use gal::Pin;
+use gal_builder;
 use gal_builder::Equation;
 
 use std::collections::HashMap;
@@ -176,15 +177,33 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
     Ok(pins)
 }
 
+fn ext_to_suffix(s: &Option<String>) -> Result<i32, ErrorCode> {
+   Ok(if let Some(s) = s {
+       match s.as_str() {
+           "T" => gal_builder::SUFFIX_T,
+           "R" => gal_builder::SUFFIX_R,
+           "E" => gal_builder::SUFFIX_E,
+           "CLK" => gal_builder::SUFFIX_CLK,
+           "APRST" => gal_builder::SUFFIX_APRST,
+           "ARST" => gal_builder::SUFFIX_ARST,
+           _ => return Err(ErrorCode::BAD_SUFFIX),
+       }
+   } else {
+       gal_builder::SUFFIX_NON
+   })
+}
+
 pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str) -> Result<Equation, ErrorCode>
 {
     let mut token_iter = tokenise(line)?.into_iter();
 
     // TODO: Suffix, line number, rhs, all the rest!
-    let lhs = match token_iter.next() {
+    let (lhs, suffix) = match token_iter.next() {
         Some(Token::pin(name)) => {
             let (pin_num, pin_neg) = pin_map.get(&name.name).ok_or(ErrorCode::UNKNOWN_PIN)?;
-            Pin { pin: *pin_num as i8, neg: if name.neg != *pin_neg { 1 } else { 0 } }
+            let pin = Pin { pin: *pin_num as i8, neg: if name.neg != *pin_neg { 1 } else { 0 } };
+            let suffix = ext_to_suffix(&name.ext)?;
+            (pin, suffix)
         }
         _ => return Err(ErrorCode::BAD_TOKEN),
     };
@@ -192,7 +211,7 @@ pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str) -> Res
     Ok(Equation {
         line_num: 0,
         lhs: lhs,
-        suffix: 0,
+        suffix: suffix,
         num_rhs: 0,
         rhs: std::ptr::null(),
         ops: std::ptr::null(),
