@@ -16,7 +16,7 @@ pub use gal::Pin;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Equation {
-    pub line_num: i32,
+    pub line_num: u32,
     pub lhs: Pin,
     pub suffix: i32,
     pub num_rhs: i32,

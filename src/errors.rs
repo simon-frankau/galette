@@ -1,7 +1,7 @@
 
 pub struct Error {
     pub code: ErrorCode,
-    pub line: i32,
+    pub line: u32,
 }
 
 #[derive(Debug)]

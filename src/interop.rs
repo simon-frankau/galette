@@ -60,6 +60,7 @@ pub extern "C" fn do_stuff_c(
             }
             assert!(c.eqns.len() == eqns.len());
             for (l, r) in c.eqns.iter().zip(eqns.iter()) {
+                assert!(l.line_num == r.line_num);
                 assert!(l.lhs == r.lhs);
                 assert!(l.suffix == r.suffix);
 
@@ -76,9 +77,7 @@ pub extern "C" fn do_stuff_c(
                 }
             }
         }
-        Err(e) => {
-            errors::print_error(errors::Error{ code: e, line: 0 });
-        },
+        Err(e) => errors::print_error(e),
     }
 
     unsafe { match gal_builder::do_stuff(gal_type, sig, eqns, file_name.to_str().unwrap(), &pin_names, &(*config)) {

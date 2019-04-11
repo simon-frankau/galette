@@ -30,7 +30,7 @@ pub struct Pin {
 // Terms are programmed into the GAL structure.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Term {
-    pub line_num: i32,
+    pub line_num: u32,
     // Each inner Vec represents an AND term. The overall term is the
     // OR of the inner terms.
     pub pins: Vec<Vec<Pin>>,
@@ -286,7 +286,7 @@ impl GAL {
 }
 
 // Basic terms
-pub fn true_term(line_num: i32) -> Term {
+pub fn true_term(line_num: u32) -> Term {
     // Empty row is always true (being the AND of nothing).
     Term {
         line_num: line_num,
@@ -294,7 +294,7 @@ pub fn true_term(line_num: i32) -> Term {
     }
 }
 
-pub fn false_term(line_num: i32) -> Term {
+pub fn false_term(line_num: u32) -> Term {
     // No rows is always false (being the OR of nothing).
     Term {
         line_num: line_num,
