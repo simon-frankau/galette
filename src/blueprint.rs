@@ -1,6 +1,6 @@
 use chips::Chip;
 use errors::ErrorCode;
-use gal_builder;
+use gal_builder::Suffix;
 use gal;
 use gal::GAL;
 use gal::Term;
@@ -83,18 +83,16 @@ impl Blueprint {
                 let olmc = &mut olmcs[olmc_num];
 
                 match *suffix {
-                    gal_builder::SUFFIX_R | gal_builder::SUFFIX_T | gal_builder::SUFFIX_NON =>
+                    Suffix::R | Suffix::T | Suffix::NONE =>
                         olmc.set_base(act_pin, term, *suffix),
-                    gal_builder::SUFFIX_E =>
+                    Suffix::E =>
                         olmc.set_enable(gal, act_pin, term),
-                    gal_builder::SUFFIX_CLK =>
+                    Suffix::CLK =>
                         olmc.set_clock(act_pin, term),
-                    gal_builder::SUFFIX_ARST =>
+                    Suffix::ARST =>
                         olmc.set_arst(act_pin, term),
-                    gal_builder::SUFFIX_APRST =>
+                    Suffix::APRST =>
                         olmc.set_aprst(act_pin, term),
-                    _ =>
-                        panic!("Nope"),
                 }
             }
         }

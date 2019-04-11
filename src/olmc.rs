@@ -1,7 +1,7 @@
 use chips::Chip;
 use errors::ErrorCode;
-use gal_builder;
 use gal_builder::Pin;
+use gal_builder::Suffix;
 use gal;
 use gal::GAL;
 use gal::Mode;
@@ -51,7 +51,7 @@ impl OLMC {
         &mut self,
         act_pin: &Pin,
         term: Term,
-        suffix: u32,
+        suffix: Suffix,
     ) -> Result<(), ErrorCode> {
         if self.output.is_some() {
             // Previously defined, so error out.
@@ -67,9 +67,9 @@ impl OLMC {
         };
 
         self.pin_type = match suffix {
-            gal_builder::SUFFIX_T => PinType::TRIOUT,
-            gal_builder::SUFFIX_R => PinType::REGOUT,
-            gal_builder::SUFFIX_NON => PinType::COMTRIOUT,
+            Suffix::T => PinType::TRIOUT,
+            Suffix::R => PinType::REGOUT,
+            Suffix::NONE => PinType::COMTRIOUT,
             _ => panic!("Nope!"),
         };
 

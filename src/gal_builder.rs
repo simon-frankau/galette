@@ -13,13 +13,16 @@ use writer;
 
 pub use gal::Pin;
 
-pub const SUFFIX_NON: u32 =              0;	/* possible suffixes */
-pub const SUFFIX_T: u32 =                1;
-pub const SUFFIX_R: u32 =                2;
-pub const SUFFIX_E: u32 =                3;
-pub const SUFFIX_CLK: u32 =              4;
-pub const SUFFIX_APRST: u32 =            5;
-pub const SUFFIX_ARST: u32 =             6;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Suffix {
+     NONE,
+     T,
+     R,
+     E,
+     CLK,
+     APRST,
+     ARST,
+}
 
 // Adjust the bounds for the main term of there's a tristate enable
 // term in the first row.

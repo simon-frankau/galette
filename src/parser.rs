@@ -2,7 +2,7 @@ use chips::Chip;
 use errors::Error;
 use errors::ErrorCode;
 use gal::Pin;
-use gal_builder;
+use gal_builder::Suffix;
 
 use std::collections::HashMap;
 use std::fs;
@@ -32,7 +32,7 @@ pub struct Content {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PinOrArSp {
-    Pin((Pin, u32)),
+    Pin((Pin, Suffix)),
     Ar,
     Sp,
 }
@@ -193,19 +193,19 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
     Ok(pins)
 }
 
-fn ext_to_suffix(s: &Option<String>) -> Result<u32, ErrorCode> {
+fn ext_to_suffix(s: &Option<String>) -> Result<Suffix, ErrorCode> {
    Ok(if let Some(s) = s {
        match s.as_str() {
-           "T" => gal_builder::SUFFIX_T,
-           "R" => gal_builder::SUFFIX_R,
-           "E" => gal_builder::SUFFIX_E,
-           "CLK" => gal_builder::SUFFIX_CLK,
-           "APRST" => gal_builder::SUFFIX_APRST,
-           "ARST" => gal_builder::SUFFIX_ARST,
+           "T" => Suffix::T,
+           "R" => Suffix::R,
+           "E" => Suffix::E,
+           "CLK" => Suffix::CLK,
+           "APRST" => Suffix::APRST,
+           "ARST" => Suffix::ARST,
            _ => return Err(ErrorCode::BAD_SUFFIX),
        }
    } else {
-       gal_builder::SUFFIX_NON
+       Suffix::NONE
    })
 }
 
@@ -342,7 +342,7 @@ pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
         .take_while(|(x, _)| *x != "DESCRIPTION");
 
     let pins = parse_pins(gal_type, &mut line_iter)?;
-    let mut pin_map = at_line(0, build_pin_map(gal_type, &pins))?;
+    let pin_map = at_line(0, build_pin_map(gal_type, &pins))?;
 
     let equations = line_iter.map(|(s, line)| at_line(line, parse_equation(gal_type, &pin_map, s, line))).collect::<Result<Vec<Equation>, Error>>()?;
 
