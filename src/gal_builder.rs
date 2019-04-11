@@ -8,6 +8,7 @@ use gal::GAL;
 use gal::Mode;
 use olmc;
 use olmc::PinType;
+use parser::Equation;
 use writer;
 
 pub use gal::Pin;
@@ -15,7 +16,7 @@ pub use gal::Pin;
 // Config use on the C side.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Equation {
+pub struct Equation3 {
     pub line_num: u32,
     pub lhs: Pin,
     pub suffix: i32,

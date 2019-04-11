@@ -27,12 +27,12 @@ pub struct Content {
     pub chip: Chip,
     pub sig: Vec<u8>,
     pub pins: Vec<(String, bool)>,
-    pub eqns: Vec<Equation2>,
+    pub eqns: Vec<Equation>,
 }
 
 // Hack to own the memory
 #[derive(Clone, Debug, PartialEq)]
-pub struct Equation2 {
+pub struct Equation {
     pub line_num: u32,
     pub lhs: Pin,
     pub suffix: i32,
@@ -227,7 +227,7 @@ fn parse_pin<I>(pin_map: &HashMap<String, (i32, bool)>, iter: &mut I) -> Result<
     })
 }
 
-pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str, line_num: u32) -> Result<Equation2, ErrorCode>
+pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
 {
     let mut token_iter = tokenise(line)?.into_iter();
 
@@ -264,7 +264,7 @@ pub fn parse_equation(pin_map: &HashMap<String, (i32, bool)>, line: &str, line_n
        }
     }
 
-    Ok(Equation2 {
+    Ok(Equation {
         line_num: line_num,
         lhs: lhs,
         suffix: suffix,
@@ -294,7 +294,7 @@ pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
         pin_map.insert(String::from("SP"), (25, false));
     }
 
-    let equations = line_iter.map(|(s, line)| at_line(line, parse_equation(&pin_map, s, line))).collect::<Result<Vec<Equation2>, Error>>()?;
+    let equations = line_iter.map(|(s, line)| at_line(line, parse_equation(&pin_map, s, line))).collect::<Result<Vec<Equation>, Error>>()?;
 
     Ok(Content{
         chip: gal_type,

@@ -1,10 +1,11 @@
 
+#[derive(Clone, Copy, Debug)]
 pub struct Error {
     pub code: ErrorCode,
     pub line: u32,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum ErrorCode {
     Code(i32),
     BAD_CHAR,

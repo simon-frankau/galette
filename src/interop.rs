@@ -1,7 +1,7 @@
 use chips::Chip;
 use errors;
 use gal_builder;
-use gal_builder::Equation;
+use gal_builder::Equation3;
 use parser;
 
 use std::ffi::CStr;
@@ -30,7 +30,7 @@ pub extern "C" fn parse_stuff_c(
 pub extern "C" fn do_stuff_c(
     gal_type: i32,
     sig: *const c_char,
-    eqns: *const Equation,
+    eqns: *const Equation3,
     num_eqns: i32,
     file_name: *const c_char,
     pin_names: *const *const c_char,
@@ -48,7 +48,9 @@ pub extern "C" fn do_stuff_c(
         .map(|x| unsafe { CStr::from_ptr(*x).to_str().unwrap() })
         .collect::<Vec<_>>();
 
-    match parser::parse_stuff(file_name.to_str().unwrap()) {
+    let c = parser::parse_stuff(file_name.to_str().unwrap());
+
+    match &c {
         Ok(c) => {
             assert!(c.chip == gal_type);
             assert!(c.sig == sig);
@@ -77,10 +79,19 @@ pub extern "C" fn do_stuff_c(
                 }
             }
         }
-        Err(e) => errors::print_error(e),
+        Err(e) => errors::print_error(*e),
     }
 
-    unsafe { match gal_builder::do_stuff(gal_type, sig, eqns, file_name.to_str().unwrap(), &pin_names, &(*config)) {
+    let c = c.expect("oh no");
+    let mut pin_names = Vec::new();
+    for (name, neg) in c.pins.iter() {
+        let mut full_name = if *neg { String::from("/") } else { String::new() };
+        full_name.push_str(&name);
+        pin_names.push(full_name);
+    }
+    let pin_names_ref = pin_names.iter().map(String::as_ref).collect::<Vec<&str>>();
+
+    unsafe { match gal_builder::do_stuff(c.chip, &c.sig, &c.eqns, file_name.to_str().unwrap(), &pin_names_ref, &(*config)) {
         Ok(()) => 0,
         Err(e) => { errors::print_error(e); 1 }
     } }

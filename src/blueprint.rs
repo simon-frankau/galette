@@ -1,13 +1,13 @@
 use chips::Chip;
 use errors::ErrorCode;
 use gal_builder;
-use gal_builder::Equation;
 use gal;
 use gal::GAL;
 use gal::Term;
 use olmc;
 use olmc::OLMC;
 use olmc::PinType;
+use parser::Equation;
 
 // Blueprint stores everything we need to construct the GAL.
 pub struct Blueprint {
@@ -49,8 +49,7 @@ impl Blueprint {
 
         // Mark all OLMCs that are inputs to other equations as providing feedback.
         // (Note they may actually be used as undriven inputs.)
-        let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-        for input in rhs.iter() {
+        for input in eqn.rhs.iter() {
             if let Some(i) = gal.chip.pin_to_olmc(input.pin as usize) {
                 olmcs[i].feedback = true;
             }
@@ -100,11 +99,8 @@ impl Blueprint {
 }
 
 fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
-    let rhs = unsafe { std::slice::from_raw_parts(eqn.rhs, eqn.num_rhs as usize) };
-    let ops = unsafe { std::slice::from_raw_parts(eqn.ops, eqn.num_rhs as usize) };
-
-    if rhs.len() == 1 {
-        let pin = &rhs[0];
+    if eqn.rhs.len() == 1 {
+        let pin = &eqn.rhs[0];
         if pin.pin as usize == chip.num_pins() {
             // VCC
             if pin.neg != 0 {
@@ -123,7 +119,7 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
     let mut ors = Vec::new();
     let mut ands = Vec::new();
 
-    for (pin, op) in rhs.iter().zip(ops.iter()) {
+    for (pin, op) in eqn.rhs.iter().zip(eqn.ops.iter()) {
         if *op == 43 || *op == 35 {
             ors.push(ands);
             ands = Vec::new();
