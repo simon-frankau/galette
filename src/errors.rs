@@ -39,11 +39,14 @@ pub enum ErrorCode {
     REPEATED_AR_SP,
     REPEATED_CLK,
     REPEATED_OUTPUT,
+    REPEATED_PIN_NAME,
     REPEATED_TRISTATE,
     TOO_MANY_PRODUCTS,
     TRISTATE_REG,
     UNKNOWN_PIN,
     UNMATCHED_TRISTATE,
+    BAD_VCC_LOCATION,
+    BAD_GND_LOCATION,
 }
 
 const ERROR_CODES: [&str; 49] = [
@@ -131,11 +134,14 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::REPEATED_AR_SP => "AR or SP is defined twice",
         ErrorCode::REPEATED_CLK => "several .CLK definitions for the same output found",
         ErrorCode::REPEATED_OUTPUT => "same pin is defined multible as output",
+        ErrorCode::REPEATED_PIN_NAME => "pinname defined twice",
         ErrorCode::REPEATED_TRISTATE => "tristate control is defined twice",
         ErrorCode::TOO_MANY_PRODUCTS => "too many product terms",
         ErrorCode::TRISTATE_REG => "GAL16V8/20V8: tri. control for reg. output is not allowed",
         ErrorCode::UNKNOWN_PIN => "unknown pinname",
         ErrorCode::UNMATCHED_TRISTATE => "tristate control without previous '.T'",
+        ErrorCode::BAD_VCC_LOCATION => "pin declaration: expected VCC at VCC pin",
+        ErrorCode::BAD_GND_LOCATION => "pin declaration: expected GND at GND pin",
     }
 }
 

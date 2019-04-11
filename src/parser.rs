@@ -190,10 +190,6 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
         }
     }
 
-    // TODO: Sanity-check the pins? No extension, VCC and GND in the
-    // right place, lack of repeats except NC, no AR/SP for GAL22V10,
-    // etc.
-
     Ok(pins)
 }
 
@@ -303,6 +299,34 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (i32, bool)>, line: 
     })
 }
 
+fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, (i32, bool)>, ErrorCode>
+{
+    let num_pins = gal_type.num_pins();
+    if pins[num_pins - 1] != (String::from("VCC"), false) {
+        return Err(ErrorCode::BAD_VCC_LOCATION);
+    }
+    if pins[num_pins/2 - 1] != (String::from("GND"), false) {
+        return Err(ErrorCode::BAD_GND_LOCATION);
+    }
+
+    let mut pin_map = HashMap::new();
+    for ((name, neg), pin_num) in pins.clone().into_iter().zip(1..) {
+        if name != "NC" {
+            if pin_map.contains_key(&name) {
+                return Err(ErrorCode::REPEATED_PIN_NAME);
+            }
+
+            if gal_type == Chip::GAL22V10 && (name =="AR" || name == "SP") {
+                return Err(ErrorCode::ARSP_AS_PIN_NAME);
+            }
+
+            pin_map.insert(name, (pin_num, neg));
+        }
+    }
+
+    Ok(pin_map)
+}
+
 pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
     let data = fs::read_to_string(file_name).expect("Unable to read file");
 
@@ -318,11 +342,7 @@ pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
         .take_while(|(x, _)| *x != "DESCRIPTION");
 
     let pins = parse_pins(gal_type, &mut line_iter)?;
-    let mut pin_map = (1..).zip(pins.clone().into_iter()).map(|(pin_num, (name, neg))| (name, (pin_num, neg))).collect::<HashMap<_, _>>();
-
-    if gal_type == Chip::GAL22V10 && (pin_map.contains_key("AR") || pin_map.contains_key("SP")) {
-        return Err(Error { code: ErrorCode::ARSP_AS_PIN_NAME, line: 0 });
-    }
+    let mut pin_map = at_line(0, build_pin_map(gal_type, &pins))?;
 
     let equations = line_iter.map(|(s, line)| at_line(line, parse_equation(gal_type, &pin_map, s, line))).collect::<Result<Vec<Equation>, Error>>()?;
 
