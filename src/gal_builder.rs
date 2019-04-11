@@ -110,6 +110,22 @@ pub fn do_stuff(
     Ok(())
 }
 
+// Check that you're not trying to use 20ra10-specific features
+fn check_gal20ra10(blueprint: &mut Blueprint) -> Result<(), Error> {
+    for olmc in blueprint.olmcs.iter() {
+        if let Some(term) = &olmc.clock {
+            return Err(Error { code: ErrorCode::DISALLOWED_CLK, line: term.line_num });
+        }
+        if let Some(term) = &olmc.arst {
+            return Err(Error { code: ErrorCode::DISALLOWED_ARST, line: term.line_num });
+        }
+        if let Some(term) = &olmc.aprst {
+            return Err(Error { code: ErrorCode::DISALLOWED_APRST, line: term.line_num });
+        }
+    }
+    Ok(())
+}
+
 fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     for i in 0..blueprint.olmcs.len() {
         let bounds = gal.chip.get_bounds(i);
@@ -131,12 +147,13 @@ fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
 }
 
 fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+    check_gal20ra10(blueprint)?;
     build_galxvx(gal, blueprint)?;
-
     Ok(())
 }
 
 fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+    check_gal20ra10(blueprint)?;
     build_galxvx(gal, blueprint)?;
 
     // AR

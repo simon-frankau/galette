@@ -20,6 +20,9 @@ pub enum ErrorCode {
     BAD_GAL_TYPE,
     BAD_SUFFIX,
     BAD_TOKEN,
+    DISALLOWED_CLK,
+    DISALLOWED_ARST,
+    DISALLOWED_APRST,
     INVALID_CONTROL,
     INVERTED_ARSP,
     INVERTED_CONTROL,
@@ -142,6 +145,9 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::UNMATCHED_TRISTATE => "tristate control without previous '.T'",
         ErrorCode::BAD_VCC_LOCATION => "pin declaration: expected VCC at VCC pin",
         ErrorCode::BAD_GND_LOCATION => "pin declaration: expected GND at GND pin",
+        ErrorCode::DISALLOWED_CLK => ".CLK is not allowed when this type of GAL is used",
+        ErrorCode::DISALLOWED_ARST => ".ARST is not allowed when this type of GAL is used",
+        ErrorCode::DISALLOWED_APRST => ".APRST is not allowed when this type of GAL is used",
     }
 }
 
