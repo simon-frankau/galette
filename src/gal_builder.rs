@@ -14,17 +14,6 @@ use writer;
 
 pub use gal::Pin;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Suffix {
-     None,
-     T,
-     R,
-     E,
-     CLK,
-     APRST,
-     ARST,
-}
-
 // Adjust the bounds for the main term of there's a tristate enable
 // term in the first row.
 pub fn tristate_adjust(gal: &GAL,pin_type: PinType, bounds: &Bounds) -> Bounds {

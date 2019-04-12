@@ -1,27 +1,25 @@
+//
+// parser.rs: Input parser
+//
+// Read the galasm-style input, and convert it to a 'Content'
+// structure which feeds the rest of the pipeline.
+//
+
 use chips::Chip;
 use errors::at_line;
 use errors::Error;
 use errors::ErrorCode;
 use gal::Pin;
-use gal_builder::Suffix;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
 use std::iter::Peekable;
+use std::rc::Rc;
 
-#[derive(Debug)]
-pub struct NamedPin {
-    pub name: String,
-    pub neg: bool,
-}
-
-#[derive(Debug)]
-pub enum Token {
-    Item((NamedPin, Suffix)),
-    Equals,
-    And,
-    Or,
-}
+////////////////////////////////////////////////////////////////////////
+// Parsing output
+//
 
 pub struct Content {
     pub chip: Chip,
@@ -31,20 +29,91 @@ pub struct Content {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum LHS {
-    Pin((Pin, Suffix)),
-    Ar,
-    Sp,
-}
-
-// Hack to own the memory
-#[derive(Clone, Debug, PartialEq)]
 pub struct Equation {
     pub line_num: u32,
     pub lhs: LHS,
     pub rhs: Vec<Pin>,
     pub is_or: Vec<bool>,
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LHS {
+    Pin((Pin, Suffix)),
+    Ar,
+    Sp,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Suffix {
+     None,
+     T,
+     R,
+     E,
+     CLK,
+     APRST,
+     ARST,
+}
+
+////////////////////////////////////////////////////////////////////////
+// Internal parsing structures
+//
+
+#[derive(Debug)]
+enum Token {
+    Item((NamedPin, Suffix)),
+    Equals,
+    And,
+    Or,
+}
+
+#[derive(Debug)]
+struct NamedPin {
+    pub name: String,
+    pub neg: bool,
+}
+
+////////////////////////////////////////////////////////////////////////
+// Iterator with line number tracking.
+//
+
+struct LineTrackingIterator<I> {
+    iter: I,
+    // I can't think of a better way to keep access to this once this
+    // iterator gets wrapped in others, than to use a RefCell.
+    line_num: Rc<RefCell<u32>>,
+}
+
+
+impl<I: Iterator> Iterator for LineTrackingIterator<I> {
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<I::Item> {
+        let res = self.iter.next();
+
+        if res.is_some() {
+            *self.line_num.borrow_mut() += 1;
+        }
+
+        res
+    }
+}
+
+impl<I: Iterator> LineTrackingIterator<I> {
+    fn new(iter: I) -> LineTrackingIterator<I> {
+        LineTrackingIterator {
+            iter: iter,
+            line_num: Rc::new(RefCell::new(0)),
+        }
+    }
+
+    fn line_num(&self) -> Rc<RefCell<u32>> {
+        self.line_num.clone()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+// 
+//
 
 fn remove_comment<'a>((s, line): (&'a str, u32)) -> (&'a str, u32) {
     (match s.find(';') {
@@ -315,7 +384,8 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
 pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
     let data = fs::read_to_string(file_name).expect("Unable to read file");
 
-    let mut line_iter = data.lines().zip(1..);
+    let mut line_iter = LineTrackingIterator::new(data.lines().zip(1..));
+    let line_num_ref = line_iter.line_num();
     let gal_type = parse_gal_type(&mut line_iter)?;
     let signature = parse_signature(&mut line_iter)?;
 
@@ -329,7 +399,14 @@ pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
     let pins = parse_pins(gal_type, &mut line_iter)?;
     let pin_map = at_line(0, build_pin_map(gal_type, &pins))?;
 
-    let equations = line_iter.map(|(s, line)| at_line(line, parse_equation(gal_type, &pin_map, s, line))).collect::<Result<Vec<Equation>, Error>>()?;
+    let equations = line_iter.map(|(s, line)| at_line(line, parse_equation(gal_type, &pin_map, s, line))).collect::<Result<Vec<Equation>, Error>>();
+
+    let equations = match equations {
+        Ok(e) => e,
+        Err(err) => {
+            return at_line(*line_num_ref.borrow(), Err(err.code));
+        }
+    };
 
     Ok(Content{
         chip: gal_type,

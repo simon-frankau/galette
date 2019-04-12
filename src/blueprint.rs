@@ -1,6 +1,6 @@
 use chips::Chip;
 use errors::ErrorCode;
-use gal_builder::Suffix;
+use parser::Suffix;
 use gal;
 use gal::GAL;
 use gal::Term;

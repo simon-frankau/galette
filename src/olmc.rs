@@ -1,11 +1,11 @@
 use chips::Chip;
 use errors::ErrorCode;
 use gal_builder::Pin;
-use gal_builder::Suffix;
 use gal;
 use gal::GAL;
 use gal::Mode;
 use gal::Term;
+use parser::Suffix;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PinType {
