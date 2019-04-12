@@ -51,7 +51,7 @@ pub struct GAL {
 // The GAL16V8 and GAL20V8 could run in one of three modes,
 // interpreting the fuse array differently. This enum
 // tracks the mode that's been set.
-#[derive(PartialEq,Clone,Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum Mode {
     // Combinatorial outputs
     Mode1,
@@ -132,18 +132,18 @@ impl GAL {
     pub fn set_mode(&mut self, mode: Mode) {
         assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
         match mode {
-        Mode::Mode1 => {
-            self.syn = true;
-            self.ac0 = false;
-        }
-        Mode::Mode2 => {
-            self.syn = true;
-            self.ac0 = true;
-        }
-        Mode::Mode3 => {
-            self.syn = false;
-            self.ac0 = true;
-        }
+            Mode::Mode1 => {
+                self.syn = true;
+                self.ac0 = false;
+            }
+            Mode::Mode2 => {
+                self.syn = true;
+                self.ac0 = true;
+            }
+            Mode::Mode3 => {
+                self.syn = false;
+                self.ac0 = true;
+            }
         }
     }
 
@@ -151,19 +151,15 @@ impl GAL {
     pub fn get_mode(&self) -> Mode {
         assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
         match (self.syn, self.ac0) {
-        (true, false) => Mode::Mode1,
-        (true, true) => Mode::Mode2,
-        (false, true) => Mode::Mode3,
-        _ => panic!("Bad syn/ac0 mode"),
+            (true, false) => Mode::Mode1,
+            (true, true) => Mode::Mode2,
+            (false, true) => Mode::Mode3,
+            _ => panic!("Bad syn/ac0 mode"),
         }
     }
 
     // Enter a term into the given set of rows of the main logic array.
-    pub fn add_term(
-        &mut self,
-        term: &Term,
-        bounds: &Bounds,
-    ) -> Result<(), Error> {
+    pub fn add_term(&mut self, term: &Term, bounds: &Bounds) -> Result<(), Error> {
         let mut bounds = *bounds;
         for row in term.pins.iter() {
             if bounds.row_offset == bounds.max_row {
@@ -186,11 +182,7 @@ impl GAL {
     }
 
     // Like add_term, but setting the term to false if no Term is provided.
-    pub fn add_term_opt(
-        &mut self,
-        term: &Option<Term>,
-        bounds: &Bounds,
-    ) -> Result<(), Error> {
+    pub fn add_term_opt(&mut self, term: &Option<Term>, bounds: &Bounds) -> Result<(), Error> {
         match term {
             Some(term) => self.add_term(term, bounds),
             None => self.add_term(&false_term(0), bounds),
@@ -202,7 +194,7 @@ impl GAL {
         let num_cols = self.chip.num_cols();
         let start = (bounds.start_row + bounds.row_offset) * num_cols;
         let end = (bounds.start_row + bounds.max_row) * num_cols;
-        for i in start .. end {
+        for i in start..end {
             self.fuses[i] = false;
         }
     }
@@ -230,12 +222,7 @@ impl GAL {
     }
 
     // Add an 'AND' term to a fuse map.
-    fn set_and(
-        &mut self,
-        row: usize,
-        pin_num: usize,
-        negation: bool,
-    ) -> Result<(), ErrorCode> {
+    fn set_and(&mut self, row: usize, pin_num: usize, negation: bool) -> Result<(), ErrorCode> {
         let chip = self.chip;
         let row_len = chip.num_cols();
         let column = self.pin_to_column(pin_num)?;
@@ -258,7 +245,7 @@ pub fn true_term(line_num: u32) -> Term {
     // Empty row is always true (being the AND of nothing).
     Term {
         line_num: line_num,
-        pins: vec!(Vec::new()),
+        pins: vec![Vec::new()],
     }
 }
 

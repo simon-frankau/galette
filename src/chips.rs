@@ -21,7 +21,7 @@ pub struct Bounds {
 // parameters. Some things vary across the differing GAL{16,20}V8 modes,
 // and those things can't be queried on 'Chip'. Look them up on 'GAL'
 // instead.
-#[derive(Clone,Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Chip {
     GAL16V8,
     GAL20V8,
@@ -188,7 +188,7 @@ impl Chip {
         Bounds {
             start_row: self.get_chip_data().olmc_map[olmc_num] as usize,
             max_row: self.num_rows_for_olmc(olmc_num),
-            row_offset: 0
+            row_offset: 0,
         }
     }
 }
