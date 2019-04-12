@@ -9,7 +9,7 @@ use std::fs;
 use std::iter::Peekable;
 
 #[derive(Debug)]
-pub struct Name {
+pub struct PinName {
     pub name: String,
     pub neg: bool,
     pub ext: Option<String>,
@@ -17,7 +17,7 @@ pub struct Name {
 
 #[derive(Debug)]
 pub enum Token {
-    PinName(Name),
+    PinName(PinName),
     Equals,
     And,
     Or,
@@ -31,7 +31,7 @@ pub struct Content {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum PinOrArSp {
+pub enum LHS {
     Pin((Pin, Suffix)),
     Ar,
     Sp,
@@ -41,7 +41,7 @@ pub enum PinOrArSp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Equation {
     pub line_num: u32,
-    pub lhs: PinOrArSp,
+    pub lhs: LHS,
     pub rhs: Vec<Pin>,
     pub is_or: Vec<bool>,
 }
@@ -102,7 +102,7 @@ fn build_pin<I>(chars: &mut Peekable<I>) -> Result<Token, ErrorCode>
         ext = Some(ext_str);
     }
 
-    Ok(Token::PinName(Name {
+    Ok(Token::PinName(PinName {
         name: name,
         neg: neg,
         ext: ext,
@@ -209,60 +209,56 @@ fn ext_to_suffix(s: &Option<String>) -> Result<Suffix, ErrorCode> {
    })
 }
 
-fn lookup_pin(chip: Chip, pin_map: &HashMap<String, (u32, bool)>, pin_name: &str) -> Result<(u32, bool), ErrorCode> {
-    pin_map.get(pin_name).map(|x| *x).ok_or_else(|| {
-        match pin_name {
+fn lookup_pin(chip: Chip, pin_map: &HashMap<String, Pin>, pin_name: &PinName) -> Result<Pin, ErrorCode> {
+    let pin = pin_map.get(pin_name.name.as_str()).map(|x| *x).ok_or_else(|| {
+        match pin_name.name.as_str() {
             "NC" => ErrorCode::BadNC,
             "AR" if chip == Chip::GAL22V10 => ErrorCode::BadARSP,
             "SP" if chip == Chip::GAL22V10 => ErrorCode::BadARSP,
             _ => ErrorCode::UnknownPin,
         }
-    })
+    })?;
+
+    Ok(Pin { pin: pin.pin, neg: pin.neg != pin_name.neg })
 }
 
-fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, (u32, bool)>, iter: &mut I) -> Result<Pin, ErrorCode>
+fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<Pin, ErrorCode>
     where I: Iterator<Item=Token>
 {
-    let pin = match iter.next() {
-        Some(Token::PinName(pin)) => pin,
+    let pin_name = match iter.next() {
+        Some(Token::PinName(pin_name)) => pin_name,
         _ => return Err(ErrorCode::BadToken),
     };
 
-    if pin.ext.is_some() {
+    if pin_name.ext.is_some() {
         return Err(ErrorCode::BadPin);
     }
 
-    let (pin_num, pin_neg) = lookup_pin(chip, &pin_map, &pin.name)?;
-
-    Ok(Pin {
-        pin: pin_num,
-        neg: pin.neg != pin_neg,
-    })
+    lookup_pin(chip, &pin_map, &pin_name)
 }
 
-pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (u32, bool)>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
+pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
 {
     let mut token_iter = tokenise(line)?.into_iter();
 
     let lhs = match token_iter.next() {
-        Some(Token::PinName(pin)) => {
-            if chip == Chip::GAL22V10 && (pin.name == "AR" || pin.name == "SP") {
-                if pin.ext.is_some() {
+        Some(Token::PinName(pin_name)) => {
+            if chip == Chip::GAL22V10 && (pin_name.name == "AR" || pin_name.name == "SP") {
+                if pin_name.ext.is_some() {
                     return Err(ErrorCode::ARSPSuffix);
                 }
-                if pin.neg {
+                if pin_name.neg {
                     return Err(ErrorCode::InvertedARSP);
                 }
-                if pin.name == "AR" {
-                    PinOrArSp::Ar
+                if pin_name.name == "AR" {
+                    LHS::Ar
                 } else {
-                    PinOrArSp::Sp
+                    LHS::Sp
                 }
             } else {
-                let (pin_num, pin_neg) = lookup_pin(chip, &pin_map, &pin.name)?;
-                let pin_def = Pin { pin: pin_num, neg: pin.neg != pin_neg };
-                let suffix = ext_to_suffix(&pin.ext)?;
-                PinOrArSp::Pin((pin_def, suffix))
+                let pin = lookup_pin(chip, &pin_map, &pin_name)?;
+                let suffix = ext_to_suffix(&pin_name.ext)?;
+                LHS::Pin((pin, suffix))
             }
         }
         _ => return Err(ErrorCode::BadToken),
@@ -299,7 +295,7 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, (u32, bool)>, line: 
     })
 }
 
-fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, (u32, bool)>, ErrorCode>
+fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, Pin>, ErrorCode>
 {
     let num_pins = gal_type.num_pins();
     if pins[num_pins - 1] != (String::from("VCC"), false) {
@@ -320,7 +316,7 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
                 return Err(ErrorCode::ARSPAsPinName);
             }
 
-            pin_map.insert(name, (pin_num, neg));
+            pin_map.insert(name, Pin { pin: pin_num, neg: neg });
         }
     }
 

@@ -8,7 +8,7 @@ use olmc;
 use olmc::OLMC;
 use olmc::PinType;
 use parser::Equation;
-use parser::PinOrArSp;
+use parser::LHS;
 
 // Blueprint stores everything we need to construct the GAL.
 pub struct Blueprint {
@@ -60,21 +60,21 @@ impl Blueprint {
 
         // AR/SP special cases:
         match act_pin {
-            PinOrArSp::Ar => {
+            LHS::Ar => {
                 if self.ar.is_some() {
                     return Err(ErrorCode::RepeatedARSP);
                 }
                 self.ar = Some(term);
                  Ok(())
             }
-            PinOrArSp::Sp => {
+            LHS::Sp => {
                 if self.sp.is_some() {
                     return Err(ErrorCode::RepeatedARSP);
                 }
                 self.sp = Some(term);
                 Ok(())
             }
-            PinOrArSp::Pin((act_pin, suffix)) => {
+            LHS::Pin((act_pin, suffix)) => {
                 // Only pins with OLMCs may be outputs.
                 let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
                     None => return Err(ErrorCode::NotAnOutput),

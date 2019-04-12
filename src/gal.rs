@@ -19,8 +19,8 @@ pub use chips::Bounds;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pin {
-    pub neg: bool,
     pub pin: u32,
+    pub neg: bool,
 }
 
 // A 'Term' represents a set of OR'd together sub-terms which are the
