@@ -14,9 +14,6 @@ pub use chips::Bounds;
 
 // A 'Pin' represents an input to an equation - a potentially negated
 // pin (represented by pin number).
-//
-// TODO: Use more appropriate types when C-interoperability goes away.
-#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pin {
     pub pin: u32,
@@ -67,39 +64,47 @@ pub enum Mode {
 // depend on the mode settings for the GALxxV8s, so they're here rather
 // than in chips.rs. -1 if it can't be used.
 
-// TODO: Perhaps encode errorr reasons for not being able to use pin,
-// rather than just simply -1?
+const OUT: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput);
+const PWR: Result<i32, ErrorCode> = Err(ErrorCode::BadPower);
 
 // GAL16V8
-const PIN_TO_COL_16_MODE1: [i32; 20] = [
-    2, 0, 4, 8, 12, 16, 20, 24, 28, -1, 30, 26, 22, 18, -1, -1, 14, 10, 6, -1,
+const PIN_TO_COL_16_MODE1: [Result<i32, ErrorCode>; 20] = [
+    Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
+    Ok(30), Ok(26), Ok(22), Ok(18), OUT,    OUT,    Ok(14), Ok(10), Ok(6),  PWR,
 ];
-const PIN_TO_COL_16_MODE2: [i32; 20] = [
-    2, 0, 4, 8, 12, 16, 20, 24, 28, -1, 30, -1, 26, 22, 18, 14, 10, 6, -1, -1,
+const PIN_TO_COL_16_MODE2: [Result<i32, ErrorCode>; 20] = [
+    Ok(2),  Ok(0), Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
+    Ok(30), OUT,   Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  OUT,    PWR,
 ];
-const PIN_TO_COL_16_MODE3: [i32; 20] = [
-    -1, 0, 4, 8, 12, 16, 20, 24, 28, -1, -1, 30, 26, 22, 18, 14, 10, 6, 2, -1,
+const PIN_TO_COL_16_MODE3: [Result<i32, ErrorCode>; 20] = [
+    OUT, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
+    OUT, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL20V8
-const PIN_TO_COL_20_MODE1: [i32; 24] = [
-    2, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, -1, 38, 34, 30, 26, 22, -1, -1, 18, 14, 10, 6, -1,
+const PIN_TO_COL_20_MODE1: [Result<i32, ErrorCode>; 24] = [
+    Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), OUT,    OUT,    Ok(18), Ok(14), Ok(10), Ok(6),  PWR,
 ];
-const PIN_TO_COL_20_MODE2: [i32; 24] = [
-    2, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, -1, 38, 34, -1, 30, 26, 22, 18, 14, 10, -1, 6, -1,
+const PIN_TO_COL_20_MODE2: [Result<i32, ErrorCode>; 24] = [
+    Ok(2),  Ok(0),  Ok(4), Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    Ok(38), Ok(34), OUT,   Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), OUT,    Ok(6),  PWR,
 ];
-const PIN_TO_COL_20_MODE3: [i32; 24] = [
-    -1, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, -1, -1, 38, 34, 30, 26, 22, 18, 14, 10, 6, 2, -1,
+const PIN_TO_COL_20_MODE3: [Result<i32, ErrorCode>; 24] = [
+    OUT, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    OUT, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL22V10
-const PIN_TO_COL_22V10: [i32; 24] = [
-    0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, -1, 42, 38, 34, 30, 26, 22, 18, 14, 10, 6, 2, -1,
+const PIN_TO_COL_22V10: [Result<i32, ErrorCode>; 24] = [
+    Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), Ok(40), PWR,
+    Ok(42), Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL20RA10
-const PIN_TO_COL_20RA10: [i32; 24] = [
-    -1, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, -1, -1, 38, 34, 30, 26, 22, 18, 14, 10, 6, 2, -1,
+const PIN_TO_COL_20RA10: [Result<i32, ErrorCode>; 24] = [
+    OUT, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    OUT, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 impl GAL {
@@ -169,11 +174,6 @@ impl GAL {
             for input in row.iter() {
                 let pin_num = input.pin;
 
-                // TODO: Should be part of set_and.
-                if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
-                    return Err(Error { code: ErrorCode::BadPower, line: term.line_num });
-                }
-
                 if let Err(code) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg) {
                     return Err(Error { code: code, line: term.line_num });
                 }
@@ -212,8 +212,8 @@ impl GAL {
     }
 
     // Map the input pin number to the fuse column number.
-    fn pin_to_column(&self, pin_num: usize) -> Result<usize, String> {
-        let column_lookup: &[i32] = match self.chip {
+    fn pin_to_column(&self, pin_num: usize) -> Result<usize, ErrorCode> {
+        let column_lookup: &[Result<i32, ErrorCode>] = match self.chip {
             Chip::GAL16V8 => match self.get_mode() {
                 Mode::Mode1 => &PIN_TO_COL_16_MODE1,
                 Mode::Mode2 => &PIN_TO_COL_16_MODE2,
@@ -228,34 +228,9 @@ impl GAL {
             Chip::GAL20RA10 => &PIN_TO_COL_20RA10,
         };
 
-        let column = column_lookup[pin_num - 1];
-
-        if column < 0 {
-                // TODO: Better error stuff.
-                return Err::<usize, String>(format!("{} cannot use pin {} as input or feedback",
-                            self.name_for_error(),
-                            pin_num));
-        }
+        let column = column_lookup[pin_num - 1]?;
 
         Ok(column as usize)
-    }
-
-    // Get the name of the chip for error messages.
-    fn name_for_error(&self) -> &str {
-        match self.chip {
-            Chip::GAL16V8 => match self.get_mode() {
-                Mode::Mode1 => "GAL16V8 (mode 1)",
-                Mode::Mode2 => "GAL16V8 (mode 2)",
-                Mode::Mode3 => "GAL16V8 (mode 3)",
-            },
-            Chip::GAL20V8 => match self.get_mode() {
-                Mode::Mode1 => "GAL20V8 (mode 1)",
-                Mode::Mode2 => "GAL20V8 (mode 2)",
-                Mode::Mode3 => "GAL20V8 (mode 3)",
-            },
-            Chip::GAL22V10 => "GAL22V10",
-            Chip::GAL20RA10 => "GAL20RA10",
-        }
     }
 
     // Add an 'AND' term to a fuse map.
@@ -267,10 +242,7 @@ impl GAL {
     ) -> Result<(), ErrorCode> {
         let chip = self.chip;
         let row_len = chip.num_cols();
-        let column = match self.pin_to_column(pin_num) {
-            Ok(x) => x,
-            Err(_) => return Err(ErrorCode::NotAnInput),
-        };
+        let column = self.pin_to_column(pin_num)?;
 
         // Is it a registered OLMC pin?
         // If yes, then correct the negation.
