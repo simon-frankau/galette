@@ -6,7 +6,6 @@
 //
 
 use chips::Chip;
-use errors::at_line;
 use errors::Error;
 use errors::ErrorCode;
 use gal::Pin;
@@ -115,11 +114,11 @@ impl<I: Iterator> LineTrackingIterator<I> {
 // 
 //
 
-fn remove_comment<'a>((s, line): (&'a str, u32)) -> (&'a str, u32) {
-    (match s.find(';') {
+fn remove_comment<'a>(s: &'a str) -> &'a str {
+    match s.find(';') {
         Some(i) => &s[..i],
         None => s,
-    }, line)
+    }
 }
 
 fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
@@ -219,34 +218,34 @@ fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
     }
 }
 
-pub fn parse_gal_type<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
-    where I: Iterator<Item = (&'a str, u32)>
+pub fn parse_gal_type<'a, I>(line_iter: &mut I) -> Result<Chip, ErrorCode>
+    where I: Iterator<Item = &'a str>
 {
     match line_iter.next() {
-        Some((name, line)) => at_line(line, Chip::from_name(name)),
-        None => Err(Error { code: ErrorCode::BadGALType, line: 0 }),
+        Some(name) => Chip::from_name(name),
+        None => Err(ErrorCode::BadGALType),
     }
 }
 
-pub fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, Error>
-    where I: Iterator<Item = (&'a str, u32)>
+pub fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, ErrorCode>
+    where I: Iterator<Item = &'a str>
 {
     match line_iter.next() {
-        Some((sig, _)) => Ok(sig.bytes().take(8).collect::<Vec<u8>>()),
-        None => Err(Error { code: ErrorCode::BadEOF, line: 0 }),
+        Some(sig) => Ok(sig.bytes().take(8).collect::<Vec<u8>>()),
+        None => Err(ErrorCode::BadEOF),
     }
 }
 
-pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, bool)>, Error>
-    where I: Iterator<Item = (&'a str, u32)>
+pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, bool)>, ErrorCode>
+    where I: Iterator<Item = &'a str>
 {
     let mut pins = Vec::new();
     for _ in 0..2 {
         match line_iter.next() {
-            Some((s, line)) => {
-                let tokens = at_line(line, tokenise(s))?;
+            Some(s) => {
+                let tokens = tokenise(s)?;
                 if tokens.len() != chip.num_pins() / 2 {
-                    return Err(Error { code: ErrorCode::BadPinCount, line: line });
+                    return Err(ErrorCode::BadPinCount);
                 }
                 for token in tokens.into_iter() {
                     match token {
@@ -254,14 +253,14 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
                             if suffix == Suffix::None {
                                 pins.push((name.name, name.neg));
                             } else {
-                                return Err(Error { code: ErrorCode::BadPin, line: line });
+                                return Err(ErrorCode::BadPin);
                             }
                         }
-                        _ => return Err(Error { code: ErrorCode::BadPin, line: line }),
+                        _ => return Err(ErrorCode::BadPin),
                     }
                 }
             }
-            None => return Err(Error { code: ErrorCode::BadEOF, line: 0 }),
+            None => return Err(ErrorCode::BadEOF),
         }
     }
 
@@ -381,32 +380,25 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
     Ok(pin_map)
 }
 
-pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
-    let data = fs::read_to_string(file_name).expect("Unable to read file");
-
-    let mut line_iter = LineTrackingIterator::new(data.lines().zip(1..));
-    let line_num_ref = line_iter.line_num();
+fn parse_stuff2<'a, I>(mut line_iter: I, line_ref: &Rc<RefCell<u32>>) -> Result<Content, ErrorCode>
+    where I: Iterator<Item = &'a str>
+{
     let gal_type = parse_gal_type(&mut line_iter)?;
     let signature = parse_signature(&mut line_iter)?;
 
     // After the first couple of lines we remove comments etc.
     let mut line_iter = line_iter
         .map(remove_comment)
-        .map(|(s, i)| (s.trim(), i))
-        .filter(|(x, _)| !x.is_empty())
-        .take_while(|(x, _)| *x != "DESCRIPTION");
+        .map(str::trim)
+        .filter(|x| !x.is_empty())
+        .take_while(|x| *x != "DESCRIPTION");
 
     let pins = parse_pins(gal_type, &mut line_iter)?;
-    let pin_map = at_line(0, build_pin_map(gal_type, &pins))?;
+    let pin_map = build_pin_map(gal_type, &pins)?;
 
-    let equations = line_iter.map(|(s, line)| at_line(line, parse_equation(gal_type, &pin_map, s, line))).collect::<Result<Vec<Equation>, Error>>();
-
-    let equations = match equations {
-        Ok(e) => e,
-        Err(err) => {
-            return at_line(*line_num_ref.borrow(), Err(err.code));
-        }
-    };
+    let equations = line_iter
+        .map(|s| parse_equation(gal_type, &pin_map, s, *line_ref.borrow()))
+        .collect::<Result<Vec<Equation>, ErrorCode>>()?;
 
     Ok(Content{
         chip: gal_type,
@@ -414,4 +406,11 @@ pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
         pins: pins,
         eqns: equations,
     })
+}
+
+pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
+    let data = fs::read_to_string(file_name).expect("Unable to read file");
+    let line_iter = LineTrackingIterator::new(data.lines());
+    let line_num_ref = line_iter.line_num();
+    parse_stuff2(line_iter, &line_num_ref).map_err(|e| Error { code: e, line: *line_num_ref.borrow() })
 }
