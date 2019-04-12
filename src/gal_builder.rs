@@ -114,13 +114,13 @@ pub fn do_stuff(
 fn check_gal20ra10(blueprint: &mut Blueprint) -> Result<(), Error> {
     for olmc in blueprint.olmcs.iter() {
         if let Some(term) = &olmc.clock {
-            return Err(Error { code: ErrorCode::DISALLOWED_CLK, line: term.line_num });
+            return Err(Error { code: ErrorCode::DisallowedCLK, line: term.line_num });
         }
         if let Some(term) = &olmc.arst {
-            return Err(Error { code: ErrorCode::DISALLOWED_ARST, line: term.line_num });
+            return Err(Error { code: ErrorCode::DisallowedARST, line: term.line_num });
         }
         if let Some(term) = &olmc.aprst {
-            return Err(Error { code: ErrorCode::DISALLOWED_APRST, line: term.line_num });
+            return Err(Error { code: ErrorCode::DisallowedAPRST, line: term.line_num });
         }
     }
     Ok(())
@@ -185,7 +185,7 @@ fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error
         if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
             if blueprint.olmcs[i].pin_type == PinType::REGOUT && blueprint.olmcs[i].clock.is_none() {
                 // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
-                return Err(Error { code: ErrorCode::NO_CLK, line: 0 }); // FIXME i + 14);
+                return Err(Error { code: ErrorCode::NoCLK, line: 0 }); // FIXME i + 14);
             }
 
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };

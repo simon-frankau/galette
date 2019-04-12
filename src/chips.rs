@@ -122,7 +122,7 @@ impl Chip {
             "GAL20V8" => Ok(Chip::GAL20V8),
             "GAL22V10" => Ok(Chip::GAL22V10),
             "GAL20RA10" => Ok(Chip::GAL20RA10),
-            _ => Err(ErrorCode::BAD_GAL_TYPE),
+            _ => Err(ErrorCode::BadGALType),
         }
     }
 

@@ -163,7 +163,7 @@ impl GAL {
         for row in term.pins.iter() {
             if bounds.row_offset == bounds.max_row {
                 // too many ORs?
-                return Err(Error { code: ErrorCode::TOO_MANY_PRODUCTS, line: term.line_num });
+                return Err(Error { code: ErrorCode::TooManyProducts, line: term.line_num });
             }
 
             for input in row.iter() {
@@ -171,7 +171,7 @@ impl GAL {
 
                 // TODO: Should be part of set_and.
                 if pin_num as usize == self.chip.num_pins() || pin_num as usize == self.chip.num_pins() / 2 {
-                    return Err(Error { code: ErrorCode::BAD_POWER, line: term.line_num });
+                    return Err(Error { code: ErrorCode::BadPower, line: term.line_num });
                 }
 
                 if let Err(code) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg) {
@@ -269,7 +269,7 @@ impl GAL {
         let row_len = chip.num_cols();
         let column = match self.pin_to_column(pin_num) {
             Ok(x) => x,
-            Err(_) => return Err(ErrorCode::NOT_AN_INPUT),
+            Err(_) => return Err(ErrorCode::NotAnInput),
         };
 
         // Is it a registered OLMC pin?

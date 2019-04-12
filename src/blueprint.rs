@@ -62,14 +62,14 @@ impl Blueprint {
         match act_pin {
             PinOrArSp::Ar => {
                 if self.ar.is_some() {
-                    return Err(ErrorCode::REPEATED_AR_SP);
+                    return Err(ErrorCode::RepeatedARSP);
                 }
                 self.ar = Some(term);
                  Ok(())
             }
             PinOrArSp::Sp => {
                 if self.sp.is_some() {
-                    return Err(ErrorCode::REPEATED_AR_SP);
+                    return Err(ErrorCode::RepeatedARSP);
                 }
                 self.sp = Some(term);
                 Ok(())
@@ -77,7 +77,7 @@ impl Blueprint {
             PinOrArSp::Pin((act_pin, suffix)) => {
                 // Only pins with OLMCs may be outputs.
                 let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
-                    None => return Err(ErrorCode::NOT_AN_OUTPUT),
+                    None => return Err(ErrorCode::NotAnOutput),
                     Some(i) => i,
                 };
                 let olmc = &mut olmcs[olmc_num];
@@ -105,13 +105,13 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
         if pin.pin as usize == chip.num_pins() {
             // VCC
             if pin.neg {
-                return Err(ErrorCode::INVERTED_POWER);
+                return Err(ErrorCode::InvertedPower);
             }
             return Ok(gal::true_term(eqn.line_num));
         } else if pin.pin as usize == chip.num_pins() / 2 {
             // GND
             if pin.neg {
-                return Err(ErrorCode::INVERTED_POWER);
+                return Err(ErrorCode::InvertedPower);
             }
             return Ok(gal::false_term(eqn.line_num));
         }
