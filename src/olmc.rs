@@ -69,7 +69,7 @@ impl OLMC {
         self.pin_type = match suffix {
             Suffix::T => PinType::TRIOUT,
             Suffix::R => PinType::REGOUT,
-            Suffix::NONE => PinType::COMTRIOUT,
+            Suffix::None => PinType::COMTRIOUT,
             _ => panic!("Nope!"),
         };
 

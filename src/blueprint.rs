@@ -83,7 +83,7 @@ impl Blueprint {
                 let olmc = &mut olmcs[olmc_num];
 
                 match *suffix {
-                    Suffix::R | Suffix::T | Suffix::NONE =>
+                    Suffix::R | Suffix::T | Suffix::None =>
                         olmc.set_base(act_pin, term, *suffix),
                     Suffix::E =>
                         olmc.set_enable(gal, act_pin, term),

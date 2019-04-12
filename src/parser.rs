@@ -9,15 +9,14 @@ use std::fs;
 use std::iter::Peekable;
 
 #[derive(Debug)]
-pub struct PinName {
+pub struct NamedPin {
     pub name: String,
     pub neg: bool,
-    pub ext: Option<String>,
 }
 
 #[derive(Debug)]
 pub enum Token {
-    PinName(PinName),
+    Item((NamedPin, Suffix)),
     Equals,
     And,
     Or,
@@ -53,6 +52,18 @@ fn remove_comment<'a>((s, line): (&'a str, u32)) -> (&'a str, u32) {
     }, line)
 }
 
+fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
+    Ok(match s {
+        "T" => Suffix::T,
+        "R" => Suffix::R,
+        "E" => Suffix::E,
+        "CLK" => Suffix::CLK,
+        "APRST" => Suffix::APRST,
+        "ARST" => Suffix::ARST,
+        _ => return Err(ErrorCode::BadSuffix),
+   })
+}
+
 fn build_pin<I>(chars: &mut Peekable<I>) -> Result<Token, ErrorCode>
     where I: Iterator<Item = char>
 {
@@ -85,28 +96,26 @@ fn build_pin<I>(chars: &mut Peekable<I>) -> Result<Token, ErrorCode>
         }
     }
 
+    let named_pin = NamedPin { name: name, neg: neg };
+
     // Look for extension
-    let mut ext = None;
+    let mut suffix = Suffix::None;
     if chars.peek().map(|x| *x) == Some('.') {
         chars.next();
-        let mut ext_str = String::new();
+        let mut ext = String::new();
         loop {
             match chars.peek().map(|x| *x) {
                 Some(c) if c.is_ascii_alphanumeric() => {
                     chars.next();
-                    ext_str.push(c);
+                    ext.push(c);
                 }
                 _ => break,
             }
         }
-        ext = Some(ext_str);
+        suffix = ext_to_suffix(&ext)?;
     }
 
-    Ok(Token::PinName(PinName {
-        name: name,
-        neg: neg,
-        ext: ext,
-    }))
+    Ok(Token::Item((named_pin, suffix)))
 }
 
 fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
@@ -175,8 +184,8 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
                 }
                 for token in tokens.into_iter() {
                     match token {
-                        Token::PinName(name) => {
-                            if name.ext.is_none() {
+                        Token::Item((name, suffix)) => {
+                            if suffix == Suffix::None {
                                 pins.push((name.name, name.neg));
                             } else {
                                 return Err(Error { code: ErrorCode::BadPin, line: line });
@@ -193,23 +202,7 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
     Ok(pins)
 }
 
-fn ext_to_suffix(s: &Option<String>) -> Result<Suffix, ErrorCode> {
-   Ok(if let Some(s) = s {
-       match s.as_str() {
-           "T" => Suffix::T,
-           "R" => Suffix::R,
-           "E" => Suffix::E,
-           "CLK" => Suffix::CLK,
-           "APRST" => Suffix::APRST,
-           "ARST" => Suffix::ARST,
-           _ => return Err(ErrorCode::BadSuffix),
-       }
-   } else {
-       Suffix::NONE
-   })
-}
-
-fn lookup_pin(chip: Chip, pin_map: &HashMap<String, Pin>, pin_name: &PinName) -> Result<Pin, ErrorCode> {
+fn lookup_pin(chip: Chip, pin_map: &HashMap<String, Pin>, pin_name: &NamedPin) -> Result<Pin, ErrorCode> {
     let pin = pin_map.get(pin_name.name.as_str()).map(|x| *x).ok_or_else(|| {
         match pin_name.name.as_str() {
             "NC" => ErrorCode::BadNC,
@@ -225,16 +218,16 @@ fn lookup_pin(chip: Chip, pin_map: &HashMap<String, Pin>, pin_name: &PinName) ->
 fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<Pin, ErrorCode>
     where I: Iterator<Item=Token>
 {
-    let pin_name = match iter.next() {
-        Some(Token::PinName(pin_name)) => pin_name,
+    let (named_pin, suffix) = match iter.next() {
+        Some(Token::Item(item)) => item,
         _ => return Err(ErrorCode::BadToken),
     };
 
-    if pin_name.ext.is_some() {
+    if suffix != Suffix::None {
         return Err(ErrorCode::BadPin);
     }
 
-    lookup_pin(chip, &pin_map, &pin_name)
+    lookup_pin(chip, &pin_map, &named_pin)
 }
 
 pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
@@ -242,22 +235,21 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, li
     let mut token_iter = tokenise(line)?.into_iter();
 
     let lhs = match token_iter.next() {
-        Some(Token::PinName(pin_name)) => {
-            if chip == Chip::GAL22V10 && (pin_name.name == "AR" || pin_name.name == "SP") {
-                if pin_name.ext.is_some() {
+        Some(Token::Item((named_pin, suffix))) => {
+            if chip == Chip::GAL22V10 && (named_pin.name == "AR" || named_pin.name == "SP") {
+                if suffix != Suffix::None {
                     return Err(ErrorCode::ARSPSuffix);
                 }
-                if pin_name.neg {
+                if named_pin.neg {
                     return Err(ErrorCode::InvertedARSP);
                 }
-                if pin_name.name == "AR" {
+                if named_pin.name == "AR" {
                     LHS::Ar
                 } else {
                     LHS::Sp
                 }
             } else {
-                let pin = lookup_pin(chip, &pin_map, &pin_name)?;
-                let suffix = ext_to_suffix(&pin_name.ext)?;
+                let pin = lookup_pin(chip, &pin_map, &named_pin)?;
                 LHS::Pin((pin, suffix))
             }
         }

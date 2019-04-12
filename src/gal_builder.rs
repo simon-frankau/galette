@@ -15,7 +15,7 @@ pub use gal::Pin;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Suffix {
-     NONE,
+     None,
      T,
      R,
      E,
