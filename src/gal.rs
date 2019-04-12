@@ -7,6 +7,7 @@
 //
 
 use chips::Chip;
+use errors::at_line;
 use errors::Error;
 use errors::ErrorCode;
 
@@ -62,7 +63,7 @@ pub enum Mode {
 
 // Map input pin number to column within the fuse table. The mappings
 // depend on the mode settings for the GALxxV8s, so they're here rather
-// than in chips.rs. -1 if it can't be used.
+// than in chips.rs.
 
 const OUT: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput);
 const PWR: Result<i32, ErrorCode> = Err(ErrorCode::BadPower);
@@ -168,15 +169,11 @@ impl GAL {
         for row in term.pins.iter() {
             if bounds.row_offset == bounds.max_row {
                 // too many ORs?
-                return Err(Error { code: ErrorCode::TooManyProducts, line: term.line_num });
+                return at_line(term.line_num, Err(ErrorCode::TooManyProducts));
             }
 
             for input in row.iter() {
-                let pin_num = input.pin;
-
-                if let Err(code) = self.set_and(bounds.start_row + bounds.row_offset, pin_num as usize, input.neg) {
-                    return Err(Error { code: code, line: term.line_num });
-                }
+                at_line(term.line_num, self.set_and(bounds.start_row + bounds.row_offset, input.pin as usize, input.neg))?;
             }
 
             // Go to next row.

@@ -1,5 +1,6 @@
 use blueprint::Blueprint;
 use chips::Chip;
+use errors::at_line;
 use errors::Error;
 use errors::ErrorCode;
 use gal;
@@ -49,9 +50,7 @@ pub fn do_it_all(
 
     // Convert equations into data on the OLMCs.
     for eqn in eqns.iter() {
-        if let Err(err) = blueprint.add_equation(eqn, gal) {
-            return Err(Error { code: err, line: eqn.line_num });
-        }
+        at_line(eqn.line_num, blueprint.add_equation(eqn, gal))?;
     }
 
     // Complete second pass from in-memory structure.
@@ -114,13 +113,13 @@ pub fn do_stuff(
 fn check_gal20ra10(blueprint: &mut Blueprint) -> Result<(), Error> {
     for olmc in blueprint.olmcs.iter() {
         if let Some(term) = &olmc.clock {
-            return Err(Error { code: ErrorCode::DisallowedCLK, line: term.line_num });
+            return at_line(term.line_num, Err(ErrorCode::DisallowedCLK));
         }
         if let Some(term) = &olmc.arst {
-            return Err(Error { code: ErrorCode::DisallowedARST, line: term.line_num });
+            return at_line(term.line_num, Err(ErrorCode::DisallowedARST));
         }
         if let Some(term) = &olmc.aprst {
-            return Err(Error { code: ErrorCode::DisallowedAPRST, line: term.line_num });
+            return at_line(term.line_num, Err(ErrorCode::DisallowedAPRST));
         }
     }
     Ok(())
@@ -170,33 +169,33 @@ fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error>
 fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     for i in 0..blueprint.olmcs.len() {
         let bounds = gal.chip.get_bounds(i);
+        let olmc = &blueprint.olmcs[i];
 
-        match &blueprint.olmcs[i].output {
+        match &olmc.output {
             Some(term) => {
                 gal.add_term(&term, &Bounds { row_offset: 4, .. bounds })?;
             }
             None => gal.add_term(&gal::false_term(0), &bounds)?,
         }
 
-        if let Some(term) = &blueprint.olmcs[i].tri_con {
+        if let Some(term) = &olmc.tri_con {
             gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, .. bounds })?;
         }
 
-        if blueprint.olmcs[i].pin_type != PinType::UNDRIVEN {
-            if blueprint.olmcs[i].pin_type == PinType::REGOUT && blueprint.olmcs[i].clock.is_none() {
-                // return Err(format?("missing clock definition (.CLK) of registered output on pin {}", n + 14));
-                return Err(Error { code: ErrorCode::NoCLK, line: 0 }); // FIXME i + 14);
+        if olmc.pin_type != PinType::UNDRIVEN {
+            if olmc.pin_type == PinType::REGOUT && olmc.clock.is_none() {
+                return at_line(olmc.output.as_ref().unwrap().line_num, Err(ErrorCode::NoCLK));
             }
 
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
-            gal.add_term_opt(&blueprint.olmcs[i].clock, &clock_bounds)?;
+            gal.add_term_opt(&olmc.clock, &clock_bounds)?;
 
-            if blueprint.olmcs[i].pin_type == PinType::REGOUT {
+            if olmc.pin_type == PinType::REGOUT {
                 let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
-                gal.add_term_opt(&blueprint.olmcs[i].arst, &arst_bounds)?;
+                gal.add_term_opt(&olmc.arst, &arst_bounds)?;
 
                 let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
-                gal.add_term_opt(&blueprint.olmcs[i].aprst, &aprst_bounds)?;
+                gal.add_term_opt(&olmc.aprst, &aprst_bounds)?;
             }
         }
     }

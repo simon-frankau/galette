@@ -1,4 +1,5 @@
 use chips::Chip;
+use errors::at_line;
 use errors::Error;
 use errors::ErrorCode;
 use gal::Pin;
@@ -147,10 +148,6 @@ fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
             None => return Ok(res),
         }
     }
-}
-
-fn at_line<Val>(line: u32, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
-   res.map_err(|e| Error { code: e, line: line })
 }
 
 pub fn parse_gal_type<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
