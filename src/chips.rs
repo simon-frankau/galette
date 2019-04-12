@@ -7,8 +7,6 @@
 
 use errors::ErrorCode;
 
-// TODO: Make sure all the 'pub' methods are used.
-
 // 'Bounds' encodes the range of rows that can be used to encode a
 // particular term. It is returned by 'get_bounds'.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -143,10 +141,6 @@ impl Chip {
         self.get_chip_data().num_pins
     }
 
-    pub fn num_rows(&self) -> usize {
-        self.get_chip_data().num_rows
-    }
-
     pub fn num_cols(&self) -> usize {
         self.get_chip_data().num_cols
     }
@@ -180,11 +174,6 @@ impl Chip {
         data.max_olmc_pin - data.min_olmc_pin + 1
     }
 
-    // First row number in the fuse table for the rows associated with an OLMC.
-    pub fn start_row_for_olmc(&self, olmc_num: usize) -> usize {
-        self.get_chip_data().olmc_map[olmc_num] as usize
-    }
-
     // Not everything is easiest driven off a table...
     pub fn num_rows_for_olmc(&self, olmc_num: usize) -> usize {
         if *self == Chip::GAL22V10 {
@@ -197,7 +186,7 @@ impl Chip {
 
     pub fn get_bounds(&self, olmc_num: usize) -> Bounds {
         Bounds {
-            start_row: self.start_row_for_olmc(olmc_num),
+            start_row: self.get_chip_data().olmc_map[olmc_num] as usize,
             max_row: self.num_rows_for_olmc(olmc_num),
             row_offset: 0
         }

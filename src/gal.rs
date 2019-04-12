@@ -17,7 +17,7 @@ pub use chips::Bounds;
 // pin (represented by pin number).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pin {
-    pub pin: u32,
+    pub pin: usize,
     pub neg: bool,
 }
 
@@ -111,7 +111,6 @@ const PIN_TO_COL_20RA10: [Result<i32, ErrorCode>; 24] = [
 impl GAL {
     // Generate an empty fuse structure.
     pub fn new(gal_type: Chip) -> GAL {
-
         let fuse_size = gal_type.logic_size();
         let num_olmcs = gal_type.num_olmcs();
 
@@ -173,7 +172,7 @@ impl GAL {
             }
 
             for input in row.iter() {
-                at_line(term.line_num, self.set_and(bounds.start_row + bounds.row_offset, input.pin as usize, input.neg))?;
+                at_line(term.line_num, self.set_and(bounds.start_row + bounds.row_offset, input.pin, input.neg))?;
             }
 
             // Go to next row.

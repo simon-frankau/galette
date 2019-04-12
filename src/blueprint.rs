@@ -51,7 +51,7 @@ impl Blueprint {
         // Mark all OLMCs that are inputs to other equations as providing feedback.
         // (Note they may actually be used as undriven inputs.)
         for input in eqn.rhs.iter() {
-            if let Some(i) = gal.chip.pin_to_olmc(input.pin as usize) {
+            if let Some(i) = gal.chip.pin_to_olmc(input.pin) {
                 olmcs[i].feedback = true;
             }
         }
@@ -76,7 +76,7 @@ impl Blueprint {
             }
             LHS::Pin((act_pin, suffix)) => {
                 // Only pins with OLMCs may be outputs.
-                let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin as usize) {
+                let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin) {
                     None => return Err(ErrorCode::NotAnOutput),
                     Some(i) => i,
                 };
@@ -102,13 +102,13 @@ impl Blueprint {
 fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
     if eqn.rhs.len() == 1 {
         let pin = &eqn.rhs[0];
-        if pin.pin as usize == chip.num_pins() {
+        if pin.pin == chip.num_pins() {
             // VCC
             if pin.neg {
                 return Err(ErrorCode::InvertedPower);
             }
             return Ok(gal::true_term(eqn.line_num));
-        } else if pin.pin as usize == chip.num_pins() / 2 {
+        } else if pin.pin == chip.num_pins() / 2 {
             // GND
             if pin.neg {
                 return Err(ErrorCode::InvertedPower);
