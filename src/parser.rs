@@ -79,9 +79,8 @@ struct LineTrackingIterator<I> {
     iter: I,
     // I can't think of a better way to keep access to this once this
     // iterator gets wrapped in others, than to use a RefCell.
-    line_num: Rc<RefCell<u32>>,
+    line_num_ref: Rc<RefCell<u32>>,
 }
-
 
 impl<I: Iterator> Iterator for LineTrackingIterator<I> {
     type Item = I::Item;
@@ -90,7 +89,7 @@ impl<I: Iterator> Iterator for LineTrackingIterator<I> {
         let res = self.iter.next();
 
         if res.is_some() {
-            *self.line_num.borrow_mut() += 1;
+            *self.line_num_ref.borrow_mut() += 1;
         }
 
         res
@@ -101,12 +100,22 @@ impl<I: Iterator> LineTrackingIterator<I> {
     fn new(iter: I) -> LineTrackingIterator<I> {
         LineTrackingIterator {
             iter: iter,
-            line_num: Rc::new(RefCell::new(0)),
+            line_num_ref: Rc::new(RefCell::new(0)),
         }
     }
 
-    fn line_num(&self) -> Rc<RefCell<u32>> {
-        self.line_num.clone()
+    fn line_num(&self) -> LineNumber {
+        LineNumber { line_num_ref: self.line_num_ref.clone() }
+    }
+}
+
+struct LineNumber {
+    line_num_ref: Rc<RefCell<u32>>,
+}
+
+impl LineNumber {
+    fn get(&self) -> u32 {
+        *self.line_num_ref.borrow()
     }
 }
 
@@ -380,7 +389,7 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
     Ok(pin_map)
 }
 
-fn parse_stuff2<'a, I>(mut line_iter: I, line_ref: &Rc<RefCell<u32>>) -> Result<Content, ErrorCode>
+fn parse_stuff2<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content, ErrorCode>
     where I: Iterator<Item = &'a str>
 {
     let gal_type = parse_gal_type(&mut line_iter)?;
@@ -397,7 +406,7 @@ fn parse_stuff2<'a, I>(mut line_iter: I, line_ref: &Rc<RefCell<u32>>) -> Result<
     let pin_map = build_pin_map(gal_type, &pins)?;
 
     let equations = line_iter
-        .map(|s| parse_equation(gal_type, &pin_map, s, *line_ref.borrow()))
+        .map(|s| parse_equation(gal_type, &pin_map, s, line_num.get()))
         .collect::<Result<Vec<Equation>, ErrorCode>>()?;
 
     Ok(Content{
@@ -411,6 +420,6 @@ fn parse_stuff2<'a, I>(mut line_iter: I, line_ref: &Rc<RefCell<u32>>) -> Result<
 pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
     let data = fs::read_to_string(file_name).expect("Unable to read file");
     let line_iter = LineTrackingIterator::new(data.lines());
-    let line_num_ref = line_iter.line_num();
-    parse_stuff2(line_iter, &line_num_ref).map_err(|e| Error { code: e, line: *line_num_ref.borrow() })
+    let line_num = line_iter.line_num();
+    parse_stuff2(line_iter, &line_num).map_err(|e| Error { code: e, line: line_num.get() })
 }
