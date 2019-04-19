@@ -6,7 +6,6 @@ use gal::GAL;
 use gal::Term;
 use olmc;
 use olmc::OLMC;
-use olmc::Output;
 use parser::Equation;
 use parser::LHS;
 
@@ -23,7 +22,7 @@ impl Blueprint {
         // Set up OLMCs.
         let olmcs = vec!(OLMC {
             active: olmc::Active::LOW,
-            output: Output::Undriven,
+            output: None,
             tri_con: None,
             clock: None,
             arst: None,

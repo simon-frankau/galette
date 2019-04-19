@@ -8,12 +8,10 @@ use gal::Term;
 use parser::Suffix;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Output {
-    Undriven,
-    ComOut(gal::Term),
-    TriOut(gal::Term),
-    RegOut(gal::Term),
-    ComTriOut(gal::Term),
+pub enum OutMode {
+    ComOut,
+    TriOut,
+    RegOut,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -25,7 +23,7 @@ pub enum Active {
 #[derive(Clone, Debug)]
 pub struct OLMC {
     pub active: Active,
-    pub output: Output,
+    pub output: Option<(OutMode, gal::Term)>,
     pub tri_con: Option<gal::Term>,
     pub clock: Option<gal::Term>,
     pub arst: Option<gal::Term>,
@@ -36,15 +34,6 @@ pub struct OLMC {
 ////////////////////////////////////////////////////////////////////////
 // Build OLMCs
 
-// Pin types:
-// NOT USED (Can also be only used as input)
-//  -> TriOut - tristate
-//  -> RegOut - registered
-//  -> ComTriOut - combinatorial, might be tristated.
-//     analysed to:
-//     -> ComOut
-//     -> TriOut
-
 impl OLMC {
     pub fn set_base(
         &mut self,
@@ -52,17 +41,17 @@ impl OLMC {
         term: Term,
         suffix: Suffix,
     ) -> Result<(), ErrorCode> {
-        if self.output != Output::Undriven {
+        if self.output.is_some() {
             // Previously defined, so error out.
             return Err(ErrorCode::RepeatedOutput);
         }
 
-        self.output = match suffix {
-            Suffix::T => Output::TriOut(term),
-            Suffix::R => Output::RegOut(term),
-            Suffix::None => Output::ComTriOut(term),
+        self.output = Some((match suffix {
+            Suffix::T => OutMode::TriOut,
+            Suffix::R => OutMode::RegOut,
+            Suffix::None => OutMode::ComOut,
             _ => panic!("Nope!"),
-        };
+        }, term));
 
         self.active = if act_pin.neg {
             Active::LOW
@@ -90,13 +79,13 @@ impl OLMC {
         self.tri_con = Some(term);
 
         match self.output {
-            Output::Undriven => return Err(ErrorCode::PrematureENABLE),
-            Output::RegOut(_) => {
+            None => return Err(ErrorCode::PrematureENABLE),
+            Some((OutMode::RegOut, _)) => {
                 if gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8 {
                     return Err(ErrorCode::TristateReg);
                 }
             }
-            Output::ComTriOut(_) => return Err(ErrorCode::UnmatchedTristate),
+            Some((OutMode::ComOut, _)) => return Err(ErrorCode::UnmatchedTristate),
             _ => {}
         }
 
@@ -113,8 +102,8 @@ impl OLMC {
         }
 
         match self.output {
-            Output::Undriven => return Err(ErrorCode::PrematureCLK),
-            Output::RegOut(_) => {}
+            None => return Err(ErrorCode::PrematureCLK),
+            Some((OutMode::RegOut, _)) => {}
             _ => return Err(ErrorCode::InvalidControl),
         }
 
@@ -136,8 +125,8 @@ impl OLMC {
         }
 
         match self.output {
-            Output::Undriven => return Err(ErrorCode::PrematureARST),
-            Output::RegOut(_) => {}
+            None => return Err(ErrorCode::PrematureARST),
+            Some((OutMode::RegOut, _)) => {}
             _ => return Err(ErrorCode::InvalidControl),
         };
 
@@ -159,8 +148,8 @@ impl OLMC {
         }
 
         match self.output {
-            Output::Undriven => return Err(ErrorCode::PrematureAPRST),
-            Output::RegOut(_) => {}
+            None => return Err(ErrorCode::PrematureAPRST),
+            Some((OutMode::RegOut, _)) => {}
             _ => return Err(ErrorCode::InvalidControl),
         }
 
@@ -186,13 +175,13 @@ pub fn analyse_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
 pub fn get_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
     // If there's a registered pin, it's mode 3.
     for n in 0..8 {
-        if let Output::RegOut(_) = olmcs[n].output  {
+        if let Some((OutMode::RegOut, _)) = olmcs[n].output  {
             return Mode::Mode3;
         }
     }
     // If there's a tristate, it's mode 2.
     for n in 0..8 {
-        if let Output::TriOut(_) = olmcs[n].output {
+        if let Some((OutMode::TriOut, _)) = olmcs[n].output {
             return Mode::Mode2;
         }
     }
@@ -200,7 +189,7 @@ pub fn get_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
     let chip = gal.chip;
     for n in 0..8 {
         // Some pins cannot be used as input or feedback.
-        if olmcs[n].feedback && olmcs[n].output == Output::Undriven {
+        if olmcs[n].feedback && olmcs[n].output.is_none() {
             if chip == Chip::GAL16V8 {
                 let pin_num = n + 12;
                 if pin_num == 15 || pin_num == 16 {
@@ -216,7 +205,7 @@ pub fn get_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
         }
         // Other pins cannot be used as feedback.
         if olmcs[n].feedback {
-            if let Output::ComTriOut(_) = olmcs[n].output {
+            if let Some((OutMode::ComOut, _)) = olmcs[n].output {
                 return Mode::Mode2;
             }
         }
@@ -232,7 +221,7 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
 
             for n in 0..8 {
                 // Copy the term out, if it's there.
-                let term = if let Output::ComTriOut(ref term) = olmcs[n].output {
+                let term = if let Some((OutMode::ComOut, ref term)) = olmcs[n].output {
                     Some(term.clone())
                 } else {
                     None
@@ -241,9 +230,9 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
                 // And update based on the copied term.
                 if let Some(term) = term {
                     if mode == Mode::Mode1 {
-                        olmcs[n].output = Output::ComOut(term.clone());
+                        olmcs[n].output = Some((OutMode::ComOut, term.clone()));
                     } else {
-                        olmcs[n].output = Output::TriOut(term.clone());
+                        olmcs[n].output = Some((OutMode::TriOut, term.clone()));
                         // Set to VCC.
                         olmcs[n].tri_con = Some(gal::true_term(term.line_num));
                     }
@@ -258,8 +247,8 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
 
             for n in 0..8 {
                 if match olmcs[n].output {
-                    Output::Undriven => olmcs[n].feedback,
-                    Output::TriOut(_) => true,
+                    None => olmcs[n].feedback,
+                    Some((OutMode::TriOut, _)) => true,
                     _ => false,
                 } {
                     gal.ac1[7 - n] = true;
@@ -267,7 +256,7 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
             }
 
             for n in 0..8 {
-                if olmcs[n].output != Output::Undriven && olmcs[n].active == Active::HIGH {
+                if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
                     gal.xor[7 - n] = true;
                 }
             }
@@ -277,23 +266,23 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
 
         Chip::GAL22V10 => {
             for n in 0..10 {
-                let term = if let Output::ComTriOut(ref term) = olmcs[n].output {
+                let term = if let Some((OutMode::ComOut, ref term)) = olmcs[n].output {
                     Some(term.clone())
                 } else {
                     None
                 };
 
                 if let Some(term) = term {
-                    olmcs[n].output = Output::TriOut(term.clone());
+                    olmcs[n].output = Some((OutMode::TriOut, term.clone()));
                 }
 
-                if olmcs[n].output != Output::Undriven && olmcs[n].active == Active::HIGH {
+                if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
                     gal.xor[9 - n] = true;
                 }
 
                 if match olmcs[n].output {
-                    Output::Undriven => olmcs[n].feedback,
-                    Output::TriOut(_) => true,
+                    None => olmcs[n].feedback,
+                    Some((OutMode::TriOut, _)) => true,
                     _ => false,
                 } {
                     gal.s1[9 - n] = true;
@@ -303,17 +292,17 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
 
         Chip::GAL20RA10 => {
             for n in 0..10 {
-                let term = if let Output::ComTriOut(ref term) = olmcs[n].output {
+                let term = if let Some((OutMode::ComOut, ref term)) = olmcs[n].output {
                     Some(term.clone())
                 } else {
                     None
                 };
 
                 if let Some(term) = term {
-                    olmcs[n].output = Output::TriOut(term.clone());
+                    olmcs[n].output = Some((OutMode::TriOut, term.clone()));
                 }
 
-                if olmcs[n].output != Output::Undriven && olmcs[n].active == Active::HIGH {
+                if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
                     gal.xor[9 - n] = true;
                 }
             }

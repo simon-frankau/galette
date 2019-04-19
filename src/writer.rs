@@ -2,7 +2,6 @@ use chips::Chip;
 use gal::GAL;
 use gal::Mode;
 use olmc::OLMC;
-use olmc::Output;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
@@ -119,12 +118,10 @@ fn make_pin(gal: &GAL, pin_names: &[&str], olmcs: &[OLMC]) -> String {
 
         if let Some(olmc) = gal_type.pin_to_olmc(n) {
             let olmc = &olmcs[olmc];
-            if olmc.output != Output::Undriven || !olmc.feedback {
-                if olmc.output != Output::Undriven {
-                    buf.push_str("| Output\n");
-                } else {
-                    buf.push_str("| NC\n");
-                }
+            if olmc.output.is_some() {
+                buf.push_str("| Output\n");
+            } else if !olmc.feedback {
+                buf.push_str("| NC\n");
             } else {
                 buf.push_str("| Input\n");
             }
