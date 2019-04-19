@@ -1,3 +1,10 @@
+//
+// blueprint.rs: Assembly-ready representation
+//
+// Blueprint is an intermediate form where the initial equations are
+// converted into a form that are ready to be made into fuse maps.
+// Each output pin is configured via an "OLMC" data structure.
+//
 use chips::Chip;
 use errors;
 use errors::Error;
@@ -61,12 +68,8 @@ impl Blueprint {
     }
 
     // Add an equation to the blueprint, steering it to the appropriate OLMC.
-    pub fn add_equation(
-        &mut self,
-        eqn: &Equation,
-    ) -> Result<(), ErrorCode> {
+    pub fn add_equation(&mut self, eqn: &Equation) -> Result<(), ErrorCode> {
         let olmcs = &mut self.olmcs;
-        let act_pin = &eqn.lhs;
 
         // Mark all OLMCs that are inputs to other equations as providing feedback.
         // (Note they may actually be used as undriven inputs.)
@@ -79,49 +82,53 @@ impl Blueprint {
         let term = eqn_to_term(self.chip, &eqn)?;
 
         // AR/SP special cases:
-        match act_pin {
+        match eqn.lhs {
             LHS::Ar => {
                 if self.ar.is_some() {
                     return Err(ErrorCode::RepeatedARSP);
                 }
                 self.ar = Some(term);
-                 Ok(())
             }
             LHS::Sp => {
                 if self.sp.is_some() {
                     return Err(ErrorCode::RepeatedARSP);
                 }
                 self.sp = Some(term);
-                Ok(())
             }
-            LHS::Pin((act_pin, suffix)) => {
+            LHS::Pin((pin, suffix)) => {
                 // Only pins with OLMCs may be outputs.
-                let olmc_num = match self.chip.pin_to_olmc(act_pin.pin) {
-                    None => return Err(ErrorCode::NotAnOutput),
-                    Some(i) => i,
-                };
+                let olmc_num = self.chip
+                    .pin_to_olmc(pin.pin)
+                    .ok_or(ErrorCode::NotAnOutput)?;
                 let olmc = &mut olmcs[olmc_num];
 
-                match *suffix {
-                    Suffix::R | Suffix::T | Suffix::None =>
-                        olmc.set_base(act_pin, term, *suffix),
+                match suffix {
+                    Suffix::R =>
+                        olmc.set_base(&pin, term, PinMode::Registered),
+                    Suffix::None =>
+                        olmc.set_base(&pin, term, PinMode::Combinatorial),
+                    Suffix::T =>
+                        olmc.set_base(&pin, term, PinMode::Tristate),
                     Suffix::E =>
-                        olmc.set_enable(self.chip, act_pin, term),
+                        olmc.set_enable(&pin, term, self.chip),
                     Suffix::CLK =>
-                        olmc.set_clock(act_pin, term),
+                        olmc.set_clock(&pin, term),
                     Suffix::ARST =>
-                        olmc.set_arst(act_pin, term),
+                        olmc.set_arst(&pin, term),
                     Suffix::APRST =>
-                        olmc.set_aprst(act_pin, term),
-                }
+                        olmc.set_aprst(&pin, term),
+                }?;
             }
         }
+
+        Ok(())
     }
 }
 
 // Convert an Equation, which is close to the input syntax, into a
 // Term, which is close to the fuse map representation.
 fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
+    // Special case for constant true or false.
     if eqn.rhs.len() == 1 {
         let pin = &eqn.rhs[0];
         if pin.pin == chip.num_pins() {
@@ -139,6 +146,7 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
         }
     }
 
+    // Create a list of OR'd terms, each team being a group of AND'd terms.
     let mut ors = Vec::new();
     let mut ands = Vec::new();
 
@@ -186,25 +194,14 @@ pub enum PinMode {
 }
 
 impl OLMC {
-    pub fn set_base(
-        &mut self,
-        act_pin: &Pin,
-        term: Term,
-        suffix: Suffix,
-    ) -> Result<(), ErrorCode> {
+    pub fn set_base(&mut self, pin: &Pin, term: Term, pin_mode: PinMode) -> Result<(), ErrorCode> {
         if self.output.is_some() {
             // Previously defined, so error out.
             return Err(ErrorCode::RepeatedOutput);
         }
+        self.output = Some((pin_mode, term));
 
-        self.output = Some((match suffix {
-            Suffix::T => PinMode::Tristate,
-            Suffix::R => PinMode::Registered,
-            Suffix::None => PinMode::Combinatorial,
-            _ => panic!("Nope!"),
-        }, term));
-
-        self.active = if act_pin.neg {
+        self.active = if pin.neg {
             Active::Low
         } else {
             Active::High
@@ -213,22 +210,17 @@ impl OLMC {
         Ok(())
     }
 
-    pub fn set_enable(
-        &mut self,
-        chip: Chip,
-        act_pin: &Pin,
-        term: Term,
-    ) -> Result<(), ErrorCode> {
-        if act_pin.neg {
+    pub fn set_enable(&mut self, pin: &Pin, term: Term, chip: Chip) -> Result<(), ErrorCode> {
+        if pin.neg {
             return Err(ErrorCode::InvertedControl);
         }
 
         if self.tri_con != None {
             return Err(ErrorCode::RepeatedTristate);
         }
-
         self.tri_con = Some(term);
 
+        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
         match self.output {
             None => return Err(ErrorCode::PrematureENABLE),
             Some((PinMode::Registered, _)) => {
@@ -243,19 +235,9 @@ impl OLMC {
         Ok(())
     }
 
-    pub fn set_clock(
-        &mut self,
-        act_pin: &Pin,
-        term: Term,
-    ) -> Result<(), ErrorCode> {
-        if act_pin.neg {
+    pub fn set_clock(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
+        if pin.neg {
             return Err(ErrorCode::InvertedControl);
-        }
-
-        match self.output {
-            None => return Err(ErrorCode::PrematureCLK),
-            Some((PinMode::Registered, _)) => {}
-            _ => return Err(ErrorCode::InvalidControl),
         }
 
         if self.clock.is_some() {
@@ -263,51 +245,52 @@ impl OLMC {
         }
         self.clock = Some(term);
 
+        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
+        match self.output {
+            None => return Err(ErrorCode::PrematureCLK),
+            Some((PinMode::Registered, _)) => {}
+            _ => return Err(ErrorCode::InvalidControl),
+        }
+
         Ok(())
     }
 
-    pub fn set_arst(
-        &mut self,
-        act_pin: &Pin,
-        term: Term
-    ) -> Result<(), ErrorCode> {
-        if act_pin.neg {
+    pub fn set_arst(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
+        if pin.neg {
             return Err(ErrorCode::InvertedControl);
         }
-
-        match self.output {
-            None => return Err(ErrorCode::PrematureARST),
-            Some((PinMode::Registered, _)) => {}
-            _ => return Err(ErrorCode::InvalidControl),
-        };
 
         if self.arst.is_some() {
             return Err(ErrorCode::RepeatedARST);
         }
         self.arst = Some(term);
 
+        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
+        match self.output {
+            None => return Err(ErrorCode::PrematureARST),
+            Some((PinMode::Registered, _)) => {}
+            _ => return Err(ErrorCode::InvalidControl),
+        };
+
         Ok(())
     }
 
-    pub fn set_aprst(
-        &mut self,
-        act_pin: &Pin,
-        term: Term,
-    ) -> Result<(), ErrorCode> {
-        if act_pin.neg {
+    pub fn set_aprst(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
+        if pin.neg {
             return Err(ErrorCode::InvertedControl);
-        }
-
-        match self.output {
-            None => return Err(ErrorCode::PrematureAPRST),
-            Some((PinMode::Registered, _)) => {}
-            _ => return Err(ErrorCode::InvalidControl),
         }
 
         if self.aprst.is_some() {
             return Err(ErrorCode::RepeatedAPRST);
         }
         self.aprst = Some(term);
+
+        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
+        match self.output {
+            None => return Err(ErrorCode::PrematureAPRST),
+            Some((PinMode::Registered, _)) => {}
+            _ => return Err(ErrorCode::InvalidControl),
+        }
 
         Ok(())
     }

@@ -6,7 +6,13 @@ programmer.
 
 ## Usage
 
-TODO!
+The input file format is a slightly relaxed version of the GALasm
+format. The "DESCRIPTION" section at the end is now optional.
+
+TODO:
+
+ * Should not be equation-line-order dependent.
+ * This section should explain command-line invocation.
 
 ## Background
 
@@ -35,6 +41,7 @@ Running from the lowest layer of dependency to the highest, we have:
  * **chips.rs** An abstraction layer over the different GAL types.
  * **gal.rs** Contains the GAL structure with is programmed with fuse data.
  * **parser.rs** Parse the input file format.
+ * **blueprint.rs** Convert input to a normalised form to build fuses from.
 
 ## TODOs
 
@@ -43,7 +50,6 @@ Running from the lowest layer of dependency to the highest, we have:
  * Set of test cases
 
 
-blueprint.rs
 gal_builder.rs
 interop.rs
 jedec_writer.rs
