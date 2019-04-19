@@ -34,12 +34,12 @@ Running from the lowest layer of dependency to the highest, we have:
  * **errors.rs** Error codes used by everything else.
  * **chips.rs** An abstraction layer over the different GAL types.
  * **gal.rs** Contains the GAL structure with is programmed with fuse data.
+ * **parser.rs** Parse the input file format.
 
 ## TODOs
 
  * Better documentation. :)
  * Better error-handling
- * Built in parser
  * Set of test cases
 
 
@@ -49,5 +49,4 @@ interop.rs
 jedec_writer.rs
 lib.rs
 olmc.rs
-parser.rs
 writer.rs

@@ -25,7 +25,7 @@ pub extern "C" fn do_stuff_c(
     let file_name = file_name.to_str().unwrap();
 
     println!("Assembler Phase 1 for \"{}\"", file_name);
-    let c = match parser::parse_stuff(file_name) {
+    let c = match parser::parse(file_name) {
         Ok(c) => c,
         Err(e) => { errors::print_error(e); return 1; }
     };

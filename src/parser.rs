@@ -2,7 +2,9 @@
 // parser.rs: Input parser
 //
 // Read the galasm-style input, and convert it to a 'Content'
-// structure which feeds the rest of the pipeline.
+// structure which feeds the rest of the pipeline. We check the special
+// pin names meet the conventions, and the right number of pins are
+// present, but try to leave other checks for later in the pipeline.
 //
 
 use chips::Chip;
@@ -120,14 +122,94 @@ impl LineNumber {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// 
+// Input tokenisation
 //
 
-fn remove_comment<'a>(s: &'a str) -> &'a str {
-    match s.find(';') {
-        Some(i) => &s[..i],
-        None => s,
+// Tokenise a full line.
+fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
+    let mut res = Vec::new();
+    let mut chars = s.chars().peekable();
+    loop {
+        match chars.peek().cloned() {
+            Some(c) => match c {
+                '=' => {
+                    chars.next();
+                    res.push(Token::Equals);
+                }
+                '+' | '#' => {
+                    chars.next();
+                    res.push(Token::Or);
+                }
+                '*' | '&' => {
+                    chars.next();
+                    res.push(Token::And);
+                }
+                '/' => res.push(tokenise_pin(&mut chars)?),
+                c if c.is_ascii_alphabetic() => res.push(tokenise_pin(&mut chars)?),
+                c if c.is_whitespace() => {
+                    chars.next();
+                    ()
+                }
+                _ => return Err(ErrorCode::BadChar),
+            }
+            None => return Ok(res),
+        }
     }
+}
+
+// Tokenise a single pin name.
+fn tokenise_pin<I>(chars: &mut Peekable<I>) -> Result<Token, ErrorCode>
+    where I: Iterator<Item = char>
+{
+    let mut name = String::new();
+    let mut neg = false;
+
+    // Look for a negation prefix.
+    if chars.peek() == Some(&'/') {
+        chars.next();
+        neg = true;
+    }
+
+    // First character must be alphabetic
+    match chars.peek().cloned() {
+        Some(c) if c.is_ascii_alphabetic() => {
+            chars.next();
+            name.push(c);
+        }
+        _ => return Err(ErrorCode::NoPinName),
+    }
+
+    // Body is alphanumeric
+    loop {
+        match chars.peek().cloned() {
+            Some(c) if c.is_ascii_alphanumeric() => {
+                chars.next();
+                name.push(c);
+            }
+            _ => break,
+        }
+    }
+
+    let named_pin = NamedPin { name: name, neg: neg };
+
+    // Look for extension
+    let mut suffix = Suffix::None;
+    if chars.peek().cloned() == Some('.') {
+        chars.next();
+        let mut ext = String::new();
+        loop {
+            match chars.peek().cloned() {
+                Some(c) if c.is_ascii_alphanumeric() => {
+                    chars.next();
+                    ext.push(c);
+                }
+                _ => break,
+            }
+        }
+        suffix = ext_to_suffix(&ext)?;
+    }
+
+    Ok(Token::Item((named_pin, suffix)))
 }
 
 fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
@@ -142,88 +224,13 @@ fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
    })
 }
 
-fn build_pin<I>(chars: &mut Peekable<I>) -> Result<Token, ErrorCode>
-    where I: Iterator<Item = char>
-{
-    let mut name = String::new();
-    let mut neg = false;
+////////////////////////////////////////////////////////////////////////
+// Functions to extract specific elements.
 
-    // Look for a negation prefix.
-    if chars.peek() == Some(&'/') {
-        chars.next();
-        neg = true;
-    }
-
-    // First character must be alphabetic
-    match chars.peek().map(|x| *x) {
-        Some(c) if c.is_ascii_alphabetic() => {
-            chars.next();
-            name.push(c);
-        }
-        _ => return Err(ErrorCode::NoPinName),
-    }
-
-    // Body is alphanumeric
-    loop {
-        match chars.peek().map(|x| *x) {
-            Some(c) if c.is_ascii_alphanumeric() => {
-                chars.next();
-                name.push(c);
-            }
-            _ => break,
-        }
-    }
-
-    let named_pin = NamedPin { name: name, neg: neg };
-
-    // Look for extension
-    let mut suffix = Suffix::None;
-    if chars.peek().map(|x| *x) == Some('.') {
-        chars.next();
-        let mut ext = String::new();
-        loop {
-            match chars.peek().map(|x| *x) {
-                Some(c) if c.is_ascii_alphanumeric() => {
-                    chars.next();
-                    ext.push(c);
-                }
-                _ => break,
-            }
-        }
-        suffix = ext_to_suffix(&ext)?;
-    }
-
-    Ok(Token::Item((named_pin, suffix)))
-}
-
-fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
-    let mut res = Vec::new();
-    let mut chars = s.chars().peekable();
-    loop {
-        match chars.peek().map(|x| *x) {
-            Some(c) => match c {
-                '=' => {
-                    chars.next();
-                    res.push(Token::Equals);
-                }
-                '+' | '#' => {
-                    chars.next();
-                    res.push(Token::Or);
-                }
-                '*' | '&' => {
-                    chars.next();
-                    res.push(Token::And);
-                }
-                '/' => res.push(build_pin(&mut chars)?),
-                c if c.is_ascii_alphabetic() => res.push(build_pin(&mut chars)?),
-                c if c.is_whitespace() => {
-                    chars.next();
-                    ()
-                }
-                _ => return Err(ErrorCode::BadChar),
-            }
-            None => return Ok(res),
-        }
+fn remove_comment<'a>(s: &'a str) -> &'a str {
+    match s.find(';') {
+        Some(i) => &s[..i],
+        None => s,
     }
 }
 
@@ -277,7 +284,7 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
 }
 
 fn lookup_pin(chip: Chip, pin_map: &HashMap<String, Pin>, pin_name: &NamedPin) -> Result<Pin, ErrorCode> {
-    let pin = pin_map.get(pin_name.name.as_str()).map(|x| *x).ok_or_else(|| {
+    let pin = pin_map.get(pin_name.name.as_str()).ok_or_else(|| {
         match pin_name.name.as_str() {
             "NC" => ErrorCode::BadNC,
             "AR" if chip == Chip::GAL22V10 => ErrorCode::BadARSP,
@@ -289,6 +296,7 @@ fn lookup_pin(chip: Chip, pin_map: &HashMap<String, Pin>, pin_name: &NamedPin) -
     Ok(Pin { pin: pin.pin, neg: pin.neg != pin_name.neg })
 }
 
+// Read a pin on the RHS (where suffices are not allowed), and convert to pin number.
 fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<Pin, ErrorCode>
     where I: Iterator<Item=Token>
 {
@@ -304,11 +312,11 @@ fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Res
     lookup_pin(chip, &pin_map, &named_pin)
 }
 
-pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
+// Parse and check the LHS (where suffices are allowed, but there are other constraints)
+fn parse_lhs<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<LHS, ErrorCode>
+    where I: Iterator<Item=Token>
 {
-    let mut token_iter = tokenise(line)?.into_iter();
-
-    let lhs = match token_iter.next() {
+    Ok(match iter.next() {
         Some(Token::Item((named_pin, suffix))) => {
             if chip == Chip::GAL22V10 && (named_pin.name == "AR" || named_pin.name == "SP") {
                 if suffix != Suffix::None {
@@ -328,25 +336,32 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, li
             }
         }
         _ => return Err(ErrorCode::BadToken),
-    };
+    })
+}
 
-    match token_iter.next() {
+pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, line_num: u32) -> Result<Equation, ErrorCode>
+{
+    let mut iter = tokenise(line)?.into_iter();
+
+    let lhs = parse_lhs(chip, &pin_map, &mut iter)?;
+
+    match iter.next() {
         Some(Token::Equals) => (),
         _ => return Err(ErrorCode::NoEquals),
     }
 
-    let mut rhs = vec![parse_pin(chip, &pin_map, &mut token_iter)?];
+    let mut rhs = vec![parse_pin(chip, &pin_map, &mut iter)?];
     let mut is_or = vec![false];
 
     loop {
-        match token_iter.next() {
+        match iter.next() {
             Some(Token::And) => {
                 is_or.push(false);
-                rhs.push(parse_pin(chip, &pin_map, &mut token_iter)?);
+                rhs.push(parse_pin(chip, &pin_map, &mut iter)?);
             }
             Some(Token::Or) => {
                 is_or.push(true);
-                rhs.push(parse_pin(chip, &pin_map, &mut token_iter)?);
+                rhs.push(parse_pin(chip, &pin_map, &mut iter)?);
             }
             None => break,
             _ => return Err(ErrorCode::BadToken),
@@ -378,7 +393,7 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
                 return Err(ErrorCode::RepeatedPinName);
             }
 
-            if gal_type == Chip::GAL22V10 && (name =="AR" || name == "SP") {
+            if gal_type == Chip::GAL22V10 && (name == "AR" || name == "SP") {
                 return Err(ErrorCode::ARSPAsPinName);
             }
 
@@ -389,13 +404,15 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
     Ok(pin_map)
 }
 
-fn parse_stuff2<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content, ErrorCode>
+fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content, ErrorCode>
     where I: Iterator<Item = &'a str>
 {
     let gal_type = parse_gal_type(&mut line_iter)?;
     let signature = parse_signature(&mut line_iter)?;
 
-    // After the first couple of lines we remove comments etc.
+    // After the first couple of lines we remove comments and
+    // whitespace. Unlike galasm, we don't *require* a DESCRIPTION line,
+    // but if we encounter one we stop there.
     let mut line_iter = line_iter
         .map(remove_comment)
         .map(str::trim)
@@ -417,9 +434,9 @@ fn parse_stuff2<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Conten
     })
 }
 
-pub fn parse_stuff(file_name: &str) -> Result<Content, Error> {
+pub fn parse(file_name: &str) -> Result<Content, Error> {
     let data = fs::read_to_string(file_name).expect("Unable to read file");
     let line_iter = LineTrackingIterator::new(data.lines());
     let line_num = line_iter.line_num();
-    parse_stuff2(line_iter, &line_num).map_err(|e| Error { code: e, line: line_num.get() })
+    parse_core(line_iter, &line_num).map_err(|e| Error { code: e, line: line_num.get() })
 }
