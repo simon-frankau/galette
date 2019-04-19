@@ -2,7 +2,6 @@ use chips::Chip;
 use errors::ErrorCode;
 use gal_builder::Pin;
 use gal;
-use gal::GAL;
 use gal::Mode;
 use gal::Term;
 use parser::Suffix;
@@ -64,7 +63,7 @@ impl OLMC {
 
     pub fn set_enable(
         &mut self,
-        gal: &GAL,
+        chip: Chip,
         act_pin: &Pin,
         term: Term,
     ) -> Result<(), ErrorCode> {
@@ -81,7 +80,7 @@ impl OLMC {
         match self.output {
             None => return Err(ErrorCode::PrematureENABLE),
             Some((PinMode::Registered, _)) => {
-                if gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8 {
+                if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 {
                     return Err(ErrorCode::TristateReg);
                 }
             }

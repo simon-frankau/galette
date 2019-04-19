@@ -18,7 +18,7 @@ fn make_spaces(buf: &mut String, n: usize) {
 // 'make_chip' draws out the chip with pin assignments.
 //
 
-fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
+fn make_chip(gal_type: Chip, pin_names: &[String]) -> String {
     let num_of_pins = pin_names.len();
     let mut buf = String::new();
 
@@ -63,7 +63,7 @@ fn make_chip(gal_type: Chip, pin_names: &[&str]) -> String {
 // 'make_pin' lists the pin assignments.
 //
 
-fn make_pin(gal: &GAL, pin_names: &[&str], olmcs: &[OLMC]) -> String {
+fn make_pin(gal: &GAL, pin_names: &[String], olmcs: &[OLMC]) -> String {
     let num_of_pins = pin_names.len();
     let gal_type = gal.chip;
 
@@ -74,7 +74,7 @@ fn make_pin(gal: &GAL, pin_names: &[&str], olmcs: &[OLMC]) -> String {
 
     for n in 1..num_of_pins + 1 {
         buf.push_str(&format!("  {:>2}   | ", n));
-        buf.push_str(pin_names[n - 1]);
+        buf.push_str(&pin_names[n - 1]);
 
         make_spaces(&mut buf, 9 - pin_names[n - 1].len());
 
@@ -165,7 +165,7 @@ fn b(bit: bool) -> char {
 }
 
 fn make_fuse(
-    pin_names: &[&str],
+    pin_names: &[String],
     gal: &GAL,
 ) -> String {
     let mut buf = String::new();
@@ -241,7 +241,7 @@ fn write_file(base: &PathBuf, ext: &str, buf: &str) -> Result<(), Error> {
 pub fn write_files(
     file_name: &str,
     config: &::jedec_writer::Config,
-    pin_names: &[&str],
+    pin_names: &[String],
     olmcs: &[OLMC],
     gal: &GAL,
 ) -> Result<(), Error> {

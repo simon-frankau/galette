@@ -1,3 +1,4 @@
+use blueprint::Blueprint;
 use chips::Chip;
 use errors;
 use gal_builder;
@@ -30,15 +31,12 @@ pub extern "C" fn do_stuff_c(
         Err(e) => { errors::print_error(e); return 1; }
     };
 
-    let mut pin_names = Vec::new();
-    for (name, neg) in c.pins.iter() {
-        let mut full_name = if *neg { String::from("/") } else { String::new() };
-        full_name.push_str(&name);
-        pin_names.push(full_name);
-    }
-    let pin_names_ref = pin_names.iter().map(String::as_ref).collect::<Vec<&str>>();
+    let mut blueprint = match Blueprint::from(&c) {
+        Ok(b) => b,
+        Err(e) => { errors::print_error(e); return 1; }
+    };
 
-    unsafe { match gal_builder::do_stuff(c.chip, &c.sig, &c.eqns, file_name, &pin_names_ref, &(*config)) {
+    unsafe { match gal_builder::do_stuff(&mut blueprint, file_name, &(*config)) {
         Ok(()) => 0,
         Err(e) => { errors::print_error(e); 1 }
     } }

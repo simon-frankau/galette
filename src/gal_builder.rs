@@ -9,7 +9,6 @@ use gal::GAL;
 use gal::Mode;
 use olmc;
 use olmc::PinMode;
-use parser::Equation;
 use writer;
 
 pub use gal::Pin;
@@ -34,15 +33,8 @@ pub fn tristate_adjust(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds:
 pub fn do_it_all(
     gal: &mut GAL,
     blueprint: &mut Blueprint,
-    eqns: &[Equation],
     file: &str,
 ) -> Result<(), Error> {
-
-    // Convert equations into data on the OLMCs.
-    for eqn in eqns.iter() {
-        at_line(eqn.line_num, blueprint.add_equation(eqn, gal))?;
-    }
-
     // Complete second pass from in-memory structure.
     println!("Assembler Phase 2 for \"{}\"", file);
 
@@ -68,16 +60,12 @@ pub fn do_it_all(
 }
 
 pub fn do_stuff(
-    gal_type: Chip,
-    sig: &[u8],
-    eqns: &[Equation],
+    blueprint: &mut Blueprint,
     file: &str,
-    pin_names: &[&str],
     config: &::jedec_writer::Config,
 ) -> Result<(), Error> {
-    let mut gal = GAL::new(gal_type);
-
-    let mut blueprint = Blueprint::new(gal_type);
+    // TODO: Move down, past blueprint construction.
+    let mut gal = GAL::new(blueprint.chip);
 
     // Set signature.
     for x in gal.sig.iter_mut() {
@@ -85,16 +73,16 @@ pub fn do_stuff(
     }
 
     // Signature has space for 8 bytes.
-    for i in 0..usize::min(sig.len(), 8) {
-        let c = sig[i];
+    for i in 0..usize::min(blueprint.sig.len(), 8) {
+        let c = blueprint.sig[i];
         for j in 0..8 {
             gal.sig[i * 8 + j] = (c << j) & 0x80 != 0;
         }
     }
 
-    do_it_all(&mut gal, &mut blueprint, eqns, file)?;
+    do_it_all(&mut gal, blueprint, file)?;
 
-    writer::write_files(file, config, pin_names, &blueprint.olmcs, &gal).unwrap();
+    writer::write_files(file, config, &blueprint.pins, &blueprint.olmcs, &gal).unwrap();
 
     Ok(())
 }

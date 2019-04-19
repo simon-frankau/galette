@@ -25,7 +25,7 @@ use std::rc::Rc;
 pub struct Content {
     pub chip: Chip,
     pub sig: Vec<u8>,
-    pub pins: Vec<(String, bool)>,
+    pub pins: Vec<String>,
     pub eqns: Vec<Equation>,
 }
 
@@ -426,10 +426,16 @@ fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content,
         .map(|s| parse_equation(gal_type, &pin_map, s, line_num.get()))
         .collect::<Result<Vec<Equation>, ErrorCode>>()?;
 
+    // The rest of the pipeline just wants string names.
+    let pin_names = pins.iter().map(|(pin_name, neg)| {
+        let mut full_name = if *neg { String::from("/") } else { String::new() };
+        full_name.push_str(pin_name);
+        full_name}).collect::<Vec<String>>();
+
     Ok(Content{
         chip: gal_type,
         sig: signature,
-        pins: pins,
+        pins: pin_names,
         eqns: equations,
     })
 }

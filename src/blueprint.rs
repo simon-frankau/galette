@@ -1,16 +1,23 @@
 use chips::Chip;
+use errors;
+use errors::Error;
 use errors::ErrorCode;
-use parser::Suffix;
 use gal;
-use gal::GAL;
 use gal::Term;
 use olmc;
 use olmc::OLMC;
+use parser::Content;
 use parser::Equation;
 use parser::LHS;
+use parser::Suffix;
 
 // Blueprint stores everything we need to construct the GAL.
 pub struct Blueprint {
+    // Data copied straight over from parser::Content.
+    pub chip: Chip,
+    pub sig: Vec<u8>,
+    pub pins: Vec<String>,
+    // The Equations, transformed.
     pub olmcs: Vec<OLMC>,
     // GAL22V10 only:
     pub ar: Option<Term>,
@@ -31,17 +38,33 @@ impl Blueprint {
          }; chip.num_olmcs());
 
          Blueprint {
+             chip: chip,
+             sig: Vec::new(),
+             pins: Vec::new(),
              olmcs: olmcs,
              ar: None,
              sp: None,
          }
     }
 
+    pub fn from(content: &Content) -> Result<Self, Error> {
+        let mut blueprint = Blueprint::new(content.chip);
+
+        // Convert equations into data on the OLMCs.
+        for eqn in content.eqns.iter() {
+            errors::at_line(eqn.line_num, blueprint.add_equation(eqn))?;
+        }
+
+        blueprint.sig = content.sig.clone();
+        blueprint.pins = content.pins.clone();
+
+        Ok(blueprint)
+    }
+
     // Add an equation to the blueprint, steering it to the appropriate OLMC.
     pub fn add_equation(
         &mut self,
         eqn: &Equation,
-        gal: &GAL,
     ) -> Result<(), ErrorCode> {
         let olmcs = &mut self.olmcs;
         let act_pin = &eqn.lhs;
@@ -49,12 +72,12 @@ impl Blueprint {
         // Mark all OLMCs that are inputs to other equations as providing feedback.
         // (Note they may actually be used as undriven inputs.)
         for input in eqn.rhs.iter() {
-            if let Some(i) = gal.chip.pin_to_olmc(input.pin) {
+            if let Some(i) = self.chip.pin_to_olmc(input.pin) {
                 olmcs[i].feedback = true;
             }
         }
 
-        let term = eqn_to_term(gal.chip, &eqn)?;
+        let term = eqn_to_term(self.chip, &eqn)?;
 
         // AR/SP special cases:
         match act_pin {
@@ -74,7 +97,7 @@ impl Blueprint {
             }
             LHS::Pin((act_pin, suffix)) => {
                 // Only pins with OLMCs may be outputs.
-                let olmc_num = match gal.chip.pin_to_olmc(act_pin.pin) {
+                let olmc_num = match self.chip.pin_to_olmc(act_pin.pin) {
                     None => return Err(ErrorCode::NotAnOutput),
                     Some(i) => i,
                 };
@@ -84,7 +107,7 @@ impl Blueprint {
                     Suffix::R | Suffix::T | Suffix::None =>
                         olmc.set_base(act_pin, term, *suffix),
                     Suffix::E =>
-                        olmc.set_enable(gal, act_pin, term),
+                        olmc.set_enable(self.chip, act_pin, term),
                     Suffix::CLK =>
                         olmc.set_clock(act_pin, term),
                     Suffix::ARST =>
@@ -97,6 +120,8 @@ impl Blueprint {
     }
 }
 
+// Convert an Equation, which is close to the input syntax, into a
+// Term, which is close to the fuse map representation.
 fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
     if eqn.rhs.len() == 1 {
         let pin = &eqn.rhs[0];
