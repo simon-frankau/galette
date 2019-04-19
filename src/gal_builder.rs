@@ -8,7 +8,7 @@ use gal::Bounds;
 use gal::GAL;
 use gal::Mode;
 use olmc;
-use olmc::PinType;
+use olmc::Output;
 use parser::Equation;
 use writer;
 
@@ -16,10 +16,11 @@ pub use gal::Pin;
 
 // Adjust the bounds for the main term of there's a tristate enable
 // term in the first row.
-pub fn tristate_adjust(gal: &GAL,pin_type: PinType, bounds: &Bounds) -> Bounds {
+pub fn tristate_adjust(gal: &GAL, output: &Output, bounds: &Bounds) -> Bounds {
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
-            if gal.get_mode() != Mode::Mode1 && pin_type != PinType::REGOUT {
+            let reg_out = if let Output::RegOut(_) = output { true } else { false };
+            if gal.get_mode() != Mode::Mode1 && !reg_out {
                 Bounds { row_offset: 1, ..*bounds }
             } else {
                 *bounds
@@ -119,11 +120,11 @@ fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
         let bounds = gal.chip.get_bounds(i);
 
         match &blueprint.olmcs[i].output {
-            Some(term) => {
-                let bounds = tristate_adjust(gal, blueprint.olmcs[i].pin_type, &bounds);
+            Output::ComOut(term) | Output::RegOut(term) | Output::TriOut(term) | Output::ComTriOut(term) => {
+                let bounds = tristate_adjust(gal, &blueprint.olmcs[i].output, &bounds);
                 gal.add_term(&term, &bounds)?;
             }
-            None => gal.add_term(&gal::false_term(0), &bounds)?,
+            Output::Undriven => gal.add_term(&gal::false_term(0), &bounds)?,
         }
 
         if let Some(term) = &blueprint.olmcs[i].tri_con {
@@ -161,31 +162,31 @@ fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error
         let olmc = &blueprint.olmcs[i];
 
         match &olmc.output {
-            Some(term) => {
+            Output::ComOut(term) | Output::RegOut(term) | Output::TriOut(term) | Output::ComTriOut(term) => {
                 gal.add_term(&term, &Bounds { row_offset: 4, .. bounds })?;
             }
-            None => gal.add_term(&gal::false_term(0), &bounds)?,
+            Output::Undriven => gal.add_term(&gal::false_term(0), &bounds)?,
         }
 
         if let Some(term) = &olmc.tri_con {
             gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, .. bounds })?;
         }
 
-        if olmc.pin_type != PinType::UNDRIVEN {
-            if olmc.pin_type == PinType::REGOUT && olmc.clock.is_none() {
-                return at_line(olmc.output.as_ref().unwrap().line_num, Err(ErrorCode::NoCLK));
-            }
-
-            let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
-            gal.add_term_opt(&olmc.clock, &clock_bounds)?;
-
-            if olmc.pin_type == PinType::REGOUT {
+        if olmc.output != Output::Undriven {
+            if let Output::RegOut(ref term) = olmc.output {
                 let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
                 gal.add_term_opt(&olmc.arst, &arst_bounds)?;
 
                 let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
                 gal.add_term_opt(&olmc.aprst, &aprst_bounds)?;
+
+                if olmc.clock.is_none() {
+                    return at_line(term.line_num, Err(ErrorCode::NoCLK));
+                }
             }
+
+            let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
+            gal.add_term_opt(&olmc.clock, &clock_bounds)?;
         }
     }
 
