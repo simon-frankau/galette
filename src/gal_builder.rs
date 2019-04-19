@@ -8,7 +8,7 @@ use gal::Bounds;
 use gal::GAL;
 use gal::Mode;
 use olmc;
-use olmc::OutMode;
+use olmc::PinMode;
 use parser::Equation;
 use writer;
 
@@ -16,10 +16,10 @@ pub use gal::Pin;
 
 // Adjust the bounds for the main term of there's a tristate enable
 // term in the first row.
-pub fn tristate_adjust(gal: &GAL, output: &Option<(OutMode, gal::Term)>, bounds: &Bounds) -> Bounds {
+pub fn tristate_adjust(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds: &Bounds) -> Bounds {
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
-            let reg_out = if let Some((OutMode::RegOut, _)) = output { true } else { false };
+            let reg_out = if let Some((PinMode::RegOut, _)) = output { true } else { false };
             if gal.get_mode() != Mode::Mode1 && !reg_out {
                 Bounds { row_offset: 1, ..*bounds }
             } else {
@@ -173,7 +173,7 @@ fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error
         }
 
         if olmc.output.is_some() {
-            if let Some((OutMode::RegOut, ref term)) = olmc.output {
+            if let Some((PinMode::RegOut, ref term)) = olmc.output {
                 let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
                 gal.add_term_opt(&olmc.arst, &arst_bounds)?;
 

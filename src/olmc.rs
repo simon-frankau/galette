@@ -8,7 +8,7 @@ use gal::Term;
 use parser::Suffix;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum OutMode {
+pub enum PinMode {
     ComOut,
     TriOut,
     RegOut,
@@ -23,7 +23,7 @@ pub enum Active {
 #[derive(Clone, Debug)]
 pub struct OLMC {
     pub active: Active,
-    pub output: Option<(OutMode, gal::Term)>,
+    pub output: Option<(PinMode, gal::Term)>,
     pub tri_con: Option<gal::Term>,
     pub clock: Option<gal::Term>,
     pub arst: Option<gal::Term>,
@@ -47,9 +47,9 @@ impl OLMC {
         }
 
         self.output = Some((match suffix {
-            Suffix::T => OutMode::TriOut,
-            Suffix::R => OutMode::RegOut,
-            Suffix::None => OutMode::ComOut,
+            Suffix::T => PinMode::TriOut,
+            Suffix::R => PinMode::RegOut,
+            Suffix::None => PinMode::ComOut,
             _ => panic!("Nope!"),
         }, term));
 
@@ -80,12 +80,12 @@ impl OLMC {
 
         match self.output {
             None => return Err(ErrorCode::PrematureENABLE),
-            Some((OutMode::RegOut, _)) => {
+            Some((PinMode::RegOut, _)) => {
                 if gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8 {
                     return Err(ErrorCode::TristateReg);
                 }
             }
-            Some((OutMode::ComOut, _)) => return Err(ErrorCode::UnmatchedTristate),
+            Some((PinMode::ComOut, _)) => return Err(ErrorCode::UnmatchedTristate),
             _ => {}
         }
 
@@ -103,7 +103,7 @@ impl OLMC {
 
         match self.output {
             None => return Err(ErrorCode::PrematureCLK),
-            Some((OutMode::RegOut, _)) => {}
+            Some((PinMode::RegOut, _)) => {}
             _ => return Err(ErrorCode::InvalidControl),
         }
 
@@ -126,7 +126,7 @@ impl OLMC {
 
         match self.output {
             None => return Err(ErrorCode::PrematureARST),
-            Some((OutMode::RegOut, _)) => {}
+            Some((PinMode::RegOut, _)) => {}
             _ => return Err(ErrorCode::InvalidControl),
         };
 
@@ -149,7 +149,7 @@ impl OLMC {
 
         match self.output {
             None => return Err(ErrorCode::PrematureAPRST),
-            Some((OutMode::RegOut, _)) => {}
+            Some((PinMode::RegOut, _)) => {}
             _ => return Err(ErrorCode::InvalidControl),
         }
 
@@ -167,47 +167,35 @@ impl OLMC {
 
 // Get the mode for GAL16V8 and GAL20V8, set the flags appropriately
 pub fn analyse_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
-    let mode = get_mode_v8(gal, olmcs);
+    let mode = get_mode_v8(olmcs);
     gal.set_mode(mode);
     return mode;
 }
 
-pub fn get_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
+pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
     // If there's a registered pin, it's mode 3.
     for n in 0..8 {
-        if let Some((OutMode::RegOut, _)) = olmcs[n].output  {
+        if let Some((PinMode::RegOut, _)) = olmcs[n].output  {
             return Mode::Mode3;
         }
     }
     // If there's a tristate, it's mode 2.
     for n in 0..8 {
-        if let Some((OutMode::TriOut, _)) = olmcs[n].output {
+        if let Some((PinMode::TriOut, _)) = olmcs[n].output {
             return Mode::Mode2;
         }
     }
     // If we can't use mode 1, use mode 2.
-    let chip = gal.chip;
     for n in 0..8 {
-        // Some pins cannot be used as input or feedback.
+        // Some OLMCs cannot be configured as pure inputs in Mode 1.
         if olmcs[n].feedback && olmcs[n].output.is_none() {
-            if chip == Chip::GAL16V8 {
-                let pin_num = n + 12;
-                if pin_num == 15 || pin_num == 16 {
-                    return Mode::Mode2;
-                }
-            }
-            if chip == Chip::GAL20V8 {
-                let pin_num = n + 15;
-                if pin_num == 18 || pin_num == 19 {
-                    return Mode::Mode2;
-                }
-            }
-        }
-        // Other pins cannot be used as feedback.
-        if olmcs[n].feedback {
-            if let Some((OutMode::ComOut, _)) = olmcs[n].output {
+            if n == 3 || n == 4 {
                 return Mode::Mode2;
             }
+        }
+        // OLMC pins cannot be used as combinatorial feedback in Mode 1.
+        if olmcs[n].feedback && olmcs[n].output.is_some() {
+            return Mode::Mode2;
         }
     }
     // If there is still no mode defined, use mode 1.
@@ -219,22 +207,15 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
         Chip::GAL16V8 | Chip::GAL20V8 => {
             let mode = analyse_mode_v8(gal, olmcs);
 
-            for n in 0..8 {
-                // Copy the term out, if it's there.
-                let term = if let Some((OutMode::ComOut, ref term)) = olmcs[n].output {
-                    Some(term.clone())
-                } else {
-                    None
-                };
-
-                // And update based on the copied term.
-                if let Some(term) = term {
-                    if mode == Mode::Mode1 {
-                        olmcs[n].output = Some((OutMode::ComOut, term.clone()));
-                    } else {
-                        olmcs[n].output = Some((OutMode::TriOut, term.clone()));
-                        // Set to VCC.
-                        olmcs[n].tri_con = Some(gal::true_term(term.line_num));
+            if mode != Mode::Mode1 {
+                // Convert combinatorial expressions into tristate ones,
+                // adding a trivial (always true) enable term.
+                for n in 0..8 {
+                    if let Some((ref mut pin_mode, ref term)) = olmcs[n].output {
+                        if *pin_mode == PinMode::ComOut {
+                            *pin_mode = PinMode::TriOut;
+                            olmcs[n].tri_con = Some(gal::true_term(term.line_num));
+                        }
                     }
                 }
             }
@@ -248,7 +229,7 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
             for n in 0..8 {
                 if match olmcs[n].output {
                     None => olmcs[n].feedback,
-                    Some((OutMode::TriOut, _)) => true,
+                    Some((PinMode::TriOut, _)) => true,
                     _ => false,
                 } {
                     gal.ac1[7 - n] = true;
@@ -266,14 +247,11 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
 
         Chip::GAL22V10 => {
             for n in 0..10 {
-                let term = if let Some((OutMode::ComOut, ref term)) = olmcs[n].output {
-                    Some(term.clone())
-                } else {
-                    None
-                };
-
-                if let Some(term) = term {
-                    olmcs[n].output = Some((OutMode::TriOut, term.clone()));
+                // Make combinatorial terms into tristates.
+                if let Some((ref mut pin_mode, _)) = olmcs[n].output {
+                    if *pin_mode == PinMode::ComOut {
+                        *pin_mode = PinMode::TriOut;
+                    }
                 }
 
                 if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
@@ -282,7 +260,7 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
 
                 if match olmcs[n].output {
                     None => olmcs[n].feedback,
-                    Some((OutMode::TriOut, _)) => true,
+                    Some((PinMode::TriOut, _)) => true,
                     _ => false,
                 } {
                     gal.s1[9 - n] = true;
@@ -292,14 +270,11 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
 
         Chip::GAL20RA10 => {
             for n in 0..10 {
-                let term = if let Some((OutMode::ComOut, ref term)) = olmcs[n].output {
-                    Some(term.clone())
-                } else {
-                    None
-                };
-
-                if let Some(term) = term {
-                    olmcs[n].output = Some((OutMode::TriOut, term.clone()));
+                // Make combinatorial terms into tristates.
+                if let Some((ref mut pin_mode, _)) = olmcs[n].output {
+                    if *pin_mode == PinMode::ComOut {
+                        *pin_mode = PinMode::TriOut;
+                    }
                 }
 
                 if olmcs[n].output.is_some() && olmcs[n].active == Active::HIGH {
