@@ -1,4 +1,5 @@
 use blueprint::Blueprint;
+use blueprint::PinMode;
 use chips::Chip;
 use errors::at_line;
 use errors::Error;
@@ -8,7 +9,6 @@ use gal::Bounds;
 use gal::GAL;
 use gal::Mode;
 use olmc;
-use olmc::PinMode;
 use writer;
 
 pub use gal::Pin;

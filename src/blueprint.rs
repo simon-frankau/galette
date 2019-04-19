@@ -3,9 +3,8 @@ use errors;
 use errors::Error;
 use errors::ErrorCode;
 use gal;
+use gal::Pin;
 use gal::Term;
-use olmc;
-use olmc::OLMC;
 use parser::Content;
 use parser::Equation;
 use parser::LHS;
@@ -28,7 +27,7 @@ impl Blueprint {
     pub fn new(chip: Chip) -> Self {
         // Set up OLMCs.
         let olmcs = vec!(OLMC {
-            active: olmc::Active::Low,
+            active: Active::Low,
             output: None,
             tri_con: None,
             clock: None,
@@ -156,4 +155,160 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
         line_num: eqn.line_num,
         pins: ors,
     })
+}
+
+////////////////////////////////////////////////////////////////////////
+// The OLMC structure, representing the logic for an output pin.
+//
+
+#[derive(Clone, Debug)]
+pub struct OLMC {
+    pub active: Active,
+    pub output: Option<(PinMode, gal::Term)>,
+    pub tri_con: Option<gal::Term>,
+    pub clock: Option<gal::Term>,
+    pub arst: Option<gal::Term>,
+    pub aprst: Option<gal::Term>,
+    pub feedback: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Active {
+    Low,
+    High
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PinMode {
+    Combinatorial,
+    Tristate,
+    Registered,
+}
+
+impl OLMC {
+    pub fn set_base(
+        &mut self,
+        act_pin: &Pin,
+        term: Term,
+        suffix: Suffix,
+    ) -> Result<(), ErrorCode> {
+        if self.output.is_some() {
+            // Previously defined, so error out.
+            return Err(ErrorCode::RepeatedOutput);
+        }
+
+        self.output = Some((match suffix {
+            Suffix::T => PinMode::Tristate,
+            Suffix::R => PinMode::Registered,
+            Suffix::None => PinMode::Combinatorial,
+            _ => panic!("Nope!"),
+        }, term));
+
+        self.active = if act_pin.neg {
+            Active::Low
+        } else {
+            Active::High
+        };
+
+        Ok(())
+    }
+
+    pub fn set_enable(
+        &mut self,
+        chip: Chip,
+        act_pin: &Pin,
+        term: Term,
+    ) -> Result<(), ErrorCode> {
+        if act_pin.neg {
+            return Err(ErrorCode::InvertedControl);
+        }
+
+        if self.tri_con != None {
+            return Err(ErrorCode::RepeatedTristate);
+        }
+
+        self.tri_con = Some(term);
+
+        match self.output {
+            None => return Err(ErrorCode::PrematureENABLE),
+            Some((PinMode::Registered, _)) => {
+                if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 {
+                    return Err(ErrorCode::TristateReg);
+                }
+            }
+            Some((PinMode::Combinatorial, _)) => return Err(ErrorCode::UnmatchedTristate),
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    pub fn set_clock(
+        &mut self,
+        act_pin: &Pin,
+        term: Term,
+    ) -> Result<(), ErrorCode> {
+        if act_pin.neg {
+            return Err(ErrorCode::InvertedControl);
+        }
+
+        match self.output {
+            None => return Err(ErrorCode::PrematureCLK),
+            Some((PinMode::Registered, _)) => {}
+            _ => return Err(ErrorCode::InvalidControl),
+        }
+
+        if self.clock.is_some() {
+            return Err(ErrorCode::RepeatedCLK);
+        }
+        self.clock = Some(term);
+
+        Ok(())
+    }
+
+    pub fn set_arst(
+        &mut self,
+        act_pin: &Pin,
+        term: Term
+    ) -> Result<(), ErrorCode> {
+        if act_pin.neg {
+            return Err(ErrorCode::InvertedControl);
+        }
+
+        match self.output {
+            None => return Err(ErrorCode::PrematureARST),
+            Some((PinMode::Registered, _)) => {}
+            _ => return Err(ErrorCode::InvalidControl),
+        };
+
+        if self.arst.is_some() {
+            return Err(ErrorCode::RepeatedARST);
+        }
+        self.arst = Some(term);
+
+        Ok(())
+    }
+
+    pub fn set_aprst(
+        &mut self,
+        act_pin: &Pin,
+        term: Term,
+    ) -> Result<(), ErrorCode> {
+        if act_pin.neg {
+            return Err(ErrorCode::InvertedControl);
+        }
+
+        match self.output {
+            None => return Err(ErrorCode::PrematureAPRST),
+            Some((PinMode::Registered, _)) => {}
+            _ => return Err(ErrorCode::InvalidControl),
+        }
+
+        if self.aprst.is_some() {
+            return Err(ErrorCode::RepeatedAPRST);
+        }
+        self.aprst = Some(term);
+
+        Ok(())
+    }
 }

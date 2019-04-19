@@ -1,7 +1,7 @@
+use blueprint::OLMC;
 use chips::Chip;
 use gal::GAL;
 use gal::Mode;
-use olmc::OLMC;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
