@@ -21,7 +21,7 @@ impl Blueprint {
     pub fn new(chip: Chip) -> Self {
         // Set up OLMCs.
         let olmcs = vec!(OLMC {
-            active: olmc::Active::LOW,
+            active: olmc::Active::Low,
             output: None,
             tri_con: None,
             clock: None,

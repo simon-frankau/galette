@@ -19,7 +19,7 @@ pub use gal::Pin;
 pub fn tristate_adjust(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds: &Bounds) -> Bounds {
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
-            let reg_out = if let Some((PinMode::RegOut, _)) = output { true } else { false };
+            let reg_out = if let Some((PinMode::Registered, _)) = output { true } else { false };
             if gal.get_mode() != Mode::Mode1 && !reg_out {
                 Bounds { row_offset: 1, ..*bounds }
             } else {
@@ -173,7 +173,7 @@ fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error
         }
 
         if olmc.output.is_some() {
-            if let Some((PinMode::RegOut, ref term)) = olmc.output {
+            if let Some((PinMode::Registered, ref term)) = olmc.output {
                 let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
                 gal.add_term_opt(&olmc.arst, &arst_bounds)?;
 
