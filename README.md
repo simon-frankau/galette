@@ -44,6 +44,7 @@ Running from the lowest layer of dependency to the highest, we have:
  * **gal.rs** Contains the GAL structure with is programmed with fuse data.
  * **parser.rs** Parse the input file format.
  * **blueprint.rs** Convert input to a normalised form to build fuses from.
+ * **gal_builder.rs** Fills in a GAL structure based on a blueprint.
 
  * **lib.rs** Top-level glue.
  * **main.rs** Thin command-line wrapper.
@@ -54,7 +55,5 @@ Running from the lowest layer of dependency to the highest, we have:
  * Better error-handling
  * Set of test cases
 
-
-gal_builder.rs
 jedec_writer.rs
 writer.rs
