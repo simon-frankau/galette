@@ -250,15 +250,15 @@ pub fn write_files(
 
     write_file(&base, "jed", &::jedec_writer::make_jedec(config, gal))?;
 
-    if config.gen_fuse != 0 {
+    if config.gen_fuse {
         write_file(&base, "fus", &make_fuse(pin_names, gal))?;
     }
 
-    if config.gen_pin != 0 {
+    if config.gen_pin {
         write_file(&base, "pin", &make_pin(gal, pin_names, olmcs))?;
     }
 
-    if config.gen_chip != 0 {
+    if config.gen_chip {
         write_file(&base, "chp", &make_chip(gal_type, pin_names))?;
     }
 

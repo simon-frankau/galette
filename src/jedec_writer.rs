@@ -4,16 +4,12 @@ use chips::Chip;
 use gal::GAL;
 use self::itertools::Itertools;
 
-// Config use on the C side.
-// TODO: Make into a normal struct.
-#[repr(C)]
 #[derive(Debug)]
 pub struct Config {
-    pub gen_fuse: i16,
-    pub gen_chip: i16,
-    pub gen_pin: i16,
-    pub jedec_sec_bit: i16,
-    pub jedec_fuse_chk: i16,
+    pub gen_fuse: bool,
+    pub gen_chip: bool,
+    pub gen_pin: bool,
+    pub jedec_sec_bit: bool,
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -129,7 +125,7 @@ pub fn make_jedec(
     buf.push_str("*F0\n");
 
     // Security bit state.
-    buf.push_str(if config.jedec_sec_bit != 0 {
+    buf.push_str(if config.jedec_sec_bit {
         "*G1\n"
     } else {
         "*G0\n"
