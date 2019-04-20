@@ -1,3 +1,18 @@
+//
+// lib.rs: The Galette GAL assembly library.
+//
+// In short, Galette takes a set of equations representing the logic
+// you want a GAL to implement, and generates a JEDEC file that can be
+// programmed into the GAL in order to make it implement those
+// equations.
+//
+// The galette binary is a thin wrapper around "assemble", but if you
+// want to programmatically generate GAL assembly files, you should be
+// able to use the publicly exposed members of the library, starting
+// from a parser::Content or a blueprint::Blueprint, depending on what
+// you want to start with.
+//
+
 pub mod blueprint;
 pub mod chips;
 pub mod errors;

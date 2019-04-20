@@ -1,4 +1,10 @@
-// TODO: Stub main entry point, to replace galasm.cpp.
+//
+// main.rs: Entry point for the galette binary.
+//
+// While galette is written to be usable as a library, it also
+// provides a command-line interface that is intended to be largely
+// compatible with galette's.
+//
 
 extern crate clap;
 extern crate galette;
