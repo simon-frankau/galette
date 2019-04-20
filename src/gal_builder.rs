@@ -14,12 +14,12 @@ use olmc;
 // TODO: This takes a mutating view of the world. It could be
 // constructed rather more functionally, field-by-field.
 
-pub fn build(blueprint: &mut Blueprint) -> Result<GAL, Error> {
+pub fn build(blueprint: &Blueprint) -> Result<GAL, Error> {
     let mut gal = GAL::new(blueprint.chip);
 
     set_sig(&blueprint, &mut gal);
 
-    olmc::analyse_mode(&mut gal, &mut blueprint.olmcs);
+    olmc::analyse_mode(&mut gal, &blueprint.olmcs);
 
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(&mut gal, blueprint)?,
@@ -62,7 +62,7 @@ fn tristate_adjust(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds: &Bo
 }
 
 // Check that you're not trying to use 20ra10-specific features
-fn check_gal20ra10(blueprint: &mut Blueprint) -> Result<(), Error> {
+fn check_gal20ra10(blueprint: &Blueprint) -> Result<(), Error> {
     for olmc in blueprint.olmcs.iter() {
         if let Some(term) = &olmc.clock {
             return at_line(term.line_num, Err(ErrorCode::DisallowedCLK));
@@ -78,7 +78,7 @@ fn check_gal20ra10(blueprint: &mut Blueprint) -> Result<(), Error> {
 }
 
 // Set the XOR bits for inverting outputs, if necessary.
-fn build_xors(gal: &mut GAL, blueprint: &mut Blueprint) {
+fn build_xors(gal: &mut GAL, blueprint: &Blueprint) {
     let num_olmcs = blueprint.olmcs.len();
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         if olmc.output.is_some() && olmc.active == Active::High {
@@ -88,13 +88,14 @@ fn build_xors(gal: &mut GAL, blueprint: &mut Blueprint) {
 }
 
 // Build the tristate control bits - set for inputs and tristated outputs.
-fn build_tristate_flags(flags: &mut [bool], blueprint: &mut Blueprint) {
+fn build_tristate_flags(flags: &mut [bool], blueprint: &Blueprint, com_is_tri: bool) {
     let num_olmcs = blueprint.olmcs.len();
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let is_tristate = match olmc.output {
             None => olmc.feedback,
             Some((PinMode::Tristate, _)) => true,
-            _ => false,
+            Some((PinMode::Combinatorial, _)) => com_is_tri,
+            Some((PinMode::Registered, _)) => false,
         };
 
         if is_tristate {
@@ -108,7 +109,7 @@ fn build_tristate_flags(flags: &mut [bool], blueprint: &mut Blueprint) {
 //
 
 // Core of the GALxxV8 and GAL22V10 builders.
-fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+fn build_galxvx(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let bounds = gal.chip.get_bounds(i);
 
@@ -128,28 +129,18 @@ fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     Ok(())
 }
 
-fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+fn build_galxv8(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     check_gal20ra10(blueprint)?;
 
-    if gal.get_mode() != Mode::Mode1 {
-        // Convert combinatorial expressions into tristate ones,
-        // adding a trivial (always true) enable term.
-        for i in 0..8 {
-            let olmc = &mut blueprint.olmcs[i];
-            if let Some((ref mut pin_mode, ref term)) = olmc.output {
-                if *pin_mode == PinMode::Combinatorial {
-                    *pin_mode = PinMode::Tristate;
-                    olmc.tri_con = Some(gal::true_term(term.line_num));
-                }
-            }
-        }
-    }
+    // Are we implementing combinatorial expressions as tristate?
+    // Put combinatorial is only available in Mode 1.
+    let com_is_tri = gal.get_mode() != Mode::Mode1;
 
     // SYN and AC0 already defined.
 
     build_galxvx(gal, blueprint)?;
 
-    build_tristate_flags(&mut gal.ac1, blueprint);
+    build_tristate_flags(&mut gal.ac1, blueprint, com_is_tri);
 
     // We don't do anything with the PT bits.
     for n in 0..64 {
@@ -159,21 +150,12 @@ fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     Ok(())
 }
 
-fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+fn build_gal22v10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     check_gal20ra10(blueprint)?;
-
-    for n in 0..10 {
-        // Make combinatorial terms into tristates.
-        if let Some((ref mut pin_mode, _)) = blueprint.olmcs[n].output {
-            if *pin_mode == PinMode::Combinatorial {
-                *pin_mode = PinMode::Tristate;
-            }
-        }
-    }
 
     // TODO: Needs to be called before all the set_ands. Would be nice
     // to make independent.
-    build_tristate_flags(&mut gal.s1, blueprint);
+    build_tristate_flags(&mut gal.s1, blueprint, true);
 
     build_galxvx(gal, blueprint)?;
 

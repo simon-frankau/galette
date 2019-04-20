@@ -45,7 +45,7 @@ pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
     return Mode::Mode1;
 }
 
-pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) {
+pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &[OLMC]) {
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => analyse_mode_v8(gal, olmcs),
         _ => {}
