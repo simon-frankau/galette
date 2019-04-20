@@ -1,5 +1,6 @@
 use blueprint::Active;
 use blueprint::Blueprint;
+use blueprint::OLMC;
 use blueprint::PinMode;
 use chips::Chip;
 use errors::at_line;
@@ -9,7 +10,6 @@ use gal;
 use gal::Bounds;
 use gal::GAL;
 use gal::Mode;
-use olmc;
 
 // TODO: This takes a mutating view of the world. It could be
 // constructed rather more functionally, field-by-field.
@@ -18,8 +18,6 @@ pub fn build(blueprint: &Blueprint) -> Result<GAL, Error> {
     let mut gal = GAL::new(blueprint.chip);
 
     set_sig(&blueprint, &mut gal);
-
-    olmc::analyse_mode(&mut gal, &blueprint.olmcs);
 
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(&mut gal, blueprint)?,
@@ -105,6 +103,39 @@ fn build_tristate_flags(flags: &mut [bool], blueprint: &Blueprint, com_is_tri: b
 }
 
 ////////////////////////////////////////////////////////////////////////
+// GALxV8 analysis
+
+pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
+    // If there's a registered pin, it's mode 3.
+    for n in 0..8 {
+        if let Some((PinMode::Registered, _)) = olmcs[n].output  {
+            return Mode::Mode3;
+        }
+    }
+    // If there's a tristate, it's mode 2.
+    for n in 0..8 {
+        if let Some((PinMode::Tristate, _)) = olmcs[n].output {
+            return Mode::Mode2;
+        }
+    }
+    // If we can't use mode 1, use mode 2.
+    for n in 0..8 {
+        // Some OLMCs cannot be configured as pure inputs in Mode 1.
+        if olmcs[n].feedback && olmcs[n].output.is_none() {
+            if n == 3 || n == 4 {
+                return Mode::Mode2;
+            }
+        }
+        // OLMC pins cannot be used as combinatorial feedback in Mode 1.
+        if olmcs[n].feedback && olmcs[n].output.is_some() {
+            return Mode::Mode2;
+        }
+    }
+    // If there is still no mode defined, use mode 1.
+    return Mode::Mode1;
+}
+
+////////////////////////////////////////////////////////////////////////
 // Chip-specific GAL-building algorithms.
 //
 
@@ -132,9 +163,11 @@ fn build_galxvx(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
 fn build_galxv8(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     check_gal20ra10(blueprint)?;
 
+    let mode = get_mode_v8(&blueprint.olmcs);
+    gal.set_mode(mode);
     // Are we implementing combinatorial expressions as tristate?
     // Put combinatorial is only available in Mode 1.
-    let com_is_tri = gal.get_mode() != Mode::Mode1;
+    let com_is_tri = mode != Mode::Mode1;
 
     // SYN and AC0 already defined.
 

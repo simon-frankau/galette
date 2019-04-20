@@ -55,5 +55,4 @@ Running from the lowest layer of dependency to the highest, we have:
 
 gal_builder.rs
 jedec_writer.rs
-olmc.rs
 writer.rs
