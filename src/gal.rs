@@ -158,6 +158,19 @@ impl GAL {
         }
     }
 
+    // Horrible special-case test for registered outputs on the GAL22V10.
+    fn needs_flip(&self, pin_num: usize) -> bool {
+        if self.chip != Chip::GAL22V10 {
+            return false;
+        }
+
+        if let Some(i) = self.chip.pin_to_olmc(pin_num) {
+            return !self.s1[self.chip.num_olmcs() - 1 - i];
+        }
+
+        false
+    }
+
     // Enter a term into the given set of rows of the main logic array.
     pub fn add_term(&mut self, term: &Term, bounds: &Bounds) -> Result<(), Error> {
         let mut bounds = *bounds;
@@ -168,7 +181,9 @@ impl GAL {
             }
 
             for input in row.iter() {
-                at_line(term.line_num, self.set_and(bounds.start_row + bounds.row_offset, input.pin, input.neg))?;
+                // Is it a registered OLMC pin on a GAL22V10? If so, flip the negation.
+                let flip = self.needs_flip(input.pin);
+                at_line(term.line_num, self.set_and(bounds.start_row + bounds.row_offset, input.pin, input.neg ^ flip))?;
             }
 
             // Go to next row.
@@ -226,15 +241,7 @@ impl GAL {
         let chip = self.chip;
         let row_len = chip.num_cols();
         let column = self.pin_to_column(pin_num)?;
-
-        // Is it a registered OLMC pin?
-        // If yes, then correct the negation.
-        // TODO: This feels pretty messy.
-        let mut neg_off = if negation { 1 } else { 0 };
-        if chip == Chip::GAL22V10 && (pin_num >= 14 && pin_num <= 23) && !self.s1[23 - pin_num] {
-            neg_off = 1 - neg_off;
-        }
-
+        let neg_off = if negation { 1 } else { 0 };
         self.fuses[row * row_len + column + neg_off] = false;
         Ok(())
     }

@@ -24,7 +24,7 @@ pub fn build(blueprint: &Blueprint) -> Result<GAL, Error> {
 }
 
 // Write out the signature.
-fn set_sig(blueprint: &Blueprint, gal: &mut GAL) {
+fn set_sig(gal: &mut GAL, blueprint: &Blueprint) {
     // Signature has space for 8 bytes.
     for i in 0..usize::min(blueprint.sig.len(), 8) {
         let c = blueprint.sig[i];
@@ -145,7 +145,7 @@ fn set_xors(gal: &mut GAL, blueprint: &Blueprint) {
 }
 
 // Build the tristate control bits - set for inputs and tristated outputs.
-fn build_tristate_flags(flags: &mut [bool], blueprint: &Blueprint, com_is_tri: bool) {
+fn set_tristate(flags: &mut [bool], blueprint: &Blueprint, com_is_tri: bool) {
     let num_olmcs = blueprint.olmcs.len();
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let is_tristate = match olmc.output {
@@ -164,7 +164,11 @@ fn build_tristate_flags(flags: &mut [bool], blueprint: &Blueprint, com_is_tri: b
 ////////////////////////////////////////////////////////////////////////
 // GALxV8 analysis
 
-pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
+fn set_mode(gal: &mut GAL, blueprint: &Blueprint) {
+    gal.set_mode(get_mode_v8(&blueprint.olmcs));
+}
+
+fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
     // If there's a registered pin, it's mode 3.
     for n in 0..8 {
         if let Some((PinMode::Registered, _)) = olmcs[n].output  {
@@ -198,44 +202,28 @@ pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
 // Chip-specific GAL-building algorithms.
 //
 
-// TODO: Build order:
-// X sig
-// X ac0 and syn
-// X fuses
-// X xor
-// ac1/s1
-// X pt
-
 fn build_galxv8(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     check_not_gal20ra10(blueprint)?;
-    set_sig(blueprint, gal);
-
-    let mode = get_mode_v8(&blueprint.olmcs);
-    // Sets AC0 and SYN
-    gal.set_mode(mode);
-
+    set_sig(gal, blueprint);
+    set_mode(gal, blueprint);
     // Are we implementing combinatorial expressions as tristate?
     // Put combinatorial is only available in Mode 1.
-    let com_is_tri = mode != Mode::Mode1;
-
+    let com_is_tri = gal.get_mode() != Mode::Mode1;
+    set_tristate(&mut gal.ac1, blueprint, com_is_tri);
     set_core_eqns(gal, blueprint)?;
-
-    build_tristate_flags(&mut gal.ac1, blueprint, com_is_tri);
-
     set_xors(gal, blueprint);
     set_pts(gal);
-
     Ok(())
 }
 
 fn build_gal22v10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     check_not_gal20ra10(blueprint)?;
-    set_sig(blueprint, gal);
-
-    // TODO: Needs to be called before all the set_ands. Would be nice
-    // to make independent.
-    build_tristate_flags(&mut gal.s1, blueprint, true);
-
+    set_sig(gal, blueprint);
+    // NB: Needs to be called before the set_eqns, since the set_and
+    // logic depends on it.
+    //
+    // For the 22V10, we always implement combintorial expressions as tristate.
+    set_tristate(&mut gal.s1, blueprint, true);
     set_core_eqns(gal, blueprint)?;
     set_arsp_eqns(gal, blueprint)?;
     set_xors(gal, blueprint);
@@ -243,7 +231,7 @@ fn build_gal22v10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
 }
 
 fn build_gal20ra10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
-    set_sig(blueprint, gal);
+    set_sig(gal, blueprint);
     set_core_eqns(gal, blueprint)?;
     set_aux_eqns(gal, blueprint)?;
     set_xors(gal, blueprint);

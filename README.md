@@ -12,7 +12,9 @@ format. The "DESCRIPTION" section at the end is now optional.
 TODO:
 
  * Should not be equation-line-order dependent.
- * This section should explain command-line invocation.
+
+`galette --help` gives you a summary of the (GALasm-compatible)
+command-line options.
 
 ## Background
 
