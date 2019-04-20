@@ -43,6 +43,9 @@ Running from the lowest layer of dependency to the highest, we have:
  * **parser.rs** Parse the input file format.
  * **blueprint.rs** Convert input to a normalised form to build fuses from.
 
+ * **lib.rs** Top-level glue.
+ * **main.rs** Thin command-line wrapper.
+
 ## TODOs
 
  * Better documentation. :)
@@ -51,8 +54,6 @@ Running from the lowest layer of dependency to the highest, we have:
 
 
 gal_builder.rs
-interop.rs
 jedec_writer.rs
-lib.rs
 olmc.rs
 writer.rs

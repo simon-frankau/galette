@@ -5,6 +5,7 @@ use gal::GAL;
 use self::itertools::Itertools;
 
 // Config use on the C side.
+// TODO: Make into a normal struct.
 #[repr(C)]
 #[derive(Debug)]
 pub struct Config {

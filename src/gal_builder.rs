@@ -33,11 +33,7 @@ pub fn tristate_adjust(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds:
 pub fn do_it_all(
     gal: &mut GAL,
     blueprint: &mut Blueprint,
-    file: &str,
 ) -> Result<(), Error> {
-    // Complete second pass from in-memory structure.
-    println!("Assembler Phase 2 for \"{}\"", file);
-
     let mode = match olmc::analyse_mode(gal, &mut blueprint.olmcs) {
         Some(Mode::Mode1) => 1,
         Some(Mode::Mode2) => 2,
@@ -80,7 +76,7 @@ pub fn do_stuff(
         }
     }
 
-    do_it_all(&mut gal, blueprint, file)?;
+    do_it_all(&mut gal, blueprint)?;
 
     writer::write_files(file, config, &blueprint.pins, &blueprint.olmcs, &gal).unwrap();
 

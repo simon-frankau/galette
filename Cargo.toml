@@ -4,8 +4,12 @@ version = "0.1.0"
 authors = ["Simon Frankau <sgf@arbitrary.name>"]
 
 [dependencies]
+clap = "*"
 itertools = "*"
 libc = "*"
 
 [lib]
-crate-type = ["cdylib"]
+name = "galette"
+
+[[bin]]
+name = "galette"
