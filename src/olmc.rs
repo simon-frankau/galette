@@ -10,10 +10,9 @@ use gal::Mode;
 // Analyse OLMCs
 
 // Get the mode for GAL16V8 and GAL20V8, set the flags appropriately
-pub fn analyse_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
+pub fn analyse_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) {
     let mode = get_mode_v8(olmcs);
     gal.set_mode(mode);
-    mode
 }
 
 pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
@@ -48,27 +47,7 @@ pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
 
 pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) {
     match gal.chip {
-        Chip::GAL16V8 | Chip::GAL20V8 => {
-            let mode = analyse_mode_v8(gal, olmcs);
-
-            if mode != Mode::Mode1 {
-                // Convert combinatorial expressions into tristate ones,
-                // adding a trivial (always true) enable term.
-                for n in 0..8 {
-                    if let Some((ref mut pin_mode, ref term)) = olmcs[n].output {
-                        if *pin_mode == PinMode::Combinatorial {
-                            *pin_mode = PinMode::Tristate;
-                            olmcs[n].tri_con = Some(gal::true_term(term.line_num));
-                        }
-                    }
-                }
-            }
-        }
-
-        Chip::GAL22V10 => {
-        }
-
-        Chip::GAL20RA10 => {
-        }
+        Chip::GAL16V8 | Chip::GAL20V8 => analyse_mode_v8(gal, olmcs),
+        _ => {}
     }
 }

@@ -131,6 +131,20 @@ fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
 fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     check_gal20ra10(blueprint)?;
 
+    if gal.get_mode() != Mode::Mode1 {
+        // Convert combinatorial expressions into tristate ones,
+        // adding a trivial (always true) enable term.
+        for i in 0..8 {
+            let olmc = &mut blueprint.olmcs[i];
+            if let Some((ref mut pin_mode, ref term)) = olmc.output {
+                if *pin_mode == PinMode::Combinatorial {
+                    *pin_mode = PinMode::Tristate;
+                    olmc.tri_con = Some(gal::true_term(term.line_num));
+                }
+            }
+        }
+    }
+
     // SYN and AC0 already defined.
 
     build_galxvx(gal, blueprint)?;
