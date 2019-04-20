@@ -1,7 +1,6 @@
 // TODO: This logic should be rolled into the gal_builder.
 
 use blueprint::OLMC;
-use blueprint::Active;
 use blueprint::PinMode;
 use chips::Chip;
 use gal;
@@ -14,7 +13,7 @@ use gal::Mode;
 pub fn analyse_mode_v8(gal: &mut gal::GAL, olmcs: &[OLMC]) -> Mode {
     let mode = get_mode_v8(olmcs);
     gal.set_mode(mode);
-    return mode;
+    mode
 }
 
 pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
@@ -47,7 +46,7 @@ pub fn get_mode_v8(olmcs: &[OLMC]) -> Mode {
     return Mode::Mode1;
 }
 
-pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode> {
+pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) {
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
             let mode = analyse_mode_v8(gal, olmcs);
@@ -64,70 +63,12 @@ pub fn analyse_mode(gal: &mut gal::GAL, olmcs: &mut [OLMC]) -> Option<gal::Mode>
                     }
                 }
             }
-
-            // SYN and AC0 already defined.
-
-            for n in 0..64 {
-                gal.pt[n] = true;
-            }
-
-            for n in 0..8 {
-                if match olmcs[n].output {
-                    None => olmcs[n].feedback,
-                    Some((PinMode::Tristate, _)) => true,
-                    _ => false,
-                } {
-                    gal.ac1[7 - n] = true;
-                }
-            }
-
-            for n in 0..8 {
-                if olmcs[n].output.is_some() && olmcs[n].active == Active::High {
-                    gal.xor[7 - n] = true;
-                }
-            }
-
-            return Some(mode);
         }
 
         Chip::GAL22V10 => {
-            for n in 0..10 {
-                // Make combinatorial terms into tristates.
-                if let Some((ref mut pin_mode, _)) = olmcs[n].output {
-                    if *pin_mode == PinMode::Combinatorial {
-                        *pin_mode = PinMode::Tristate;
-                    }
-                }
-
-                if olmcs[n].output.is_some() && olmcs[n].active == Active::High {
-                    gal.xor[9 - n] = true;
-                }
-
-                if match olmcs[n].output {
-                    None => olmcs[n].feedback,
-                    Some((PinMode::Tristate, _)) => true,
-                    _ => false,
-                } {
-                    gal.s1[9 - n] = true;
-                }
-            }
         }
 
         Chip::GAL20RA10 => {
-            for n in 0..10 {
-                // Make combinatorial terms into tristates.
-                if let Some((ref mut pin_mode, _)) = olmcs[n].output {
-                    if *pin_mode == PinMode::Combinatorial {
-                        *pin_mode = PinMode::Tristate;
-                    }
-                }
-
-                if olmcs[n].output.is_some() && olmcs[n].active == Active::High {
-                    gal.xor[9 - n] = true;
-                }
-            }
         }
     }
-
-    None
 }

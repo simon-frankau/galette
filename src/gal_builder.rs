@@ -1,3 +1,4 @@
+use blueprint::Active;
 use blueprint::Blueprint;
 use blueprint::PinMode;
 use chips::Chip;
@@ -14,30 +15,9 @@ use olmc;
 pub fn build(blueprint: &mut Blueprint) -> Result<GAL, Error> {
     let mut gal = GAL::new(blueprint.chip);
 
-    // Set signature.
-    for x in gal.sig.iter_mut() {
-        *x = false;
-    }
+    set_sig(&blueprint, &mut gal);
 
-    // Signature has space for 8 bytes.
-    for i in 0..usize::min(blueprint.sig.len(), 8) {
-        let c = blueprint.sig[i];
-        for j in 0..8 {
-            gal.sig[i * 8 + j] = (c << j) & 0x80 != 0;
-        }
-    }
-
-    let mode = match olmc::analyse_mode(&mut gal, &mut blueprint.olmcs) {
-        Some(Mode::Mode1) => 1,
-        Some(Mode::Mode2) => 2,
-        Some(Mode::Mode3) => 3,
-        None => 0,
-    };
-
-    println!("GAL {}; Operation mode {}; Security fuse {}",
-             &gal.chip.name()[3..],
-             mode,
-             "off"); // TODO cfg->JedecSecBit ? "on" : "off");
+    olmc::analyse_mode(&mut gal, &mut blueprint.olmcs);
 
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(&mut gal, blueprint)?,
@@ -46,6 +26,16 @@ pub fn build(blueprint: &mut Blueprint) -> Result<GAL, Error> {
     }
 
     Ok(gal)
+}
+
+fn set_sig(blueprint: &Blueprint, gal: &mut GAL) {
+    // Signature has space for 8 bytes.
+    for i in 0..usize::min(blueprint.sig.len(), 8) {
+        let c = blueprint.sig[i];
+        for j in 0..8 {
+            gal.sig[i * 8 + j] = (c << j) & 0x80 != 0;
+        }
+    }
 }
 
 // Adjust the bounds for the main term of there's a tristate enable
@@ -81,6 +71,11 @@ fn check_gal20ra10(blueprint: &mut Blueprint) -> Result<(), Error> {
     Ok(())
 }
 
+////////////////////////////////////////////////////////////////////////
+// Chip-specific GAL-building algorithms.
+//
+
+// Core of the GALxxV8 and GAL22V10 builders.
 fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
     for i in 0..blueprint.olmcs.len() {
         let bounds = gal.chip.get_bounds(i);
@@ -102,12 +97,55 @@ fn build_galxvx(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
 }
 
 fn build_galxv8(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+    // SYN and AC0 already defined.
+
+    for n in 0..64 {
+        gal.pt[n] = true;
+    }
+
+    for n in 0..8 {
+        if match blueprint.olmcs[n].output {
+            None => blueprint.olmcs[n].feedback,
+            Some((PinMode::Tristate, _)) => true,
+            _ => false,
+        } {
+            gal.ac1[7 - n] = true;
+        }
+    }
+
+    for n in 0..8 {
+        if blueprint.olmcs[n].output.is_some() && blueprint.olmcs[n].active == Active::High {
+            gal.xor[7 - n] = true;
+        }
+    }
+
     check_gal20ra10(blueprint)?;
     build_galxvx(gal, blueprint)?;
     Ok(())
 }
 
 fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+    for n in 0..10 {
+        // Make combinatorial terms into tristates.
+        if let Some((ref mut pin_mode, _)) = blueprint.olmcs[n].output {
+            if *pin_mode == PinMode::Combinatorial {
+                *pin_mode = PinMode::Tristate;
+            }
+        }
+
+        if blueprint.olmcs[n].output.is_some() && blueprint.olmcs[n].active == Active::High {
+            gal.xor[9 - n] = true;
+        }
+
+        if match blueprint.olmcs[n].output {
+            None => blueprint.olmcs[n].feedback,
+            Some((PinMode::Tristate, _)) => true,
+            _ => false,
+        } {
+            gal.s1[9 - n] = true;
+        }
+    }
+
     check_gal20ra10(blueprint)?;
     build_galxvx(gal, blueprint)?;
 
@@ -123,6 +161,19 @@ fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error>
 }
 
 fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
+    for n in 0..10 {
+        // Make combinatorial terms into tristates.
+        if let Some((ref mut pin_mode, _)) = blueprint.olmcs[n].output {
+            if *pin_mode == PinMode::Combinatorial {
+                *pin_mode = PinMode::Tristate;
+            }
+        }
+
+        if blueprint.olmcs[n].output.is_some() && blueprint.olmcs[n].active == Active::High {
+            gal.xor[9 - n] = true;
+        }
+    }
+
     for i in 0..blueprint.olmcs.len() {
         let bounds = gal.chip.get_bounds(i);
         let olmc = &blueprint.olmcs[i];
