@@ -160,31 +160,19 @@ fn build_gal22v10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error>
     Ok(())
 }
 
-fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error> {
-    for n in 0..10 {
-        // Make combinatorial terms into tristates.
-        if let Some((ref mut pin_mode, _)) = blueprint.olmcs[n].output {
-            if *pin_mode == PinMode::Combinatorial {
-                *pin_mode = PinMode::Tristate;
-            }
-        }
-
-        if blueprint.olmcs[n].output.is_some() && blueprint.olmcs[n].active == Active::High {
-            gal.xor[9 - n] = true;
-        }
-    }
-
-    for i in 0..blueprint.olmcs.len() {
+fn build_gal20ra10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
+    for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let bounds = gal.chip.get_bounds(i);
-        let olmc = &blueprint.olmcs[i];
 
         match &olmc.output {
+            // Tristate, combinatorial or registered, fuses go in the same place.
             Some((_, term)) => {
                 gal.add_term(&term, &Bounds { row_offset: 4, .. bounds })?;
             }
             None => gal.add_term(&gal::false_term(0), &bounds)?,
         }
 
+        // If not set, is true (and permanently enabled).
         if let Some(term) = &olmc.tri_con {
             gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, .. bounds })?;
         }
@@ -204,6 +192,10 @@ fn build_gal20ra10(gal: &mut GAL, blueprint: &mut Blueprint) -> Result<(), Error
 
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
             gal.add_term_opt(&olmc.clock, &clock_bounds)?;
+        }
+
+        if olmc.output.is_some() && olmc.active == Active::High {
+            gal.xor[9 - i] = true;
         }
     }
 
