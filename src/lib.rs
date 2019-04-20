@@ -7,3 +7,12 @@ pub mod jedec_writer;
 pub mod olmc;
 pub mod parser;
 pub mod writer;
+
+pub fn assemble(file_name: &str, config: &jedec_writer::Config) -> Result<(), errors::Error> {
+    let content = parser::parse(file_name)?;
+    let mut blueprint = blueprint::Blueprint::from(&content)?;
+    let gal = gal_builder::build(&mut blueprint)?;
+    writer::write_files(file_name, config, &blueprint.pins, &blueprint.olmcs, &gal).unwrap();
+
+    Ok(())
+}

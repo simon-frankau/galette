@@ -7,11 +7,8 @@ use clap::{Arg, App};
 
 use std::process;
 
-use galette::blueprint;
 use galette::errors;
 use galette::jedec_writer;
-use galette::gal_builder;
-use galette::parser;
 
 fn main() {
     let matches = App::new("Galette")
@@ -53,18 +50,8 @@ fn main() {
         jedec_sec_bit: matches.is_present("secure"),
     };
 
-    let c = match parser::parse(file_name) {
-        Ok(c) => c,
-        Err(e) => { errors::print_error(e); process::exit(1);; }
-    };
-
-    let mut blueprint = match blueprint::Blueprint::from(&c) {
-        Ok(b) => b,
-        Err(e) => { errors::print_error(e); process::exit(1); }
-    };
-
-    match gal_builder::do_stuff(&mut blueprint, file_name, &config) {
-        Ok(()) => (),
-        Err(e) => { errors::print_error(e); process::exit(1); }
-    };
+    if let Err(e) = galette::assemble(&file_name, &config) {
+        errors::print_error(e);
+        process::exit(1);
+    }
 }

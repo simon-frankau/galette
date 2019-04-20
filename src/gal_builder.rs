@@ -9,9 +9,44 @@ use gal::Bounds;
 use gal::GAL;
 use gal::Mode;
 use olmc;
-use writer;
 
-pub use gal::Pin;
+
+pub fn build(blueprint: &mut Blueprint) -> Result<GAL, Error> {
+    let mut gal = GAL::new(blueprint.chip);
+
+    // Set signature.
+    for x in gal.sig.iter_mut() {
+        *x = false;
+    }
+
+    // Signature has space for 8 bytes.
+    for i in 0..usize::min(blueprint.sig.len(), 8) {
+        let c = blueprint.sig[i];
+        for j in 0..8 {
+            gal.sig[i * 8 + j] = (c << j) & 0x80 != 0;
+        }
+    }
+
+    let mode = match olmc::analyse_mode(&mut gal, &mut blueprint.olmcs) {
+        Some(Mode::Mode1) => 1,
+        Some(Mode::Mode2) => 2,
+        Some(Mode::Mode3) => 3,
+        None => 0,
+    };
+
+    println!("GAL {}; Operation mode {}; Security fuse {}",
+             &gal.chip.name()[3..],
+             mode,
+             "off"); // TODO cfg->JedecSecBit ? "on" : "off");
+
+    match gal.chip {
+        Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(&mut gal, blueprint)?,
+        Chip::GAL22V10 => build_gal22v10(&mut gal, blueprint)?,
+        Chip::GAL20RA10 => build_gal20ra10(&mut gal, blueprint)?,
+    }
+
+    Ok(gal)
+}
 
 // Adjust the bounds for the main term of there's a tristate enable
 // term in the first row.
@@ -28,59 +63,6 @@ pub fn tristate_adjust(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds:
         Chip::GAL22V10 => Bounds { row_offset: 1, ..*bounds },
         Chip::GAL20RA10 => panic!("Nope!"),
     }
-}
-
-pub fn do_it_all(
-    gal: &mut GAL,
-    blueprint: &mut Blueprint,
-) -> Result<(), Error> {
-    let mode = match olmc::analyse_mode(gal, &mut blueprint.olmcs) {
-        Some(Mode::Mode1) => 1,
-        Some(Mode::Mode2) => 2,
-        Some(Mode::Mode3) => 3,
-        None => 0,
-    };
-
-    println!("GAL {}; Operation mode {}; Security fuse {}",
-             &gal.chip.name()[3..],
-             mode,
-             "off"); // TODO cfg->JedecSecBit ? "on" : "off");
-
-    match gal.chip {
-        Chip::GAL16V8 | Chip::GAL20V8 => build_galxv8(gal, blueprint)?,
-        Chip::GAL22V10 => build_gal22v10(gal, blueprint)?,
-        Chip::GAL20RA10 => build_gal20ra10(gal, blueprint)?,
-    }
-
-    Ok(())
-}
-
-pub fn do_stuff(
-    blueprint: &mut Blueprint,
-    file: &str,
-    config: &::jedec_writer::Config,
-) -> Result<(), Error> {
-    // TODO: Move down, past blueprint construction.
-    let mut gal = GAL::new(blueprint.chip);
-
-    // Set signature.
-    for x in gal.sig.iter_mut() {
-        *x = false;
-    }
-
-    // Signature has space for 8 bytes.
-    for i in 0..usize::min(blueprint.sig.len(), 8) {
-        let c = blueprint.sig[i];
-        for j in 0..8 {
-            gal.sig[i * 8 + j] = (c << j) & 0x80 != 0;
-        }
-    }
-
-    do_it_all(&mut gal, blueprint)?;
-
-    writer::write_files(file, config, &blueprint.pins, &blueprint.olmcs, &gal).unwrap();
-
-    Ok(())
 }
 
 // Check that you're not trying to use 20ra10-specific features
