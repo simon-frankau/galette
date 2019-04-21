@@ -6,7 +6,7 @@ programmer.
 
 ## Usage
 
-The input file format is a slightly relaxed version of the GALasm
+The input file format is a slightly relaxed modified of the GALasm
 format. Differences include:
 
  * The "DESCRIPTION" section at the end of the .pld file is now optional.
@@ -14,12 +14,14 @@ format. Differences include:
    are undriven.
  * You can use long pins names, and the only downside is it makes the
    output files lose alignment.
- * We assume one equation per line
-   * TODO: I might want to change this one, as it's a pretty big change.
-
-TODO:
-
- * Should not be equation-line-order dependent.
+ * Tristate enables etc. no longer need to be defined after the main
+   output definition (as long as that definition is present somewhere).
+ * Newlines are important.
+   * We assume one line per equation.
+   * The list of pins must be split equally across two lines.
+   * This is much less free-form than galasm, but hopefully makes
+     understanding syntax errors a lot easier.
+   * Maybe I'll change my mind!
 
 `galette --help` gives you a summary of the (GALasm-compatible)
 command-line options.
@@ -74,5 +76,6 @@ To run the tests, `./run_tests.sh`.
  * Better documentation. :)
  * Better error-handling.
  * Add tests for the deliberately different cases.
-  * Specifically, long pin names, no equations, no DESCRIPTION.
+  * Specifically, long pin names, no equations, no DESCRIPTION,
+    auxiliary equations before main equations.
  * Do coverage testing.

@@ -260,9 +260,7 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
     match line_iter.next() {
         Some(s) => {
             let tokens = tokenise(s)?;
-            if tokens.len() != chip.num_pins() / 2 {
-                return Err(ErrorCode::BadPinCount);
-            }
+            let len = tokens.len();
             for token in tokens.into_iter() {
                 match token {
                     Token::Item((name, suffix)) => {
@@ -274,6 +272,13 @@ pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, b
                     }
                     _ => return Err(ErrorCode::BadPin),
                 }
+            }
+
+            // We test this afterwards in case there was a bad token
+            // causing us to miscount. In that case, the earlier error
+            // message willl be more useful.
+            if len != chip.num_pins() / 2 {
+                return Err(ErrorCode::BadPinCount);
             }
         }
         None => return Err(ErrorCode::BadEOF),
@@ -301,7 +306,8 @@ fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Res
 {
     let (named_pin, suffix) = match iter.next() {
         Some(Token::Item(item)) => item,
-        _ => return Err(ErrorCode::BadToken),
+        Some(_) => return Err(ErrorCode::BadToken),
+        None => return Err(ErrorCode::BadEOL),
     };
 
     if suffix != Suffix::None {

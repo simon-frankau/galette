@@ -64,8 +64,7 @@ pub enum Mode {
 // depend on the mode settings for the GALxxV8s, so they're here rather
 // than in chips.rs.
 
-// TODO: Should 'OUT' be used anywhere, if we're being galasm-compatible?
-const OUT: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput);
+const BAD: Result<i32, ErrorCode> = Err(ErrorCode::BadAnalysis);
 const O1: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1);
 const O113: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput113);
 const O111: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput111);
@@ -77,7 +76,7 @@ const PWR: Result<i32, ErrorCode> = Err(ErrorCode::BadPower);
 // GAL16V8
 const PIN_TO_COL_16_MODE1: [Result<i32, ErrorCode>; 20] = [
     Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
-    Ok(30), Ok(26), Ok(22), Ok(18), OUT,    OUT,    Ok(14), Ok(10), Ok(6),  PWR,
+    Ok(30), Ok(26), Ok(22), Ok(18), BAD,    BAD,    Ok(14), Ok(10), Ok(6),  PWR,
 ];
 const PIN_TO_COL_16_MODE2: [Result<i32, ErrorCode>; 20] = [
     Ok(2),  Ok(0), Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
@@ -91,7 +90,7 @@ const PIN_TO_COL_16_MODE3: [Result<i32, ErrorCode>; 20] = [
 // GAL20V8
 const PIN_TO_COL_20_MODE1: [Result<i32, ErrorCode>; 24] = [
     Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
-    Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), OUT,    OUT,    Ok(18), Ok(14), Ok(10), Ok(6),  PWR,
+    Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), BAD,    BAD,    Ok(18), Ok(14), Ok(10), Ok(6),  PWR,
 ];
 const PIN_TO_COL_20_MODE2: [Result<i32, ErrorCode>; 24] = [
     Ok(2),  Ok(0),  Ok(4), Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,

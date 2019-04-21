@@ -117,7 +117,7 @@ Error in line 7: use GND, VCC instead of /VCC, /GND
 === noclk.pld
 Error in line 7: missing clock definition (.CLK) of registered output
 === noequals.pld
-Error in line 7: '=' expected
+Error in line 7: bad character in input
 === nognd.pld
 Error in line 4: pin declaration: expected GND at GND pin
 === norhs.pld
@@ -125,7 +125,7 @@ Error in line 7: unexpected end of file
 === norhs2.pld
 Error in line 7: unexpected end of file
 === norhs3.pld
-Error in line 7: unexpected end of file
+Error in line 7: unexpected end of line
 === novcc.pld
 Error in line 5: pin declaration: expected VCC at VCC pin
 === oneline.pld
@@ -138,8 +138,6 @@ Error in line 10: before using .APRST the output must be defined
 Error in line 10: before using .ARST, the output must be defined
 === pinbadneg.pld
 Error in line 4: pinname expected after '/'
-=== pincontainsneg.pld
-Error in line 4: illegal use of '/'
 === pinrepeated.pld
 Error in line 4: pinname defined twice
 === plaintri.pld
@@ -166,7 +164,7 @@ Error in line 5: GAL22V10: AR and SP is not allowed as pinname
 === threeline.pld
 Error in line 2: unexpected end of file
 === toofewpins.pld
-Error in line 5: unexpected end of file
+Error in line 5: wrong number of pins
 === toomanyterms.pld
 Error in line 15: too many product terms
 === twoline.pld
