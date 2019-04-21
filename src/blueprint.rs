@@ -110,7 +110,7 @@ impl Blueprint {
                     Suffix::T =>
                         olmc.set_base(&pin, term, PinMode::Tristate),
                     Suffix::E =>
-                        olmc.set_enable(&pin, term, self.chip),
+                        olmc.set_enable(&pin, term),
                     Suffix::CLK =>
                         olmc.set_clock(&pin, term),
                     Suffix::ARST =>
@@ -210,7 +210,7 @@ impl OLMC {
         Ok(())
     }
 
-    pub fn set_enable(&mut self, pin: &Pin, term: Term, chip: Chip) -> Result<(), ErrorCode> {
+    pub fn set_enable(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
             return Err(ErrorCode::InvertedControl);
         }
@@ -219,18 +219,6 @@ impl OLMC {
             return Err(ErrorCode::RepeatedTristate);
         }
         self.tri_con = Some(term);
-
-        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
-        match self.output {
-            None => return Err(ErrorCode::PrematureENABLE),
-            Some((PinMode::Registered, _)) => {
-                if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 {
-                    return Err(ErrorCode::TristateReg);
-                }
-            }
-            Some((PinMode::Combinatorial, _)) => return Err(ErrorCode::UnmatchedTristate),
-            _ => {}
-        }
 
         Ok(())
     }
@@ -245,13 +233,6 @@ impl OLMC {
         }
         self.clock = Some(term);
 
-        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
-        match self.output {
-            None => return Err(ErrorCode::PrematureCLK),
-            Some((PinMode::Registered, _)) => {}
-            _ => return Err(ErrorCode::InvalidControl),
-        }
-
         Ok(())
     }
 
@@ -265,13 +246,6 @@ impl OLMC {
         }
         self.arst = Some(term);
 
-        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
-        match self.output {
-            None => return Err(ErrorCode::PrematureARST),
-            Some((PinMode::Registered, _)) => {}
-            _ => return Err(ErrorCode::InvalidControl),
-        };
-
         Ok(())
     }
 
@@ -284,13 +258,6 @@ impl OLMC {
             return Err(ErrorCode::RepeatedAPRST);
         }
         self.aprst = Some(term);
-
-        // TODO: Move these checks later in the pipeline so that equation order doesn't matter.
-        match self.output {
-            None => return Err(ErrorCode::PrematureAPRST),
-            Some((PinMode::Registered, _)) => {}
-            _ => return Err(ErrorCode::InvalidControl),
-        }
 
         Ok(())
     }

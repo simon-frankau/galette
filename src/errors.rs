@@ -46,11 +46,11 @@ pub enum ErrorCode {
     NoCLK,
     NoEquals,
     NoPinName,
-    // TODO: I don't really believe in these.
+    // TODO: These are no longer premature, they just need an appropriate output. Fix the name and error message.
     PrematureAPRST,
     PrematureARST,
     PrematureCLK,
-    PrematureENABLE,
+    PrematureEnable,
     RepeatedAPRST,
     RepeatedARST,
     RepeatedARSP,
@@ -99,7 +99,7 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::PrematureAPRST => "before using .APRST the output must be defined",
         ErrorCode::PrematureARST => "before using .ARST, the output must be defined",
         ErrorCode::PrematureCLK => "before using .CLK, the output must be defined",
-        ErrorCode::PrematureENABLE => "before using .E, the output must be defined",
+        ErrorCode::PrematureEnable => "before using .E, the output must be defined",
         ErrorCode::RepeatedAPRST => "several .APRST definitions for the same output found",
         ErrorCode::RepeatedARST => "several .ARST definitions for the same output found",
         ErrorCode::RepeatedARSP => "AR or SP is defined twice",

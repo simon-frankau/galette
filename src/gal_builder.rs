@@ -114,6 +114,18 @@ fn set_core_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
         }
 
         if let Some(term) = &olmc.tri_con {
+            // TODO: Move these checks somewhere sensible.
+            match olmc.output {
+                None => return at_line(term.line_num, Err(ErrorCode::PrematureEnable)),
+                Some((PinMode::Registered, _)) => {
+                    if gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8 {
+                        return at_line(term.line_num, Err(ErrorCode::TristateReg));
+                    }
+                }
+                Some((PinMode::Combinatorial, _)) => return at_line(term.line_num, Err(ErrorCode::UnmatchedTristate)),
+                _ => {}
+            }
+
             gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, ..bounds })?;
         }
     }
@@ -138,6 +150,29 @@ fn set_arsp_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
 fn set_aux_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let bounds = gal.chip.get_bounds(i);
+
+        // TODO: Tidy.
+        if let Some(ref term) = &olmc.clock {
+            match olmc.output {
+                None => return at_line(term.line_num, Err(ErrorCode::PrematureCLK)),
+                Some((PinMode::Registered, _)) => {}
+                _ => return at_line(term.line_num, Err(ErrorCode::InvalidControl)),
+            }
+        }
+        if let Some(ref term) = &olmc.arst {
+            match olmc.output {
+                None => return at_line(term.line_num, Err(ErrorCode::PrematureARST)),
+                Some((PinMode::Registered, _)) => {}
+                _ => return at_line(term.line_num, Err(ErrorCode::InvalidControl)),
+            };
+        }
+        if let Some(ref term) = olmc.aprst {
+            match olmc.output {
+                None => return at_line(term.line_num, Err(ErrorCode::PrematureAPRST)),
+                Some((PinMode::Registered, _)) => {}
+                _ => return at_line(term.line_num, Err(ErrorCode::InvalidControl)),
+            }
+        }
 
         if olmc.output.is_some() {
             if let Some((PinMode::Registered, ref term)) = olmc.output {

@@ -56,8 +56,6 @@ Error in line 23: AR, SP: no suffix allowed
 Error in line 21: use of AR and SP is not allowed in equations
 === badclk.pld
 Error in line 7: .CLK is not allowed when this type of GAL is used
-=== badena.pld
-Error in line 13: before using .E, the output must be defined
 === badgnd.pld
 Error in line 4: illegal VCC/GND assignment
 === badname.pld
@@ -117,7 +115,7 @@ Error in line 25: negation of AR and SP is not allowed
 === negvcc.pld
 Error in line 7: use GND, VCC instead of /VCC, /GND
 === noclk.pld
-Error, pin 14: missing clock definition (.CLK) of registered output
+Error in line 7: missing clock definition (.CLK) of registered output
 === noequals.pld
 Error in line 7: '=' expected
 === nognd.pld
