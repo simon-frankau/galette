@@ -234,7 +234,7 @@ fn remove_comment<'a>(s: &'a str) -> &'a str {
     }
 }
 
-pub fn parse_gal_type<'a, I>(line_iter: &mut I) -> Result<Chip, ErrorCode>
+pub fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, ErrorCode>
     where I: Iterator<Item = &'a str>
 {
     match line_iter.next() {
@@ -376,9 +376,9 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, li
     })
 }
 
-fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, Pin>, ErrorCode>
+fn build_pin_map(chip: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, Pin>, ErrorCode>
 {
-    let num_pins = gal_type.num_pins();
+    let num_pins = chip.num_pins();
     if pins[num_pins - 1] != (String::from("VCC"), false) {
         return Err(ErrorCode::BadVCCLocation);
     }
@@ -393,7 +393,7 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
                 return Err(ErrorCode::RepeatedPinName);
             }
 
-            if gal_type == Chip::GAL22V10 && (name == "AR" || name == "SP") {
+            if chip == Chip::GAL22V10 && (name == "AR" || name == "SP") {
                 return Err(ErrorCode::ARSPAsPinName);
             }
 
@@ -407,7 +407,7 @@ fn build_pin_map(gal_type: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<S
 fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content, ErrorCode>
     where I: Iterator<Item = &'a str>
 {
-    let gal_type = parse_gal_type(&mut line_iter)?;
+    let chip = parse_chip(&mut line_iter)?;
     let signature = parse_signature(&mut line_iter)?;
 
     // After the first couple of lines we remove comments and
@@ -419,11 +419,11 @@ fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content,
         .filter(|x| !x.is_empty())
         .take_while(|x| *x != "DESCRIPTION");
 
-    let pins = parse_pins(gal_type, &mut line_iter)?;
-    let pin_map = build_pin_map(gal_type, &pins)?;
+    let pins = parse_pins(chip, &mut line_iter)?;
+    let pin_map = build_pin_map(chip, &pins)?;
 
     let equations = line_iter
-        .map(|s| parse_equation(gal_type, &pin_map, s, line_num.get()))
+        .map(|s| parse_equation(chip, &pin_map, s, line_num.get()))
         .collect::<Result<Vec<Equation>, ErrorCode>>()?;
 
     // The rest of the pipeline just wants string names.
@@ -433,7 +433,7 @@ fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content,
         full_name}).collect::<Vec<String>>();
 
     Ok(Content{
-        chip: gal_type,
+        chip: chip,
         sig: signature,
         pins: pin_names,
         eqns: equations,

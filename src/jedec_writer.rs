@@ -13,7 +13,7 @@ pub struct Config {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// Structure to track the fuse checksum.
+// Structure to track the JEDEC fuse checksum.
 
 struct CheckSummer {
     bit_num: u8,
@@ -110,8 +110,8 @@ pub fn make_jedec(
     config: &Config,
     gal: &GAL,
 ) -> String {
-    let gal_type = gal.chip;
-    let row_len = gal_type.num_cols();
+    let chip = gal.chip;
+    let row_len = chip.num_cols();
 
     let mut buf = String::new();
 
@@ -120,7 +120,7 @@ pub fn make_jedec(
     // TODO: Backwards compatibility.
     buf.push_str("Used Program:   GALasm 2.1\n");
     buf.push_str("GAL-Assembler:  GALasm 2.1\n");
-    buf.push_str(&format!("Device:         {}\n\n", gal_type.name()));
+    buf.push_str(&format!("Device:         {}\n\n", chip.name()));
     // Default value of gal_fuses
     buf.push_str("*F0\n");
 
@@ -132,7 +132,7 @@ pub fn make_jedec(
     });
 
     // Number of fuses.
-    buf.push_str(&format!("*QF{}\n", gal_type.total_size()));
+    buf.push_str(&format!("*QF{}\n", chip.total_size()));
 
     {
         // Construct fuse matrix.
@@ -153,7 +153,7 @@ pub fn make_jedec(
 
         // XOR bits are interleaved with S1 bits on GAL22V10 (stored
         // in the 'ac1' field, as it's the same function).
-        if gal_type != Chip::GAL22V10 {
+        if chip != Chip::GAL22V10 {
             fuse_builder.add(&gal.xor)
         } else {
             let bits = itertools::interleave(gal.xor.iter(), gal.ac1.iter());
@@ -162,7 +162,7 @@ pub fn make_jedec(
 
         fuse_builder.add(&gal.sig);
 
-        if (gal_type == Chip::GAL16V8) || (gal_type == Chip::GAL20V8) {
+        if (chip == Chip::GAL16V8) || (chip == Chip::GAL20V8) {
             fuse_builder.add(&gal.ac1);
             fuse_builder.add(&gal.pt);
             fuse_builder.add(&[gal.syn]);

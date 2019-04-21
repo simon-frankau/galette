@@ -109,12 +109,12 @@ const PIN_TO_COL_20RA10: [Result<i32, ErrorCode>; 24] = [
 
 impl GAL {
     // Generate an empty fuse structure.
-    pub fn new(gal_type: Chip) -> GAL {
-        let fuse_size = gal_type.logic_size();
-        let num_olmcs = gal_type.num_olmcs();
+    pub fn new(chip: Chip) -> GAL {
+        let fuse_size = chip.logic_size();
+        let num_olmcs = chip.num_olmcs();
 
         GAL {
-            chip: gal_type,
+            chip: chip,
             fuses: vec![true; fuse_size],
             // One xor bit per OLMC.
             xor: vec![false; num_olmcs],

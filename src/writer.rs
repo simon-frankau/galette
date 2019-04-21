@@ -11,11 +11,11 @@ use std::path::PathBuf;
 // 'make_chip' draws out the chip with pin assignments.
 //
 
-fn make_chip(gal_type: Chip, pin_names: &[String]) -> String {
+fn make_chip(chip: Chip, pin_names: &[String]) -> String {
     let num_of_pins = pin_names.len();
     let mut buf = String::new();
 
-    buf.push_str(format!("\n\n{:^72}", gal_type.name()).trim_right());
+    buf.push_str(format!("\n\n{:^72}", chip.name()).trim_right());
     buf.push_str(&format!("\n\n{:25} -------\\___/-------", ""));
 
     let mut started = false;
