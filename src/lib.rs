@@ -18,11 +18,10 @@ pub mod chips;
 pub mod errors;
 pub mod gal;
 pub mod gal_builder;
-pub mod jedec_writer;
 pub mod parser;
 pub mod writer;
 
-pub fn assemble(file_name: &str, config: &jedec_writer::Config) -> Result<(), errors::Error> {
+pub fn assemble(file_name: &str, config: &writer::Config) -> Result<(), errors::Error> {
     let content = parser::parse(file_name)?;
     let blueprint = blueprint::Blueprint::from(&content)?;
     let gal = gal_builder::build(&blueprint)?;

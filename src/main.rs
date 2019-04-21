@@ -14,7 +14,7 @@ use clap::{Arg, App};
 use std::process;
 
 use galette::errors;
-use galette::jedec_writer;
+use galette::writer;
 
 fn main() {
     let matches = App::new("Galette")
@@ -49,7 +49,7 @@ fn main() {
 
     let file_name = matches.value_of("INPUT.pld").unwrap();
 
-    let config = jedec_writer::Config {
+    let config = writer::Config {
         gen_fuse: !matches.is_present("nofuse"),
         gen_chip: !matches.is_present("nochip"),
         gen_pin: !matches.is_present("nopin"),
