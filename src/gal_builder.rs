@@ -35,7 +35,7 @@ fn build_galxv8(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     // Are we implementing combinatorial expressions as tristate?
     // Put combinatorial is only available in Mode 1.
     let com_is_tri = gal.get_mode() != Mode::Mode1;
-    set_tristate(&mut gal.ac1, blueprint, com_is_tri);
+    set_tristate(gal, blueprint, com_is_tri);
     set_core_eqns(gal, blueprint)?;
     set_xors(gal, blueprint);
     set_pts(gal);
@@ -49,7 +49,7 @@ fn build_gal22v10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     // logic depends on it.
     //
     // For the 22V10, we always implement combintorial expressions as tristate.
-    set_tristate(&mut gal.s1, blueprint, true);
+    set_tristate(gal, blueprint, true);
     set_core_eqns(gal, blueprint)?;
     set_arsp_eqns(gal, blueprint)?;
     set_xors(gal, blueprint);
@@ -80,7 +80,7 @@ fn set_sig(gal: &mut GAL, blueprint: &Blueprint) {
 }
 
 // Build the tristate control bits - set for inputs and tristated outputs.
-fn set_tristate(flags: &mut [bool], blueprint: &Blueprint, com_is_tri: bool) {
+fn set_tristate(gal: &mut GAL, blueprint: &Blueprint, com_is_tri: bool) {
     // 'com_is_tri' if combinatorial equations are being implemented
     // using fixed-enabled tristate outputs (this necessary on some
     // chips/modes).
@@ -95,7 +95,7 @@ fn set_tristate(flags: &mut [bool], blueprint: &Blueprint, com_is_tri: bool) {
         };
 
         if is_tristate {
-            flags[num_olmcs - 1 - i] = true;
+            gal.ac1[num_olmcs - 1 - i] = true;
         }
     }
 }

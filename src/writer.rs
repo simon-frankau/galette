@@ -90,7 +90,7 @@ fn make_pin(gal: &GAL, pin_names: &[String], olmcs: &[OLMC]) -> String {
 // 'make_fuse' writes out a fuse map.
 //
 
-fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[bool]) {
+fn make_row(buf: &mut String, row: &mut usize, num_of_col: usize, data: &[bool]) {
     buf.push_str(&format!("\n{:>3} ", row));
 
     for col in 0..num_of_col {
@@ -98,12 +98,13 @@ fn make_row(buf: &mut String, num_of_col: usize, row: usize, data: &[bool]) {
             buf.push(' ');
         }
 
-        buf.push(if data[row * num_of_col + col] { '-' } else { 'x' });
+        buf.push(if data[*row * num_of_col + col] { '-' } else { 'x' });
     }
+
+    *row += 1;
 }
 
-// Short-named helper
-fn b(bit: bool) -> char {
+fn to_bit(bit: bool) -> char {
     if bit {
         '1'
     } else {
@@ -112,6 +113,11 @@ fn b(bit: bool) -> char {
 }
 
 fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
+
+    // This function relies on detailed knowledge of the ordering of
+    // rows in the fuse map vs. OLMCs vs. pins. It's brittle, but
+    // no-one's changing the hardware layout. :)
+
     let mut buf = String::new();
 
     let chip = gal.chip;
@@ -123,28 +129,24 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
     // AR for the 22V10
     if chip == Chip::GAL22V10 {
         buf.push_str("\n\nAR");
-        make_row(&mut buf, row_len, row, &gal.fuses);
-        row += 1;
+        make_row(&mut buf, &mut row, row_len, &gal.fuses);
     }
 
+    let last_olmc = chip.last_olmc();
     for olmc in 0..chip.num_olmcs() {
+        let xor = to_bit(gal.xor[last_olmc - pin]);
+        let ac1 = to_bit(gal.ac1[last_olmc - pin]);
         let flags = match chip {
-            Chip::GAL16V8 =>
-                format!("XOR = {:>1}   AC1 = {:>1}", b(gal.xor[19 - pin]), b(gal.ac1[19 - pin])),
-            Chip::GAL20V8 =>
-                format!("XOR = {:>1}   AC1 = {:>1}", b(gal.xor[22 - pin]), b(gal.ac1[22 - pin])),
-            Chip::GAL22V10 =>
-                format!("S0 = {:>1}   S1 = {:>1}", b(gal.xor[23 - pin]), b(gal.s1[23 - pin])),
-            Chip::GAL20RA10 =>
-                format!("S0 = {:>1}", b(gal.xor[23 - pin])),
+            Chip::GAL16V8 => format!("XOR = {:>1}   AC1 = {:>1}", xor, ac1),
+            Chip::GAL20V8 => format!("XOR = {:>1}   AC1 = {:>1}", xor, ac1),
+            Chip::GAL22V10 => format!("S0 = {:>1}   S1 = {:>1}", xor, ac1),
+            Chip::GAL20RA10 => format!("S0 = {:>1}", xor),
         };
-
         buf.push_str(&format!("\n\nPin {:>2} = {:<12} {}", pin, pin_names[pin - 1], &flags));
 
         for _ in 0..chip.num_rows_for_olmc(olmc) {
             // Print all fuses of an OLMC
-            make_row(&mut buf, row_len, row, &gal.fuses);
-            row += 1;
+            make_row(&mut buf, &mut row, row_len, &gal.fuses);
         }
 
         pin -= 1;
@@ -153,7 +155,7 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
     // SP for the 22V10
     if chip == Chip::GAL22V10 {
         buf.push_str("\n\nSP");
-        make_row(&mut buf, row_len, row, &gal.fuses);
+        make_row(&mut buf, &mut row, row_len, &gal.fuses);
     }
 
     buf.push_str("\n\n");

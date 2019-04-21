@@ -45,7 +45,6 @@ pub struct GAL {
     pub pt: Vec<bool>,
     pub syn: bool,
     pub ac0: bool,
-    pub s1: Vec<bool>,
 }
 
 // The GAL16V8 and GAL20V8 could run in one of three modes,
@@ -120,11 +119,10 @@ impl GAL {
             // One xor bit per OLMC.
             xor: vec![false; num_olmcs],
             sig: vec![false; 64],
-            ac1: vec![false; 8],
+            ac1: vec![false; num_olmcs],
             pt: vec![false; 64],
             syn: false,
             ac0: false,
-            s1: vec![false; 10],
         }
     }
 
@@ -165,7 +163,7 @@ impl GAL {
         }
 
         if let Some(i) = self.chip.pin_to_olmc(pin_num) {
-            return !self.s1[self.chip.num_olmcs() - 1 - i];
+            return !self.ac1[self.chip.num_olmcs() - 1 - i];
         }
 
         false

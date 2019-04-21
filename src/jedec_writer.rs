@@ -151,11 +151,12 @@ pub fn make_jedec(
             }
         }
 
-        // XOR bits are interleaved with S1 bits on GAL22V10.
+        // XOR bits are interleaved with S1 bits on GAL22V10 (stored
+        // in the 'ac1' field, as it's the same function).
         if gal_type != Chip::GAL22V10 {
             fuse_builder.add(&gal.xor)
         } else {
-            let bits = itertools::interleave(gal.xor.iter(), gal.s1.iter());
+            let bits = itertools::interleave(gal.xor.iter(), gal.ac1.iter());
             fuse_builder.add_iter(bits);
         }
 
