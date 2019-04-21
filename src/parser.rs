@@ -380,15 +380,20 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, li
 fn build_pin_map(chip: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, Pin>, ErrorCode>
 {
     let num_pins = chip.num_pins();
-    if pins[num_pins - 1] != (String::from("VCC"), false) {
-        return Err(ErrorCode::BadVCCLocation);
-    }
-    if pins[num_pins/2 - 1] != (String::from("GND"), false) {
-        return Err(ErrorCode::BadGNDLocation);
-    }
-
     let mut pin_map = HashMap::new();
     for ((name, neg), pin_num) in pins.clone().into_iter().zip(1..) {
+        if pin_num == num_pins && (name.as_str(), neg) != ("VCC", false) {
+            return Err(ErrorCode::BadVCC);
+        }
+        if pin_num == num_pins / 2 && (name.as_str(), neg) != ("GND", false) {
+            return Err(ErrorCode::BadGND);
+        }
+        if name == "VCC" && pin_num != num_pins {
+            return Err(ErrorCode::BadVCCLocation);
+        }
+        if name == "GND" && pin_num != num_pins / 2 {
+            return Err(ErrorCode::BadGNDLocation);
+        }
         if name != "NC" {
             if pin_map.contains_key(&name) {
                 return Err(ErrorCode::RepeatedPinName);
