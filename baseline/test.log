@@ -164,7 +164,7 @@ Error in line 25: AR or SP is defined twice
 === spbad.pld
 Error in line 5: GAL22V10: AR and SP is not allowed as pinname
 === threeline.pld
-Error in line 3: unexpected end of file
+Error in line 2: unexpected end of file
 === toofewpins.pld
 Error in line 5: unexpected end of file
 === toomanyterms.pld

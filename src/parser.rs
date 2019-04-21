@@ -238,7 +238,7 @@ pub fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, ErrorCode>
     where I: Iterator<Item = &'a str>
 {
     match line_iter.next() {
-        Some(name) => Chip::from_name(name),
+        Some(name) => Chip::from_name(name.trim()),
         None => Err(ErrorCode::BadGALType),
     }
 }
