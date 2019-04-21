@@ -252,32 +252,31 @@ pub fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, ErrorCode>
     }
 }
 
+// Parse one line of pins
 pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, bool)>, ErrorCode>
     where I: Iterator<Item = &'a str>
 {
     let mut pins = Vec::new();
-    for _ in 0..2 {
-        match line_iter.next() {
-            Some(s) => {
-                let tokens = tokenise(s)?;
-                if tokens.len() != chip.num_pins() / 2 {
-                    return Err(ErrorCode::BadPinCount);
-                }
-                for token in tokens.into_iter() {
-                    match token {
-                        Token::Item((name, suffix)) => {
-                            if suffix == Suffix::None {
-                                pins.push((name.name, name.neg));
-                            } else {
-                                return Err(ErrorCode::BadPin);
-                            }
+    match line_iter.next() {
+        Some(s) => {
+            let tokens = tokenise(s)?;
+            if tokens.len() != chip.num_pins() / 2 {
+                return Err(ErrorCode::BadPinCount);
+            }
+            for token in tokens.into_iter() {
+                match token {
+                    Token::Item((name, suffix)) => {
+                        if suffix == Suffix::None {
+                            pins.push((name.name, name.neg));
+                        } else {
+                            return Err(ErrorCode::BadPin);
                         }
-                        _ => return Err(ErrorCode::BadPin),
                     }
+                    _ => return Err(ErrorCode::BadPin),
                 }
             }
-            None => return Err(ErrorCode::BadEOF),
         }
+        None => return Err(ErrorCode::BadEOF),
     }
 
     Ok(pins)
@@ -377,11 +376,16 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, li
     })
 }
 
-fn build_pin_map(chip: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<String, Pin>, ErrorCode>
+// Add a row's worth of pins to the pin map.
+fn extend_pin_map(
+    pin_map: &mut HashMap<String, Pin>,
+    chip: Chip,
+    row_num: usize,
+    pins: &Vec<(String, bool)>) -> Result<(), ErrorCode>
 {
     let num_pins = chip.num_pins();
-    let mut pin_map = HashMap::new();
-    for ((name, neg), pin_num) in pins.clone().into_iter().zip(1..) {
+    let first_pin = 1 + row_num * num_pins / 2;
+    for ((name, neg), pin_num) in pins.clone().into_iter().zip(first_pin..) {
         if pin_num == num_pins && (name.as_str(), neg) != ("VCC", false) {
             return Err(ErrorCode::BadVCC);
         }
@@ -407,7 +411,7 @@ fn build_pin_map(chip: Chip, pins: &Vec<(String, bool)>) -> Result<HashMap<Strin
         }
     }
 
-    Ok(pin_map)
+    Ok(())
 }
 
 fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content, ErrorCode>
@@ -425,8 +429,15 @@ fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content,
         .filter(|x| !x.is_empty())
         .take_while(|x| *x != "DESCRIPTION");
 
-    let pins = parse_pins(chip, &mut line_iter)?;
-    let pin_map = build_pin_map(chip, &pins)?;
+    // This is complicated because we want to process one line at a
+    // time so that if there's an error it's reported on the
+    // appropriate line of input.
+    let mut pin_map = HashMap::new();
+    let mut pins = parse_pins(chip, &mut line_iter)?;
+    extend_pin_map(&mut pin_map, chip, 0, &pins)?;
+    let mut pins2 = parse_pins(chip, &mut line_iter)?;
+    extend_pin_map(&mut pin_map, chip, 1, &pins2)?;
+    pins.append(&mut pins2);
 
     let equations = line_iter
         .map(|s| parse_equation(chip, &pin_map, s, line_num.get()))
