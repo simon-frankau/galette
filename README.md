@@ -7,7 +7,13 @@ programmer.
 ## Usage
 
 The input file format is a slightly relaxed version of the GALasm
-format. The "DESCRIPTION" section at the end is now optional.
+format. Differences include:
+
+ * The "DESCRIPTION" section at the end of the .pld file is now optional.
+ * You don't actually need to include any equations at all! All outputs
+   are undriven.
+ * You can use long pins names, and the only downside is it makes the
+   output files lose alignment.
 
 TODO:
 

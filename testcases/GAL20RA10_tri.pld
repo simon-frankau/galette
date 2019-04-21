@@ -1,0 +1,21 @@
+GAL20RA10
+CombTest
+
+/PL   NC   I0    I1    I2    I3    I4    I5    NC    NC   NC    GND
+/OE   NC   O0    O1    O2    O3    O4    NC    NC    NC   NC    VCC
+
+O0 = I0 * I1
+
+O1 = I2 + I3
+
+O2 = I4 * /I5 + /I4 * I5
+
+O3.T = I0 * I1 * I2 * I3 * I4 * I5
+
+O3.E = I0 * O1
+
+/O4 = I0 + I1 + I2 + I3
+
+DESCRIPTION
+
+Simple test of combinatorial logic.

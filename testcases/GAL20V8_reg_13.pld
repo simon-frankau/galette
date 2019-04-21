@@ -1,0 +1,21 @@
+GAL20V8
+CombTest
+
+Clock I0    I1    I2    I3    I4    I5    I6    I7    NC    NC   GND
+/OE   I8    O0    O1    O2    O3    O4    O5    NC    NC    NC   VCC
+
+O0.R = I0 * I1 + OE ; Can't use pin 13 as input
+
+O1.R = I2 + I3
+
+O2.R = I4 * /I5 + /I4 * I5
+
+O3.R = I0 * I1 * I2 * I3 * I4 * I5
+
+/O4.R = I0 + I1 + I2 + I3 + I4 + I5
+
+/O5.R = /I7 + I8
+
+DESCRIPTION
+
+Simple test of combinatorial logic.

@@ -1,0 +1,7 @@
+GAL16V8
+CombTest
+
+Clock I0    I1    I2    I3    I4    I5    NC    NC   GND
+/OE   O0    O1    O2    O3    O4    NC    NC    NC   VCC
+
+O0.R ?

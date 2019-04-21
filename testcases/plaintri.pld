@@ -1,0 +1,20 @@
+GAL16V8
+CombTest
+
+Clock I0    I1    I2    I3    I4    I5    NC    NC   GND
+/OE   O0    O1    O2    O3    O4    NC    NC    NC   VCC
+
+O0 = I0 * I1
+O0.E = I2
+
+O1.R = I2 + I3
+
+O2.R = I4 * /I5 + /I4 * I5
+
+O3.R = I0 * I1 * I2 * I3 * I4 * I5
+
+/O4.R = I0 + I1 + I2 + I3 + I4 + I5
+
+DESCRIPTION
+
+Simple test of combinatorial logic.

@@ -1,0 +1,102 @@
+
+
+Pin 23 = NC           S0 = 0
+  0  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  1  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  2  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  3  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  4  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  5  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  6  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  7  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 22 = NC           S0 = 0
+  8  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+  9  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 10  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 11  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 12  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 13  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 14  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 15  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 21 = NC           S0 = 0
+ 16  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 17  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 18  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 19  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 20  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 21  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 22  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 23  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 20 = NC           S0 = 0
+ 24  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 25  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 26  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 27  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 28  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 29  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 30  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 31  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 19 = O4           S0 = 0
+ 32  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 33  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 34  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 35  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 36  ---- x--- ---- ---- ---- ---- ---- ---- ---- ----
+ 37  ---- ---- x--- ---- ---- ---- ---- ---- ---- ----
+ 38  ---- ---- ---- x--- ---- ---- ---- ---- ---- ----
+ 39  ---- ---- ---- ---- x--- ---- ---- ---- ---- ----
+
+Pin 18 = O3           S0 = 1
+ 40  ---- x--- ---- ---- ---- ---- ---- --x- ---- ----
+ 41  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 42  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 43  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 44  ---- x--- x--- x--- x--- x--- x--- ---- ---- ----
+ 45  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 46  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 47  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 17 = O2           S0 = 1
+ 48  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 49  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 50  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 51  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 52  ---- ---- ---- ---- ---- x--- -x-- ---- ---- ----
+ 53  ---- ---- ---- ---- ---- -x-- x--- ---- ---- ----
+ 54  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 55  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 16 = O1           S0 = 1
+ 56  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 57  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 58  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 59  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 60  ---- ---- ---- x--- ---- ---- ---- ---- ---- ----
+ 61  ---- ---- ---- ---- x--- ---- ---- ---- ---- ----
+ 62  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 63  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 15 = O0           S0 = 1
+ 64  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 65  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 66  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 67  ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+ 68  ---- x--- x--- ---- ---- ---- ---- ---- ---- ----
+ 69  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 70  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 71  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+
+Pin 14 = NC           S0 = 0
+ 72  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 73  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 74  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 75  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 76  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 77  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 78  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+ 79  xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx
+

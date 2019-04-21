@@ -1,0 +1,188 @@
+=== security_bit.pld
+=== GAL16V8_badname.pld
+Error in line 1: Line  1: type of GAL expected
+=== GAL16V8_combinatorial.pld
+=== GAL16V8_mode2_12.pld
+Error in line 9: mode 2: pins 12, 19 can't be used as input
+=== GAL16V8_mode2_19.pld
+Error in line 9: mode 2: pins 12, 19 can't be used as input
+=== GAL16V8_mode2_feedback.pld
+=== GAL16V8_mode2_in.pld
+=== GAL16V8_reg.pld
+=== GAL16V8_reg_1.pld
+Error in line 7: mode 3: pins 1,11 are reserved for 'Clock' and '/OE'
+=== GAL16V8_reg_11.pld
+Error in line 7: mode 3: pins 1,11 are reserved for 'Clock' and '/OE'
+=== GAL16V8_tri.pld
+=== GAL20RA10_badname.pld
+Error in line 1: Line  1: type of GAL expected
+=== GAL20RA10_combinatorial.pld
+=== GAL20RA10_pin1.pld
+Error in line 7: GAL20RA10: pin 1 can't be used in equations
+=== GAL20RA10_pin13.pld
+Error in line 7: GAL20RA10: pin 13 can't be used in equations
+=== GAL20RA10_reg.pld
+=== GAL20RA10_rst.pld
+=== GAL20RA10_tri.pld
+=== GAL20V8_badname.pld
+Error in line 1: Line  1: type of GAL expected
+=== GAL20V8_combinatorial.pld
+=== GAL20V8_mode2.pld
+=== GAL20V8_mode2_15.pld
+Error in line 9: mode 2: pins 15, 22 can't be used as input
+=== GAL20V8_mode2_22.pld
+Error in line 9: mode 2: pins 15, 22 can't be used as input
+=== GAL20V8_mode2_feedback.pld
+=== GAL20V8_mode2_in.pld
+Error in line 5: pinname defined twice
+=== GAL20V8_reg.pld
+=== GAL20V8_reg_1.pld
+Error in line 7: mode 3: pins 1,13 are reserved for 'Clock' and '/OE'
+=== GAL20V8_reg_13.pld
+Error in line 7: mode 3: pins 1,13 are reserved for 'Clock' and '/OE'
+=== GAL20V8_tri.pld
+=== GAL22V10_arsp.pld
+=== GAL22V10_badname.pld
+Error in line 1: Line  1: type of GAL expected
+=== GAL22V10_combinatorial.pld
+=== GAL22V10_reg.pld
+=== GAL22V10_tri.pld
+=== arbad.pld
+Error in line 5: GAL22V10: AR and SP is not allowed as pinname
+=== arspok.pld
+=== badarext.pld
+Error in line 23: AR, SP: no suffix allowed
+=== badarusage.pld
+Error in line 21: use of AR and SP is not allowed in equations
+=== badclk.pld
+Error in line 7: .CLK is not allowed when this type of GAL is used
+=== badena.pld
+Error in line 13: before using .E, the output must be defined
+=== badgnd.pld
+Error in line 4: illegal VCC/GND assignment
+=== badname.pld
+Error in line 1: Line  1: type of GAL expected
+=== badpinstart.pld
+Error in line 4: illegal character in pin declaration
+=== badprst.pld
+Error in line 7: .APRST is not allowed when this type of GAL is used
+=== badrst.pld
+Error in line 7: .ARST is not allowed when this type of GAL is used
+=== badspext.pld
+Error in line 23: AR, SP: no suffix allowed
+=== badspusage.pld
+Error in line 21: use of AR and SP is not allowed in equations
+=== badvcc.pld
+Error in line 4: illegal VCC/GND assignment
+=== gnd.pld
+=== inputonly.pld
+Error in line 7: this pin can't be used as output
+=== logicgnd.pld
+Error in line 7: use of VCC and GND is not allowed in equations
+=== logicvcc.pld
+Error in line 7: use of VCC and GND is not allowed in equations
+=== longext.pld
+Error in line 7: unknown suffix found
+=== multiar.pld
+Error in line 23: only one product term allowed (no OR)
+=== multiclk.pld
+Error in line 22: only one product term allowed (no OR)
+=== multiena.pld
+Error in line 15: only one product term allowed (no OR)
+=== multiprst.pld
+Error in line 22: only one product term allowed (no OR)
+=== multirst.pld
+Error in line 22: only one product term allowed (no OR)
+=== multisp.pld
+Error in line 23: only one product term allowed (no OR)
+=== nclhs.pld
+Error in line 17: NC (Not Connected) is not allowed in logic equations
+=== ncpin.pld
+Error in line 9: NC (Not Connected) is not allowed in logic equations
+=== negar.pld
+Error in line 23: negation of AR and SP is not allowed
+=== negarst.pld
+Error in line 25: .E, .CLK, .ARST and .APRST is not allowed to be negated
+=== negclk.pld
+Error in line 8: .E, .CLK, .ARST and .APRST is not allowed to be negated
+=== negena.pld
+Error in line 17: .E, .CLK, .ARST and .APRST is not allowed to be negated
+=== neggnd.pld
+Error in line 7: use GND, VCC instead of /VCC, /GND
+=== negpin.pld
+=== negrst.pld
+Error in line 24: .E, .CLK, .ARST and .APRST is not allowed to be negated
+=== negsp.pld
+Error in line 25: negation of AR and SP is not allowed
+=== negvcc.pld
+Error in line 7: use GND, VCC instead of /VCC, /GND
+=== noclk.pld
+Error, pin 14: missing clock definition (.CLK) of registered output
+=== noequals.pld
+Error in line 7: '=' expected
+=== nognd.pld
+Error in line 4: pin declaration: expected GND at GND pin
+=== norhs.pld
+Error in line 7: unexpected end of file
+=== norhs2.pld
+Error in line 7: unexpected end of file
+=== norhs3.pld
+Error in line 7: unexpected end of file
+=== novcc.pld
+Error in line 5: pin declaration: expected VCC at VCC pin
+=== oneline.pld
+Error in line 1: unexpected end of file
+=== onlyclk.pld
+Error in line 10: before using .CLK, the output must be defined
+=== onlyprst.pld
+Error in line 10: before using .APRST the output must be defined
+=== onlyrst.pld
+Error in line 10: before using .ARST, the output must be defined
+=== pinbadneg.pld
+Error in line 4: pinname expected after '/'
+=== pincontainsneg.pld
+Error in line 4: illegal use of '/'
+=== pinrepeated.pld
+Error in line 4: pinname defined twice
+=== plaintri.pld
+Error in line 8: tristate control without previous '.T'
+=== regtri.pld
+Error in line 8: GAL16V8/20V8: tri. control for reg. output is not allowed
+=== repar.pld
+Error in line 25: AR or SP is defined twice
+=== reparst.pld
+Error in line 26: several .APRST definitions for the same output found
+=== repclk.pld
+Error in line 9: several .CLK definitions for the same output found
+=== repena.pld
+Error in line 19: tristate control is defined twice
+=== reppin.pld
+Error in line 17: same pin is defined multible as output
+=== reprst.pld
+Error in line 26: several .ARST definitions for the same output found
+=== repsp.pld
+Error in line 25: AR or SP is defined twice
+=== security_bit.pld
+=== spbad.pld
+Error in line 5: GAL22V10: AR and SP is not allowed as pinname
+=== threeline.pld
+Error in line 3: unexpected end of file
+=== toofewpins.pld
+Error in line 5: unexpected end of file
+=== toomanyterms.pld
+Error in line 15: too many product terms
+=== twoline.pld
+Error in line 2: unexpected end of file
+=== unkext.pld
+Error in line 7: unknown suffix found
+=== unklhs.pld
+Error in line 17: unknown pinname
+=== unkpin.pld
+Error in line 9: unknown pinname
+=== unregclk.pld
+Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+=== unregprst.pld
+Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+=== unregrst.pld
+Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+=== vcc.pld
