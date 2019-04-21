@@ -1,3 +1,10 @@
+//
+// writer.rs: Output functions
+//
+// This module writes out information about the constructed GAL,
+// including the assembled JEDEC file.
+//
+
 extern crate itertools;
 
 use blueprint::OLMC;

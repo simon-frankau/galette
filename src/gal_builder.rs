@@ -1,3 +1,10 @@
+//
+// gal_builder.rs: GAL constructor
+//
+// Given a Blueprint, this module constucts an appropriate GAL
+// structure, which can then be written out.
+//
+
 use blueprint::Active;
 use blueprint::Blueprint;
 use blueprint::OLMC;
@@ -22,7 +29,6 @@ pub fn build(blueprint: &Blueprint) -> Result<GAL, Error> {
 
     Ok(gal)
 }
-
 
 ////////////////////////////////////////////////////////////////////////
 // Chip-specific GAL-building algorithms.
@@ -114,18 +120,7 @@ fn set_core_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
         }
 
         if let Some(term) = &olmc.tri_con {
-            // TODO: Move these checks somewhere sensible.
-            match olmc.output {
-                None => return at_line(term.line_num, Err(ErrorCode::PrematureEnable)),
-                Some((PinMode::Registered, _)) => {
-                    if gal.chip == Chip::GAL16V8 || gal.chip == Chip::GAL20V8 {
-                        return at_line(term.line_num, Err(ErrorCode::TristateReg));
-                    }
-                }
-                Some((PinMode::Combinatorial, _)) => return at_line(term.line_num, Err(ErrorCode::UnmatchedTristate)),
-                _ => {}
-            }
-
+            at_line(term.line_num, check_tristate(gal.chip, olmc))?;
             gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, ..bounds })?;
         }
     }
@@ -151,42 +146,24 @@ fn set_aux_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let bounds = gal.chip.get_bounds(i);
 
-        // TODO: Tidy.
-        if let Some(ref term) = &olmc.clock {
-            match olmc.output {
-                None => return at_line(term.line_num, Err(ErrorCode::PrematureCLK)),
-                Some((PinMode::Registered, _)) => {}
-                _ => return at_line(term.line_num, Err(ErrorCode::InvalidControl)),
-            }
-        }
-        if let Some(ref term) = &olmc.arst {
-            match olmc.output {
-                None => return at_line(term.line_num, Err(ErrorCode::PrematureARST)),
-                Some((PinMode::Registered, _)) => {}
-                _ => return at_line(term.line_num, Err(ErrorCode::InvalidControl)),
-            };
-        }
-        if let Some(ref term) = olmc.aprst {
-            match olmc.output {
-                None => return at_line(term.line_num, Err(ErrorCode::PrematureAPRST)),
-                Some((PinMode::Registered, _)) => {}
-                _ => return at_line(term.line_num, Err(ErrorCode::InvalidControl)),
+        check_aux(&olmc.clock, olmc, ErrorCode::PrematureCLK)?;
+        check_aux(&olmc.arst, olmc, ErrorCode::PrematureARST)?;
+        check_aux(&olmc.aprst, olmc, ErrorCode::PrematureAPRST)?;
+
+        if let Some((PinMode::Registered, ref term)) = olmc.output {
+            let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
+            gal.add_term_opt(&olmc.arst, &arst_bounds)?;
+
+            let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
+            gal.add_term_opt(&olmc.aprst, &aprst_bounds)?;
+
+            if olmc.clock.is_none() {
+                return at_line(term.line_num, Err(ErrorCode::NoCLK));
             }
         }
 
+        // In non-registered modes we want to set the clock term to its default.
         if olmc.output.is_some() {
-            if let Some((PinMode::Registered, ref term)) = olmc.output {
-                let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
-                gal.add_term_opt(&olmc.arst, &arst_bounds)?;
-
-                let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
-                gal.add_term_opt(&olmc.aprst, &aprst_bounds)?;
-
-                if olmc.clock.is_none() {
-                    return at_line(term.line_num, Err(ErrorCode::NoCLK));
-                }
-            }
-
             let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
             gal.add_term_opt(&olmc.clock, &clock_bounds)?;
         }
@@ -260,6 +237,31 @@ fn check_not_gal20ra10(blueprint: &Blueprint) -> Result<(), Error> {
         }
     }
     Ok(())
+}
+
+// Check that the main output is in the right mode to use a tristate.
+fn check_tristate(chip: Chip, olmc: &OLMC) -> Result<(), ErrorCode> {
+    match olmc.output {
+        None =>
+            Err(ErrorCode::PrematureEnable),
+        Some((PinMode::Registered, _)) if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 =>
+            Err(ErrorCode::TristateReg),
+        Some((PinMode::Combinatorial, _)) =>
+            Err(ErrorCode::UnmatchedTristate),
+        _ => Ok(())
+    }
+}
+
+fn check_aux(field: &Option<gal::Term>, olmc: &OLMC, missing_err: ErrorCode) -> Result<(), Error> {
+    if let Some(ref term) = field {
+        at_line(term.line_num, match olmc.output {
+            None => Err(missing_err),
+            Some((PinMode::Registered, _)) => Ok(()),
+            _ => Err(ErrorCode::InvalidControl),
+        })
+    } else {
+        Ok(())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
