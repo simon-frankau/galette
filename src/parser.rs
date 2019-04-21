@@ -347,7 +347,8 @@ pub fn parse_equation(chip: Chip, pin_map: &HashMap<String, Pin>, line: &str, li
 
     match iter.next() {
         Some(Token::Equals) => (),
-        _ => return Err(ErrorCode::NoEquals),
+        Some(_) => return Err(ErrorCode::NoEquals),
+        None => return Err(ErrorCode::BadEOF),
     }
 
     let mut rhs = vec![parse_pin(chip, &pin_map, &mut iter)?];

@@ -14,6 +14,8 @@ format. Differences include:
    are undriven.
  * You can use long pins names, and the only downside is it makes the
    output files lose alignment.
+ * We assume one equation per line
+   * TODO: I might want to change this one, as it's a pretty big change.
 
 TODO:
 
