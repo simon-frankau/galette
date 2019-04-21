@@ -146,9 +146,9 @@ fn set_aux_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let bounds = gal.chip.get_bounds(i);
 
-        check_aux(&olmc.clock, olmc, ErrorCode::PrematureCLK)?;
-        check_aux(&olmc.arst, olmc, ErrorCode::PrematureARST)?;
-        check_aux(&olmc.aprst, olmc, ErrorCode::PrematureAPRST)?;
+        check_aux(&olmc.clock, olmc, ErrorCode::SoloCLK)?;
+        check_aux(&olmc.arst, olmc, ErrorCode::SoloARST)?;
+        check_aux(&olmc.aprst, olmc, ErrorCode::SoloAPRST)?;
 
         if let Some((PinMode::Registered, ref term)) = olmc.output {
             let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
@@ -243,7 +243,7 @@ fn check_not_gal20ra10(blueprint: &Blueprint) -> Result<(), Error> {
 fn check_tristate(chip: Chip, olmc: &OLMC) -> Result<(), ErrorCode> {
     match olmc.output {
         None =>
-            Err(ErrorCode::PrematureEnable),
+            Err(ErrorCode::SoloEnable),
         Some((PinMode::Registered, _)) if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 =>
             Err(ErrorCode::TristateReg),
         Some((PinMode::Combinatorial, _)) =>

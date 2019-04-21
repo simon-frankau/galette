@@ -131,11 +131,11 @@ Error in line 5: pin declaration: expected VCC at VCC pin
 === oneline.pld
 Error in line 1: unexpected end of file
 === onlyclk.pld
-Error in line 10: before using .CLK, the output must be defined
+Error in line 10: if using .CLK, the output must be defined
 === onlyprst.pld
-Error in line 10: before using .APRST the output must be defined
+Error in line 10: if using .APRST the output must be defined
 === onlyrst.pld
-Error in line 10: before using .ARST, the output must be defined
+Error in line 10: if using .ARST, the output must be defined
 === pinbadneg.pld
 Error in line 4: pinname expected after '/'
 === pinrepeated.pld

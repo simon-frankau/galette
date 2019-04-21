@@ -43,7 +43,6 @@ struct ChipData {
     // the AND term - an input, or its negation.
     num_cols: usize,
     // Total size of the bitstream.
-    // TODO: Should be calculated.
     total_size: usize,
     // Range of pins that are backed by OLMCs (and can act as
     // programmable outputs).

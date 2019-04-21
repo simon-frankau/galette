@@ -165,9 +165,7 @@ pub fn make_jedec(
 
     buf.push_str("\x02\n");
 
-    // TODO: Backwards compatibility.
-    buf.push_str("Used Program:   GALasm 2.1\n");
-    buf.push_str("GAL-Assembler:  GALasm 2.1\n");
+    buf.push_str(&format!("GAL-Assembler:  Galette {}\n", env!("CARGO_PKG_VERSION")));
     buf.push_str(&format!("Device:         {}\n\n", chip.name()));
     // Default value of gal_fuses
     buf.push_str("*F0\n");

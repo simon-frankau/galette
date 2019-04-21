@@ -1,6 +1,5 @@
 
-Used Program:   GALasm 2.1
-GAL-Assembler:  GALasm 2.1
+GAL-Assembler:  Galette 0.2.0
 Device:         GAL22V10
 
 *F0
@@ -36,4 +35,4 @@ Device:         GAL22V10
 *L5828 0100001101101111011011010110001001010100011001010111001101110100
 *C90de
 *
-12d84
+1269f

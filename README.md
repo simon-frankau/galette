@@ -43,7 +43,7 @@ overhaul. I've been trying to learn Rust, and so incrementally porting
 it to a memory-safe language while refactoring the structure along the
 way seemed a fun project.
 
-This is the result.
+This is the result. It's a prime example of yak-shaving.
 
 ## Source organisation
 
@@ -73,9 +73,12 @@ To run the tests, `./run_tests.sh`.
 
 ## TODOs
 
- * Better documentation. :)
- * Better error-handling.
- * Add tests for the deliberately different cases.
+Some nice-to-haves I probably won't get around to:
+
+ * Actually check if the checksum logic is broken on overflow (see
+   source TODO).
+ * Add tests for the cases where we're deliberately different from
+   galasm.
   * Specifically, long pin names, no equations, no DESCRIPTION,
     auxiliary equations before main equations.
- * Do coverage testing.
+ * Add coverage testing.

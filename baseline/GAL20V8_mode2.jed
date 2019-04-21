@@ -1,6 +1,5 @@
 
-Used Program:   GALasm 2.1
-GAL-Assembler:  GALasm 2.1
+GAL-Assembler:  Galette 0.2.0
 Device:         GAL20V8
 
 *F0
@@ -33,4 +32,4 @@ Device:         GAL20V8
 *L2705 1
 *C6b30
 *
-ea8d
+e3a8

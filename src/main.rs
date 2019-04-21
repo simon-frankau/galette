@@ -18,7 +18,7 @@ use galette::writer;
 
 fn main() {
     let matches = App::new("Galette")
-        .version("0.1.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .author("Simon Frankau <sgf@arbitrary.name>")
         .about("GALasm-compatible GAL assembler")
         .arg(Arg::with_name("INPUT.pld")
