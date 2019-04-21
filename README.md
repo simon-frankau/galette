@@ -26,6 +26,12 @@ format. Differences include:
 `galette --help` gives you a summary of the (GALasm-compatible)
 command-line options.
 
+## More docs
+
+For more docs, refer to [galasm](https://github.com/daveho/GALasm)'s
+documentation. I've decided not to include them in this repo in order
+to simplify the licensing situation.
+
 ## Background
 
 When I say "A GAL assembler for the 21st Century", my tongue's pretty
@@ -70,6 +76,19 @@ the output's the same.
 So, if you're wondering why there's no unit tests, that's why.
 
 To run the tests, `./run_tests.sh`.
+
+## Licensing
+
+I'm releasing my code under the MIT license. While I based galette on
+galasm, this is a reimplementation of the functionality in a different
+language, structured very differently.
+
+I think it's useful to have a clean break here, as the licensing
+situation of galasm is not particularly clear, and it's helpful to
+have a GAL assembler under an explicit open license.
+
+I am, of course, still extremely indebted to Alessandro Zummo and
+Christian Habermann for the starting point of galasm.
 
 ## TODOs
 
