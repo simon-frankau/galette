@@ -64,7 +64,14 @@ pub enum Mode {
 // depend on the mode settings for the GALxxV8s, so they're here rather
 // than in chips.rs.
 
+// TODO: Should 'OUT' be used anywhere, if we're being galasm-compatible?
 const OUT: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput);
+const O1: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1);
+const O113: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput113);
+const O111: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput111);
+const O1219: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1219);
+const O13: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput13);
+const O1522: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1522);
 const PWR: Result<i32, ErrorCode> = Err(ErrorCode::BadPower);
 
 // GAL16V8
@@ -74,11 +81,11 @@ const PIN_TO_COL_16_MODE1: [Result<i32, ErrorCode>; 20] = [
 ];
 const PIN_TO_COL_16_MODE2: [Result<i32, ErrorCode>; 20] = [
     Ok(2),  Ok(0), Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
-    Ok(30), OUT,   Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  OUT,    PWR,
+    Ok(30), O1219, Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  O1219,  PWR,
 ];
 const PIN_TO_COL_16_MODE3: [Result<i32, ErrorCode>; 20] = [
-    OUT, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
-    OUT, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
+    O111, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
+    O111, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL20V8
@@ -88,11 +95,11 @@ const PIN_TO_COL_20_MODE1: [Result<i32, ErrorCode>; 24] = [
 ];
 const PIN_TO_COL_20_MODE2: [Result<i32, ErrorCode>; 24] = [
     Ok(2),  Ok(0),  Ok(4), Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
-    Ok(38), Ok(34), OUT,   Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), OUT,    Ok(6),  PWR,
+    Ok(38), Ok(34), O1522, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), O1522,  Ok(6),  PWR,
 ];
 const PIN_TO_COL_20_MODE3: [Result<i32, ErrorCode>; 24] = [
-    OUT, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
-    OUT, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
+    O113, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    O113, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL22V10
@@ -103,8 +110,8 @@ const PIN_TO_COL_22V10: [Result<i32, ErrorCode>; 24] = [
 
 // GAL20RA10
 const PIN_TO_COL_20RA10: [Result<i32, ErrorCode>; 24] = [
-    OUT, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
-    OUT, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
+    O1,  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    O13, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 impl GAL {
@@ -172,10 +179,15 @@ impl GAL {
     // Enter a term into the given set of rows of the main logic array.
     pub fn add_term(&mut self, term: &Term, bounds: &Bounds) -> Result<(), Error> {
         let mut bounds = *bounds;
+        let single_row = bounds.max_row == bounds.row_offset + 1;
         for row in term.pins.iter() {
             if bounds.row_offset == bounds.max_row {
                 // too many ORs?
-                return at_line(term.line_num, Err(ErrorCode::TooManyProducts));
+                return at_line(term.line_num, Err(if single_row {
+                    ErrorCode::MoreThanOneProduct
+                } else {
+                    ErrorCode::TooManyProducts
+                }));
             }
 
             for input in row.iter() {

@@ -55,8 +55,22 @@ Running from the lowest layer of dependency to the highest, we have:
  * **lib.rs** Top-level glue.
  * **main.rs** Thin command-line wrapper.
 
+## Tests
+
+As I've been trying to maintain the behaviour of galasm, I've
+concentrated on end-to-end tests (feed in a file, see what comes out)
+rather than unit tests, which has allowed me to refactor the program
+without needing to keep any specific internal structure, as long as
+the output's the same.
+
+So, if you're wondering why there's no unit tests, that's why.
+
+To run the tests, `./run_tests.sh`.
+
 ## TODOs
 
  * Better documentation. :)
- * Better error-handling
- * Set of test cases
+ * Better error-handling.
+ * Add tests for the deliberately different cases.
+  * Specifically, long pin names, no equations, no DESCRIPTION.
+ * Do coverage testing.
