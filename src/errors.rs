@@ -130,10 +130,7 @@ fn error_string(err_code: ErrorCode) -> &'static str {
 
 // Adapt an ErrorCode to an Error.
 pub fn at_line<Val>(line: u32, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
-    res.map_err(|e| Error {
-        code: e,
-        line: line,
-    })
+    res.map_err(|e| Error { code: e, line })
 }
 
 pub fn print_error(err: Error) {

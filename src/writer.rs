@@ -96,7 +96,7 @@ impl CheckSummer {
     }
 
     fn get(&self) -> u16 {
-        (self.sum + self.byte as u16) & 0xffff
+        self.sum + self.byte as u16
     }
 }
 
@@ -111,7 +111,7 @@ struct FuseBuilder<'a> {
 impl<'a> FuseBuilder<'a> {
     fn new(buf: &mut String) -> FuseBuilder {
         FuseBuilder {
-            buf: buf,
+            buf,
             checksum: CheckSummer::new(),
             idx: 0,
         }
@@ -187,7 +187,7 @@ pub fn make_jedec(config: &Config, gal: &GAL) -> String {
 
         // Break the fuse map into chunks representing rows.
         for row in &gal.fuses.iter().chunks(row_len) {
-            let (mut check_iter, mut print_iter) = row.tee();
+            let (mut check_iter, print_iter) = row.tee();
 
             // Only write out non-zero bits.
             if check_iter.any(|x| *x) {
@@ -229,7 +229,7 @@ pub fn make_jedec(config: &Config, gal: &GAL) -> String {
     let file_checksum = buf.as_bytes().iter().map(|c| *c as u32).sum::<u32>();
     buf.push_str(&format!("{:04x}\n", file_checksum));
 
-    return buf;
+    buf
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -240,7 +240,7 @@ fn make_chip(chip: Chip, pin_names: &[String]) -> String {
     let num_of_pins = pin_names.len();
     let mut buf = String::new();
 
-    buf.push_str(format!("\n\n{:^72}", chip.name()).trim_right());
+    buf.push_str(format!("\n\n{:^72}", chip.name()).trim_end());
     buf.push_str(&format!("\n\n{:25} -------\\___/-------", ""));
 
     let mut started = false;
@@ -262,7 +262,7 @@ fn make_chip(chip: Chip, pin_names: &[String]) -> String {
 
     buf.push_str(&format!("\n{:25} -------------------\n", ""));
 
-    return buf;
+    buf
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -311,9 +311,9 @@ fn make_pin(gal: &GAL, pin_names: &[String], olmcs: &[OLMC]) -> String {
             pin_type(gal, olmcs, i)
         ));
     }
-    buf.push_str("\n");
+    buf.push('\n');
 
-    return buf;
+    buf
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -397,5 +397,5 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
     }
 
     buf.push_str("\n\n");
-    return buf;
+    buf
 }

@@ -128,7 +128,7 @@ impl GAL {
         let num_olmcs = chip.num_olmcs();
 
         GAL {
-            chip: chip,
+            chip,
             fuses: vec![true; fuse_size],
             // One xor bit per OLMC.
             xor: vec![false; num_olmcs],
@@ -278,7 +278,7 @@ impl GAL {
 pub fn true_term(line_num: u32) -> Term {
     // Empty row is always true (being the AND of nothing).
     Term {
-        line_num: line_num,
+        line_num,
         pins: vec![Vec::new()],
     }
 }
@@ -286,7 +286,7 @@ pub fn true_term(line_num: u32) -> Term {
 pub fn false_term(line_num: u32) -> Term {
     // No rows is always false (being the OR of nothing).
     Term {
-        line_num: line_num,
+        line_num,
         pins: Vec::new(),
     }
 }

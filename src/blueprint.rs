@@ -42,10 +42,10 @@ impl Blueprint {
         ];
 
         Blueprint {
-            chip: chip,
+            chip,
             sig: Vec::new(),
             pins: Vec::new(),
-            olmcs: olmcs,
+            olmcs,
             ar: None,
             sp: None,
         }

@@ -221,11 +221,7 @@ fn adjust_main_bounds(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds: 
         Chip::GAL16V8 | Chip::GAL20V8 => {
             // Registered outputs don't have a tristate enable, or
             // indeed any pins in Mode 1.
-            let reg_out = if let Some((PinMode::Registered, _)) = output {
-                true
-            } else {
-                false
-            };
+            let reg_out = matches!(output, Some((PinMode::Registered, _)));
             if gal.get_mode() == Mode::Mode1 || reg_out {
                 *bounds
             } else {
@@ -300,31 +296,36 @@ fn set_mode(gal: &mut GAL, blueprint: &Blueprint) {
 }
 
 fn analyse_mode(olmcs: &[OLMC]) -> Mode {
-    // If there's a registered pin, it's mode 3.
-    for n in 0..8 {
-        if let Some((PinMode::Registered, _)) = olmcs[n].output {
-            return Mode::Mode3;
+    assert_eq!(
+        olmcs.len(),
+        8,
+        "analyse_mode must only be called for devices with 8 OLMCs"
+    );
+
+    for olmc in olmcs.iter() {
+        match olmc.output {
+            // If there's a registered pin, it's mode 3.
+            Some((PinMode::Registered, _)) => return Mode::Mode3,
+            // If there's a tristate, it's mode 2.
+            Some((PinMode::Tristate, _)) => return Mode::Mode2,
+            _ => {}
         }
     }
-    // If there's a tristate, it's mode 2.
-    for n in 0..8 {
-        if let Some((PinMode::Tristate, _)) = olmcs[n].output {
-            return Mode::Mode2;
-        }
-    }
+
     // If we can't use mode 1, use mode 2.
-    for n in 0..8 {
-        // Some OLMCs cannot be configured as pure inputs in Mode 1.
-        if olmcs[n].feedback && olmcs[n].output.is_none() {
-            if n == 3 || n == 4 {
-                return Mode::Mode2;
+    for (n, olmc) in olmcs.iter().enumerate().filter(|(_, olmc)| olmc.feedback) {
+        match olmc.output {
+            // Some OLMCs cannot be configured as pure inputs in Mode 1.
+            None => {
+                if n == 3 || n == 4 {
+                    return Mode::Mode2;
+                }
             }
-        }
-        // OLMC pins cannot be used as combinatorial feedback in Mode 1.
-        if olmcs[n].feedback && olmcs[n].output.is_some() {
-            return Mode::Mode2;
+            // OLMC pins cannot be used as combinatorial feedback in Mode 1.
+            Some(_) => return Mode::Mode2,
         }
     }
+
     // If there is still no mode defined, use mode 1.
-    return Mode::Mode1;
+    Mode::Mode1
 }

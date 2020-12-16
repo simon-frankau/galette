@@ -98,7 +98,7 @@ impl<I: Iterator> Iterator for LineTrackingIterator<I> {
 impl<I: Iterator> LineTrackingIterator<I> {
     fn new(iter: I) -> LineTrackingIterator<I> {
         LineTrackingIterator {
-            iter: iter,
+            iter,
             line_num_ref: Rc::new(RefCell::new(0)),
         }
     }
@@ -147,7 +147,6 @@ fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
                 c if c.is_ascii_alphabetic() => res.push(tokenise_pin(&mut chars)?),
                 c if c.is_whitespace() => {
                     chars.next();
-                    ()
                 }
                 _ => return Err(ErrorCode::BadChar),
             },
@@ -190,10 +189,7 @@ where
         }
     }
 
-    let named_pin = NamedPin {
-        name: name,
-        neg: neg,
-    };
+    let named_pin = NamedPin { name, neg };
 
     // Look for extension
     let mut suffix = Suffix::None;
@@ -230,7 +226,7 @@ fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
 ////////////////////////////////////////////////////////////////////////
 // Functions to extract specific elements.
 
-fn remove_comment<'a>(s: &'a str) -> &'a str {
+fn remove_comment(s: &str) -> &str {
     match s.find(';') {
         Some(i) => &s[..i],
         None => s,
@@ -394,10 +390,10 @@ pub fn parse_equation(
     }
 
     Ok(Equation {
-        line_num: line_num,
-        lhs: lhs,
-        rhs: rhs,
-        is_or: is_or,
+        line_num,
+        lhs,
+        rhs,
+        is_or,
     })
 }
 
@@ -406,11 +402,11 @@ fn extend_pin_map(
     pin_map: &mut HashMap<String, Pin>,
     chip: Chip,
     row_num: usize,
-    pins: &Vec<(String, bool)>,
+    pins: &[(String, bool)],
 ) -> Result<(), ErrorCode> {
     let num_pins = chip.num_pins();
     let first_pin = 1 + row_num * num_pins / 2;
-    for ((name, neg), pin_num) in pins.clone().into_iter().zip(first_pin..) {
+    for ((name, neg), pin_num) in pins.iter().cloned().zip(first_pin..) {
         if pin_num == num_pins && (name.as_str(), neg) != ("VCC", false) {
             return Err(ErrorCode::BadVCC);
         }
@@ -432,13 +428,7 @@ fn extend_pin_map(
                 return Err(ErrorCode::ARSPAsPinName);
             }
 
-            pin_map.insert(
-                name,
-                Pin {
-                    pin: pin_num,
-                    neg: neg,
-                },
-            );
+            pin_map.insert(name, Pin { pin: pin_num, neg });
         }
     }
 
@@ -490,7 +480,7 @@ where
         .collect::<Vec<String>>();
 
     Ok(Content {
-        chip: chip,
+        chip,
         sig: signature,
         pins: pin_names,
         eqns: equations,
