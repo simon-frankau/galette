@@ -5,17 +5,12 @@
 // converted into a form that are ready to be made into fuse maps.
 // Each output pin is configured via an "OLMC" data structure.
 //
-use chips::Chip;
-use errors;
-use errors::Error;
-use errors::ErrorCode;
-use gal;
-use gal::Pin;
-use gal::Term;
-use parser::Content;
-use parser::Equation;
-use parser::Suffix;
-use parser::LHS;
+use crate::{
+    chips::Chip,
+    errors::{self, Error, ErrorCode},
+    gal::{self, Pin, Term},
+    parser::{Content, Equation, Suffix, LHS},
+};
 
 // Blueprint stores everything we need to construct the GAL.
 pub struct Blueprint {

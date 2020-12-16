@@ -7,16 +7,13 @@
 // present, but try to leave other checks for later in the pipeline.
 //
 
-use chips::Chip;
-use errors::Error;
-use errors::ErrorCode;
-use gal::Pin;
+use std::{cell::RefCell, collections::HashMap, fs, iter::Peekable, rc::Rc};
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fs;
-use std::iter::Peekable;
-use std::rc::Rc;
+use crate::{
+    chips::Chip,
+    errors::{Error, ErrorCode},
+    gal::Pin,
+};
 
 ////////////////////////////////////////////////////////////////////////
 // Parsing output

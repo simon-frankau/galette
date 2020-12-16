@@ -6,12 +6,12 @@
 // also be directly manipulated.
 //
 
-use chips::Chip;
-use errors::at_line;
-use errors::Error;
-use errors::ErrorCode;
+use crate::{
+    chips::Chip,
+    errors::{at_line, Error, ErrorCode},
+};
 
-pub use chips::Bounds;
+pub use crate::chips::Bounds;
 
 // A 'Pin' represents an input to an equation - a potentially negated
 // pin (represented by pin number).

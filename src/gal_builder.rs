@@ -1,22 +1,16 @@
 //
 // gal_builder.rs: GAL constructor
 //
-// Given a Blueprint, this module constucts an appropriate GAL
+// Given a Blueprint, this module constructs an appropriate GAL
 // structure, which can then be written out.
 //
 
-use blueprint::Active;
-use blueprint::Blueprint;
-use blueprint::PinMode;
-use blueprint::OLMC;
-use chips::Chip;
-use errors::at_line;
-use errors::Error;
-use errors::ErrorCode;
-use gal;
-use gal::Bounds;
-use gal::Mode;
-use gal::GAL;
+use crate::{
+    blueprint::{Active, Blueprint, PinMode, OLMC},
+    chips::Chip,
+    errors::{at_line, Error, ErrorCode},
+    gal::{self, Bounds, Mode, GAL},
+};
 
 pub fn build(blueprint: &Blueprint) -> Result<GAL, Error> {
     let mut gal = GAL::new(blueprint.chip);

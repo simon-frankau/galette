@@ -2,6 +2,7 @@
 name = "galette"
 version = "0.2.0"
 authors = ["Simon Frankau <sgf@arbitrary.name>"]
+edition = "2018"
 
 [dependencies]
 clap = "2.33.3"

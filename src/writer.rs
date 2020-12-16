@@ -5,17 +5,18 @@
 // including the assembled JEDEC file.
 //
 
-extern crate itertools;
+use itertools::Itertools;
+use std::{
+    fs::File,
+    io::{Error, Write},
+    path::PathBuf,
+};
 
-use self::itertools::Itertools;
-use blueprint::OLMC;
-use chips::Chip;
-use gal::Mode;
-use gal::GAL;
-use std::fs::File;
-use std::io::Error;
-use std::io::Write;
-use std::path::PathBuf;
+use crate::{
+    blueprint::OLMC,
+    chips::Chip,
+    gal::{Mode, GAL},
+};
 
 #[derive(Debug)]
 pub struct Config {

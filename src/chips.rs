@@ -5,7 +5,7 @@
 // supported GALs, in those cases where they can be handled uniformly.
 //
 
-use errors::ErrorCode;
+use crate::errors::ErrorCode;
 
 // 'Bounds' encodes the range of rows that can be used to encode a
 // particular term. It is returned by 'get_bounds'.
