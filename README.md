@@ -94,8 +94,6 @@ Christian Habermann for the starting point of galasm.
 
 Some nice-to-haves I probably won't get around to:
 
- * Actually check if the checksum logic is broken on overflow (see
-   source TODO).
  * Add tests for the cases where we're deliberately different from
    galasm.
   * Specifically, long pin names, no equations, no DESCRIPTION,

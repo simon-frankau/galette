@@ -223,13 +223,16 @@ pub fn make_jedec(config: &Config, gal: &GAL) -> String {
     buf.push_str("*\n");
     buf.push('\x03');
 
-    // TODO: This should be a 16-bit checksum, but galasm does *not*
-    // do that. Standard says modulo 65535, a la TCP/IP, need to check
-    // what reading tools do.
-    let file_checksum = buf.as_bytes().iter().map(|c| *c as u32).sum::<u32>();
-    buf.push_str(&format!("{:04x}\n", file_checksum));
+    // File checksum.
+    buf.push_str(&format!("{:04x}\n", file_checksum(buf.as_bytes())));
 
     buf
+}
+
+fn file_checksum(data: &[u8]) -> u16 {
+    data.iter().fold(0, |checksum: u16, byte| {
+        checksum.wrapping_add(u16::from(*byte))
+    })
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -398,4 +401,18 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
 
     buf.push_str("\n\n");
     buf
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_checksum_wraps() {
+        let input = &[0xFF; 0x101];
+        assert_eq!(file_checksum(input), 0xFFFF);
+
+        let input = &[0xFF; 0x102];
+        assert_eq!(file_checksum(input), 0x00FF);
+    }
 }
