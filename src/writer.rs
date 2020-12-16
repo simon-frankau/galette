@@ -7,15 +7,15 @@
 
 extern crate itertools;
 
+use self::itertools::Itertools;
 use blueprint::OLMC;
 use chips::Chip;
-use gal::GAL;
 use gal::Mode;
+use gal::GAL;
 use std::fs::File;
 use std::io::Error;
 use std::io::Write;
 use std::path::PathBuf;
-use self::itertools::Itertools;
 
 #[derive(Debug)]
 pub struct Config {
@@ -154,10 +154,7 @@ impl<'a> FuseBuilder<'a> {
 // config, fuses, etc.
 //
 // It's galasm-compatible.
-pub fn make_jedec(
-    config: &Config,
-    gal: &GAL,
-) -> String {
+pub fn make_jedec(config: &Config, gal: &GAL) -> String {
     let chip = gal.chip;
     let row_len = chip.num_cols();
 
@@ -165,7 +162,10 @@ pub fn make_jedec(
 
     buf.push_str("\x02\n");
 
-    buf.push_str(&format!("GAL-Assembler:  Galette {}\n", env!("CARGO_PKG_VERSION")));
+    buf.push_str(&format!(
+        "GAL-Assembler:  Galette {}\n",
+        env!("CARGO_PKG_VERSION")
+    ));
     buf.push_str(&format!("Device:         {}\n\n", chip.name()));
     // Default value of gal_fuses
     buf.push_str("*F0\n");
@@ -303,7 +303,12 @@ fn make_pin(gal: &GAL, pin_names: &[String], olmcs: &[OLMC]) -> String {
     buf.push_str("-----------------------------\n");
 
     for (name, i) in pin_names.iter().zip(1..) {
-        buf.push_str(&format!("  {:>2}   | {:<8} | {}\n", i, name, pin_type(gal, olmcs, i)));
+        buf.push_str(&format!(
+            "  {:>2}   | {:<8} | {}\n",
+            i,
+            name,
+            pin_type(gal, olmcs, i)
+        ));
     }
     buf.push_str("\n");
 
@@ -322,7 +327,11 @@ fn make_row(buf: &mut String, row: &mut usize, num_of_col: usize, data: &[bool])
             buf.push(' ');
         }
 
-        buf.push(if data[*row * num_of_col + col] { '-' } else { 'x' });
+        buf.push(if data[*row * num_of_col + col] {
+            '-'
+        } else {
+            'x'
+        });
     }
 
     *row += 1;
@@ -337,7 +346,6 @@ fn to_bit(bit: bool) -> char {
 }
 
 fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
-
     // This function relies on detailed knowledge of the ordering of
     // rows in the fuse map vs. OLMCs vs. pins. It's brittle, but
     // no-one's changing the hardware layout. :)
@@ -366,7 +374,12 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
             Chip::GAL22V10 => format!("S0 = {:>1}   S1 = {:>1}", xor, ac1),
             Chip::GAL20RA10 => format!("S0 = {:>1}", xor),
         };
-        buf.push_str(&format!("\n\nPin {:>2} = {:<12} {}", pin, pin_names[pin - 1], &flags));
+        buf.push_str(&format!(
+            "\n\nPin {:>2} = {:<12} {}",
+            pin,
+            pin_names[pin - 1],
+            &flags
+        ));
 
         for _ in 0..chip.num_rows_for_olmc(olmc) {
             // Print all fuses of an OLMC

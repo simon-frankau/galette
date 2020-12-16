@@ -72,7 +72,9 @@ fn error_string(err_code: ErrorCode) -> &'static str {
     match err_code {
         ErrorCode::ARSPAsPinName => "GAL22V10: AR and SP is not allowed as pinname",
         ErrorCode::ARSPSuffix => "AR, SP: no suffix allowed",
-        ErrorCode::BadAnalysis => "internal error: analyse_mode should never let you use this pin as an input",
+        ErrorCode::BadAnalysis => {
+            "internal error: analyse_mode should never let you use this pin as an input"
+        }
         ErrorCode::BadARSP => "use of AR and SP is not allowed in equations",
         ErrorCode::BadNC => "NC (Not Connected) is not allowed in logic equations",
         ErrorCode::BadChar => "bad character in input",
@@ -85,7 +87,9 @@ fn error_string(err_code: ErrorCode) -> &'static str {
         ErrorCode::BadSuffix => "unknown suffix found",
         ErrorCode::BadToken => "unexpected token",
         ErrorCode::InvertedARSP => "negation of AR and SP is not allowed",
-        ErrorCode::InvalidControl => "use of .CLK, .ARST, .APRST only allowed for registered outputs",
+        ErrorCode::InvalidControl => {
+            "use of .CLK, .ARST, .APRST only allowed for registered outputs"
+        }
         ErrorCode::InvertedControl => ".E, .CLK, .ARST and .APRST is not allowed to be negated",
         ErrorCode::InvertedPower => "use GND, VCC instead of /VCC, /GND",
         ErrorCode::MoreThanOneProduct => "only one product term allowed (no OR)",
@@ -126,7 +130,10 @@ fn error_string(err_code: ErrorCode) -> &'static str {
 
 // Adapt an ErrorCode to an Error.
 pub fn at_line<Val>(line: u32, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
-   res.map_err(|e| Error { code: e, line: line })
+    res.map_err(|e| Error {
+        code: e,
+        line: line,
+    })
 }
 
 pub fn print_error(err: Error) {

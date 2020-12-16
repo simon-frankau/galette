@@ -14,8 +14,8 @@ use gal::Pin;
 use gal::Term;
 use parser::Content;
 use parser::Equation;
-use parser::LHS;
 use parser::Suffix;
+use parser::LHS;
 
 // Blueprint stores everything we need to construct the GAL.
 pub struct Blueprint {
@@ -33,24 +33,27 @@ pub struct Blueprint {
 impl Blueprint {
     pub fn new(chip: Chip) -> Self {
         // Set up OLMCs.
-        let olmcs = vec!(OLMC {
-            active: Active::Low,
-            output: None,
-            tri_con: None,
-            clock: None,
-            arst: None,
-            aprst: None,
-            feedback: false,
-         }; chip.num_olmcs());
+        let olmcs = vec![
+            OLMC {
+                active: Active::Low,
+                output: None,
+                tri_con: None,
+                clock: None,
+                arst: None,
+                aprst: None,
+                feedback: false,
+            };
+            chip.num_olmcs()
+        ];
 
-         Blueprint {
-             chip: chip,
-             sig: Vec::new(),
-             pins: Vec::new(),
-             olmcs: olmcs,
-             ar: None,
-             sp: None,
-         }
+        Blueprint {
+            chip: chip,
+            sig: Vec::new(),
+            pins: Vec::new(),
+            olmcs: olmcs,
+            ar: None,
+            sp: None,
+        }
     }
 
     pub fn from(content: &Content) -> Result<Self, Error> {
@@ -97,26 +100,20 @@ impl Blueprint {
             }
             LHS::Pin((pin, suffix)) => {
                 // Only pins with OLMCs may be outputs.
-                let olmc_num = self.chip
+                let olmc_num = self
+                    .chip
                     .pin_to_olmc(pin.pin)
                     .ok_or(ErrorCode::NotAnOutput)?;
                 let olmc = &mut olmcs[olmc_num];
 
                 match suffix {
-                    Suffix::R =>
-                        olmc.set_base(&pin, term, PinMode::Registered),
-                    Suffix::None =>
-                        olmc.set_base(&pin, term, PinMode::Combinatorial),
-                    Suffix::T =>
-                        olmc.set_base(&pin, term, PinMode::Tristate),
-                    Suffix::E =>
-                        olmc.set_enable(&pin, term),
-                    Suffix::CLK =>
-                        olmc.set_clock(&pin, term),
-                    Suffix::ARST =>
-                        olmc.set_arst(&pin, term),
-                    Suffix::APRST =>
-                        olmc.set_aprst(&pin, term),
+                    Suffix::R => olmc.set_base(&pin, term, PinMode::Registered),
+                    Suffix::None => olmc.set_base(&pin, term, PinMode::Combinatorial),
+                    Suffix::T => olmc.set_base(&pin, term, PinMode::Tristate),
+                    Suffix::E => olmc.set_enable(&pin, term),
+                    Suffix::CLK => olmc.set_clock(&pin, term),
+                    Suffix::ARST => olmc.set_arst(&pin, term),
+                    Suffix::APRST => olmc.set_aprst(&pin, term),
                 }?;
             }
         }
@@ -183,7 +180,7 @@ pub struct OLMC {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Active {
     Low,
-    High
+    High,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -201,11 +198,7 @@ impl OLMC {
         }
         self.output = Some((pin_mode, term));
 
-        self.active = if pin.neg {
-            Active::Low
-        } else {
-            Active::High
-        };
+        self.active = if pin.neg { Active::Low } else { Active::High };
 
         Ok(())
     }

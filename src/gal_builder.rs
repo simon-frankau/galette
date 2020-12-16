@@ -7,16 +7,16 @@
 
 use blueprint::Active;
 use blueprint::Blueprint;
-use blueprint::OLMC;
 use blueprint::PinMode;
+use blueprint::OLMC;
 use chips::Chip;
 use errors::at_line;
 use errors::Error;
 use errors::ErrorCode;
 use gal;
 use gal::Bounds;
-use gal::GAL;
 use gal::Mode;
+use gal::GAL;
 
 pub fn build(blueprint: &Blueprint) -> Result<GAL, Error> {
     let mut gal = GAL::new(blueprint.chip);
@@ -121,7 +121,14 @@ fn set_core_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
 
         if let Some(term) = &olmc.tri_con {
             at_line(term.line_num, check_tristate(gal.chip, olmc))?;
-            gal.add_term(&term, &Bounds { row_offset: 0, max_row: 1, ..bounds })?;
+            gal.add_term(
+                &term,
+                &Bounds {
+                    row_offset: 0,
+                    max_row: 1,
+                    ..bounds
+                },
+            )?;
         }
     }
 
@@ -131,11 +138,19 @@ fn set_core_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
 // Set the AR and SP equations, unique to the GAL22V10.
 fn set_arsp_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     // AR
-    let ar_bounds = Bounds { start_row: 0, max_row: 1, row_offset: 0 };
+    let ar_bounds = Bounds {
+        start_row: 0,
+        max_row: 1,
+        row_offset: 0,
+    };
     gal.add_term_opt(&blueprint.ar, &ar_bounds)?;
 
     // SP
-    let sp_bounds = Bounds { start_row: 131, max_row: 1, row_offset: 0 };
+    let sp_bounds = Bounds {
+        start_row: 131,
+        max_row: 1,
+        row_offset: 0,
+    };
     gal.add_term_opt(&blueprint.sp, &sp_bounds)?;
 
     Ok(())
@@ -151,10 +166,18 @@ fn set_aux_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
         check_aux(&olmc.aprst, olmc, ErrorCode::SoloAPRST)?;
 
         if let Some((PinMode::Registered, ref term)) = olmc.output {
-            let arst_bounds = Bounds { row_offset: 2, max_row: 3, .. bounds };
+            let arst_bounds = Bounds {
+                row_offset: 2,
+                max_row: 3,
+                ..bounds
+            };
             gal.add_term_opt(&olmc.arst, &arst_bounds)?;
 
-            let aprst_bounds = Bounds { row_offset: 3, max_row: 4, .. bounds };
+            let aprst_bounds = Bounds {
+                row_offset: 3,
+                max_row: 4,
+                ..bounds
+            };
             gal.add_term_opt(&olmc.aprst, &aprst_bounds)?;
 
             if olmc.clock.is_none() {
@@ -164,7 +187,11 @@ fn set_aux_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
 
         // In non-registered modes we want to set the clock term to its default.
         if olmc.output.is_some() {
-            let clock_bounds = Bounds { row_offset: 1, max_row: 2, .. bounds };
+            let clock_bounds = Bounds {
+                row_offset: 1,
+                max_row: 2,
+                ..bounds
+            };
             gal.add_term_opt(&olmc.clock, &clock_bounds)?;
         }
     }
@@ -195,11 +222,7 @@ fn set_pts(gal: &mut GAL) {
 
 // Adjust the bounds for the main term of there's a tristate enable
 // term etc. in the first rows.
-fn adjust_main_bounds(
-    gal: &GAL,
-    output: &Option<(PinMode, gal::Term)>,
-    bounds: &Bounds
-) -> Bounds {
+fn adjust_main_bounds(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds: &Bounds) -> Bounds {
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
             // Registered outputs don't have a tristate enable, or
@@ -213,13 +236,22 @@ fn adjust_main_bounds(
                 *bounds
             } else {
                 // Skip the tristate enable row.
-                Bounds { row_offset: 1, ..*bounds }
+                Bounds {
+                    row_offset: 1,
+                    ..*bounds
+                }
             }
         }
         // Skip tristate enable.
-        Chip::GAL22V10 => Bounds { row_offset: 1, ..*bounds },
+        Chip::GAL22V10 => Bounds {
+            row_offset: 1,
+            ..*bounds
+        },
         // Skip ARST, APRST, CLK.
-        Chip::GAL20RA10 => Bounds { row_offset: 4, .. *bounds },
+        Chip::GAL20RA10 => Bounds {
+            row_offset: 4,
+            ..*bounds
+        },
     }
 }
 
@@ -242,23 +274,25 @@ fn check_not_gal20ra10(blueprint: &Blueprint) -> Result<(), Error> {
 // Check that the main output is in the right mode to use a tristate.
 fn check_tristate(chip: Chip, olmc: &OLMC) -> Result<(), ErrorCode> {
     match olmc.output {
-        None =>
-            Err(ErrorCode::SoloEnable),
-        Some((PinMode::Registered, _)) if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 =>
-            Err(ErrorCode::TristateReg),
-        Some((PinMode::Combinatorial, _)) =>
-            Err(ErrorCode::UnmatchedTristate),
-        _ => Ok(())
+        None => Err(ErrorCode::SoloEnable),
+        Some((PinMode::Registered, _)) if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 => {
+            Err(ErrorCode::TristateReg)
+        }
+        Some((PinMode::Combinatorial, _)) => Err(ErrorCode::UnmatchedTristate),
+        _ => Ok(()),
     }
 }
 
 fn check_aux(field: &Option<gal::Term>, olmc: &OLMC, missing_err: ErrorCode) -> Result<(), Error> {
     if let Some(ref term) = field {
-        at_line(term.line_num, match olmc.output {
-            None => Err(missing_err),
-            Some((PinMode::Registered, _)) => Ok(()),
-            _ => Err(ErrorCode::InvalidControl),
-        })
+        at_line(
+            term.line_num,
+            match olmc.output {
+                None => Err(missing_err),
+                Some((PinMode::Registered, _)) => Ok(()),
+                _ => Err(ErrorCode::InvalidControl),
+            },
+        )
     } else {
         Ok(())
     }
@@ -274,7 +308,7 @@ fn set_mode(gal: &mut GAL, blueprint: &Blueprint) {
 fn analyse_mode(olmcs: &[OLMC]) -> Mode {
     // If there's a registered pin, it's mode 3.
     for n in 0..8 {
-        if let Some((PinMode::Registered, _)) = olmcs[n].output  {
+        if let Some((PinMode::Registered, _)) = olmcs[n].output {
             return Mode::Mode3;
         }
     }

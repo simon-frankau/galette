@@ -9,7 +9,7 @@
 extern crate clap;
 extern crate galette;
 
-use clap::{Arg, App};
+use clap::{App, Arg};
 
 use std::process;
 
@@ -21,30 +21,40 @@ fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .author("Simon Frankau <sgf@arbitrary.name>")
         .about("GALasm-compatible GAL assembler")
-        .arg(Arg::with_name("INPUT.pld")
-                 .help("Input file")
-                 .required(true)
-                 .index(1))
-        .arg(Arg::with_name("secure")
-                 .short("s")
-                 .long("secure")
-                 .takes_value(false)
-                 .help("Enable security fuse"))
-        .arg(Arg::with_name("nochip")
-                 .short("c")
-                 .long("nochip")
-                 .takes_value(false)
-                 .help("Disable .chp file output"))
-        .arg(Arg::with_name("nofuse")
-                 .short("f")
-                 .long("nofuse")
-                 .takes_value(false)
-                 .help("Disable .fus file output"))
-        .arg(Arg::with_name("nopin")
-                 .short("p")
-                 .long("nopin")
-                 .takes_value(false)
-                 .help("Disable .pin file output"))
+        .arg(
+            Arg::with_name("INPUT.pld")
+                .help("Input file")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::with_name("secure")
+                .short("s")
+                .long("secure")
+                .takes_value(false)
+                .help("Enable security fuse"),
+        )
+        .arg(
+            Arg::with_name("nochip")
+                .short("c")
+                .long("nochip")
+                .takes_value(false)
+                .help("Disable .chp file output"),
+        )
+        .arg(
+            Arg::with_name("nofuse")
+                .short("f")
+                .long("nofuse")
+                .takes_value(false)
+                .help("Disable .fus file output"),
+        )
+        .arg(
+            Arg::with_name("nopin")
+                .short("p")
+                .long("nopin")
+                .takes_value(false)
+                .help("Disable .pin file output"),
+        )
         .get_matches();
 
     let file_name = matches.value_of("INPUT.pld").unwrap();
