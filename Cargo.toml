@@ -4,9 +4,8 @@ version = "0.2.0"
 authors = ["Simon Frankau <sgf@arbitrary.name>"]
 
 [dependencies]
-clap = "*"
-itertools = "*"
-libc = "*"
+clap = "2.33.3"
+itertools = "0.9.0"
 
 [lib]
 name = "galette"
