@@ -302,14 +302,20 @@ fn analyse_mode(olmcs: &[OLMC]) -> Mode {
         "analyse_mode must only be called for devices with 8 OLMCs"
     );
 
-    for olmc in olmcs.iter() {
-        match olmc.output {
-            // If there's a registered pin, it's mode 3.
-            Some((PinMode::Registered, _)) => return Mode::Mode3,
-            // If there's a tristate, it's mode 2.
-            Some((PinMode::Tristate, _)) => return Mode::Mode2,
-            _ => {}
-        }
+    // If there's a registered pin, it's mode 3.
+    if olmcs
+        .iter()
+        .any(|olmc| matches!(olmc.output, Some((PinMode::Registered, _))))
+    {
+        return Mode::Mode3;
+    }
+
+    // If there's a tristate, it's mode 2.
+    if olmcs
+        .iter()
+        .any(|olmc| matches!(olmc.output, Some((PinMode::Tristate, _))))
+    {
+        return Mode::Mode2;
     }
 
     // If we can't use mode 1, use mode 2.
@@ -328,4 +334,153 @@ fn analyse_mode(olmcs: &[OLMC]) -> Mode {
 
     // If there is still no mode defined, use mode 1.
     Mode::Mode1
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{blueprint::PinMode, gal::Term};
+
+    use super::*;
+
+    fn olmc(mode: PinMode) -> OLMC {
+        OLMC {
+            output: Some((
+                mode,
+                Term {
+                    line_num: 0,
+                    pins: vec![],
+                },
+            )),
+            active: Active::Low,
+            tri_con: None,
+            clock: None,
+            arst: None,
+            aprst: None,
+            feedback: false,
+        }
+    }
+
+    fn olmc_feedback_no_output() -> OLMC {
+        OLMC {
+            output: None,
+            active: Active::Low,
+            tri_con: None,
+            clock: None,
+            arst: None,
+            aprst: None,
+            feedback: true,
+        }
+    }
+
+    fn olmc_feedback_and_output() -> OLMC {
+        OLMC {
+            feedback: true,
+            ..olmc(PinMode::Combinatorial)
+        }
+    }
+
+    #[test]
+    fn mode1() {
+        let olmcs = [
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+        ];
+        assert_eq!(analyse_mode(&olmcs), Mode::Mode1);
+    }
+
+    #[test]
+    fn mode2_tristate_output() {
+        let olmcs = [
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Tristate),
+            olmc(PinMode::Combinatorial),
+        ];
+        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+    }
+
+    #[test]
+    fn mode2_olmc3() {
+        let olmcs = [
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc_feedback_no_output(),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+        ];
+        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+    }
+
+    #[test]
+    fn mode2_olmc4() {
+        let olmcs = [
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc_feedback_no_output(),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+        ];
+        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+    }
+
+    #[test]
+    fn mode2_feedback() {
+        let olmcs = [
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc(PinMode::Combinatorial),
+            olmc_feedback_and_output(),
+            olmc(PinMode::Combinatorial),
+        ];
+        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+    }
+
+    #[test]
+    fn mode3_all_registered() {
+        let olmcs = [
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+        ];
+        assert_eq!(analyse_mode(&olmcs), Mode::Mode3);
+    }
+
+    #[test]
+    fn mode3_first_tristate() {
+        let olmcs = [
+            olmc(PinMode::Tristate),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+            olmc(PinMode::Registered),
+        ];
+        assert_eq!(analyse_mode(&olmcs), Mode::Mode3);
+    }
 }

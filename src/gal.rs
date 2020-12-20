@@ -50,7 +50,7 @@ pub struct GAL {
 // The GAL16V8 and GAL20V8 could run in one of three modes,
 // interpreting the fuse array differently. This enum
 // tracks the mode that's been set.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Mode {
     // Combinatorial outputs
     Mode1,
