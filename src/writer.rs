@@ -413,6 +413,6 @@ mod tests {
         assert_eq!(file_checksum(input), 0xFFFF);
 
         let input = &[0xFF; 0x102];
-        assert_eq!(file_checksum(input), 0x00FF);
+        assert_eq!(file_checksum(input), 0x00FE);
     }
 }
