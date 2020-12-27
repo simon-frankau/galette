@@ -5,17 +5,18 @@
 // including the assembled JEDEC file.
 //
 
-extern crate itertools;
+use itertools::Itertools;
+use std::{
+    fs::File,
+    io::{Error, Write},
+    path::PathBuf,
+};
 
-use blueprint::OLMC;
-use chips::Chip;
-use gal::GAL;
-use gal::Mode;
-use std::fs::File;
-use std::io::Error;
-use std::io::Write;
-use std::path::PathBuf;
-use self::itertools::Itertools;
+use crate::{
+    blueprint::OLMC,
+    chips::Chip,
+    gal::{Mode, GAL},
+};
 
 #[derive(Debug)]
 pub struct Config {
@@ -95,7 +96,7 @@ impl CheckSummer {
     }
 
     fn get(&self) -> u16 {
-        (self.sum + self.byte as u16) & 0xffff
+        self.sum + self.byte as u16
     }
 }
 
@@ -110,7 +111,7 @@ struct FuseBuilder<'a> {
 impl<'a> FuseBuilder<'a> {
     fn new(buf: &mut String) -> FuseBuilder {
         FuseBuilder {
-            buf: buf,
+            buf,
             checksum: CheckSummer::new(),
             idx: 0,
         }
@@ -154,10 +155,7 @@ impl<'a> FuseBuilder<'a> {
 // config, fuses, etc.
 //
 // It's galasm-compatible.
-pub fn make_jedec(
-    config: &Config,
-    gal: &GAL,
-) -> String {
+pub fn make_jedec(config: &Config, gal: &GAL) -> String {
     let chip = gal.chip;
     let row_len = chip.num_cols();
 
@@ -165,7 +163,10 @@ pub fn make_jedec(
 
     buf.push_str("\x02\n");
 
-    buf.push_str(&format!("GAL-Assembler:  Galette {}\n", env!("CARGO_PKG_VERSION")));
+    buf.push_str(&format!(
+        "GAL-Assembler:  Galette {}\n",
+        env!("CARGO_PKG_VERSION")
+    ));
     buf.push_str(&format!("Device:         {}\n\n", chip.name()));
     // Default value of gal_fuses
     buf.push_str("*F0\n");
@@ -186,7 +187,7 @@ pub fn make_jedec(
 
         // Break the fuse map into chunks representing rows.
         for row in &gal.fuses.iter().chunks(row_len) {
-            let (mut check_iter, mut print_iter) = row.tee();
+            let (mut check_iter, print_iter) = row.tee();
 
             // Only write out non-zero bits.
             if check_iter.any(|x| *x) {
@@ -222,13 +223,16 @@ pub fn make_jedec(
     buf.push_str("*\n");
     buf.push('\x03');
 
-    // TODO: This should be a 16-bit checksum, but galasm does *not*
-    // do that. Standard says modulo 65535, a la TCP/IP, need to check
-    // what reading tools do.
-    let file_checksum = buf.as_bytes().iter().map(|c| *c as u32).sum::<u32>();
-    buf.push_str(&format!("{:04x}\n", file_checksum));
+    // File checksum.
+    buf.push_str(&format!("{:04x}\n", file_checksum(buf.as_bytes())));
 
-    return buf;
+    buf
+}
+
+fn file_checksum(data: &[u8]) -> u16 {
+    data.iter().fold(0, |checksum: u16, byte| {
+        checksum.wrapping_add(u16::from(*byte))
+    })
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -239,7 +243,7 @@ fn make_chip(chip: Chip, pin_names: &[String]) -> String {
     let num_of_pins = pin_names.len();
     let mut buf = String::new();
 
-    buf.push_str(format!("\n\n{:^72}", chip.name()).trim_right());
+    buf.push_str(format!("\n\n{:^72}", chip.name()).trim_end());
     buf.push_str(&format!("\n\n{:25} -------\\___/-------", ""));
 
     let mut started = false;
@@ -261,7 +265,7 @@ fn make_chip(chip: Chip, pin_names: &[String]) -> String {
 
     buf.push_str(&format!("\n{:25} -------------------\n", ""));
 
-    return buf;
+    buf
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -303,11 +307,16 @@ fn make_pin(gal: &GAL, pin_names: &[String], olmcs: &[OLMC]) -> String {
     buf.push_str("-----------------------------\n");
 
     for (name, i) in pin_names.iter().zip(1..) {
-        buf.push_str(&format!("  {:>2}   | {:<8} | {}\n", i, name, pin_type(gal, olmcs, i)));
+        buf.push_str(&format!(
+            "  {:>2}   | {:<8} | {}\n",
+            i,
+            name,
+            pin_type(gal, olmcs, i)
+        ));
     }
-    buf.push_str("\n");
+    buf.push('\n');
 
-    return buf;
+    buf
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -322,7 +331,11 @@ fn make_row(buf: &mut String, row: &mut usize, num_of_col: usize, data: &[bool])
             buf.push(' ');
         }
 
-        buf.push(if data[*row * num_of_col + col] { '-' } else { 'x' });
+        buf.push(if data[*row * num_of_col + col] {
+            '-'
+        } else {
+            'x'
+        });
     }
 
     *row += 1;
@@ -337,7 +350,6 @@ fn to_bit(bit: bool) -> char {
 }
 
 fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
-
     // This function relies on detailed knowledge of the ordering of
     // rows in the fuse map vs. OLMCs vs. pins. It's brittle, but
     // no-one's changing the hardware layout. :)
@@ -366,7 +378,12 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
             Chip::GAL22V10 => format!("S0 = {:>1}   S1 = {:>1}", xor, ac1),
             Chip::GAL20RA10 => format!("S0 = {:>1}", xor),
         };
-        buf.push_str(&format!("\n\nPin {:>2} = {:<12} {}", pin, pin_names[pin - 1], &flags));
+        buf.push_str(&format!(
+            "\n\nPin {:>2} = {:<12} {}",
+            pin,
+            pin_names[pin - 1],
+            &flags
+        ));
 
         for _ in 0..chip.num_rows_for_olmc(olmc) {
             // Print all fuses of an OLMC
@@ -383,5 +400,19 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
     }
 
     buf.push_str("\n\n");
-    return buf;
+    buf
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_checksum_wraps() {
+        let input = &[0xFF; 0x101];
+        assert_eq!(file_checksum(input), 0xFFFF);
+
+        let input = &[0xFF; 0x102];
+        assert_eq!(file_checksum(input), 0x00FE);
+    }
 }

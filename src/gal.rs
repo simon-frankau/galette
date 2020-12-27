@@ -6,12 +6,12 @@
 // also be directly manipulated.
 //
 
-use chips::Chip;
-use errors::at_line;
-use errors::Error;
-use errors::ErrorCode;
+use crate::{
+    chips::Chip,
+    errors::{at_line, Error, ErrorCode},
+};
 
-pub use chips::Bounds;
+pub use crate::chips::Bounds;
 
 // A 'Pin' represents an input to an equation - a potentially negated
 // pin (represented by pin number).
@@ -50,7 +50,7 @@ pub struct GAL {
 // The GAL16V8 and GAL20V8 could run in one of three modes,
 // interpreting the fuse array differently. This enum
 // tracks the mode that's been set.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Mode {
     // Combinatorial outputs
     Mode1,
@@ -74,40 +74,48 @@ const O1522: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1522);
 const PWR: Result<i32, ErrorCode> = Err(ErrorCode::BadPower);
 
 // GAL16V8
+#[rustfmt::skip]
 const PIN_TO_COL_16_MODE1: [Result<i32, ErrorCode>; 20] = [
     Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
     Ok(30), Ok(26), Ok(22), Ok(18), BAD,    BAD,    Ok(14), Ok(10), Ok(6),  PWR,
 ];
+#[rustfmt::skip]
 const PIN_TO_COL_16_MODE2: [Result<i32, ErrorCode>; 20] = [
     Ok(2),  Ok(0), Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
     Ok(30), O1219, Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  O1219,  PWR,
 ];
+#[rustfmt::skip]
 const PIN_TO_COL_16_MODE3: [Result<i32, ErrorCode>; 20] = [
     O111, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
     O111, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL20V8
+#[rustfmt::skip]
 const PIN_TO_COL_20_MODE1: [Result<i32, ErrorCode>; 24] = [
     Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
     Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), BAD,    BAD,    Ok(18), Ok(14), Ok(10), Ok(6),  PWR,
 ];
+#[rustfmt::skip]
 const PIN_TO_COL_20_MODE2: [Result<i32, ErrorCode>; 24] = [
     Ok(2),  Ok(0),  Ok(4), Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
     Ok(38), Ok(34), O1522, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), O1522,  Ok(6),  PWR,
 ];
+#[rustfmt::skip]
 const PIN_TO_COL_20_MODE3: [Result<i32, ErrorCode>; 24] = [
     O113, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
     O113, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL22V10
+#[rustfmt::skip]
 const PIN_TO_COL_22V10: [Result<i32, ErrorCode>; 24] = [
     Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), Ok(40), PWR,
     Ok(42), Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL20RA10
+#[rustfmt::skip]
 const PIN_TO_COL_20RA10: [Result<i32, ErrorCode>; 24] = [
     O1,  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
     O13, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
@@ -120,7 +128,7 @@ impl GAL {
         let num_olmcs = chip.num_olmcs();
 
         GAL {
-            chip: chip,
+            chip,
             fuses: vec![true; fuse_size],
             // One xor bit per OLMC.
             xor: vec![false; num_olmcs],
@@ -182,17 +190,27 @@ impl GAL {
         for row in term.pins.iter() {
             if bounds.row_offset == bounds.max_row {
                 // too many ORs?
-                return at_line(term.line_num, Err(if single_row {
-                    ErrorCode::MoreThanOneProduct
-                } else {
-                    ErrorCode::TooManyProducts
-                }));
+                return at_line(
+                    term.line_num,
+                    Err(if single_row {
+                        ErrorCode::MoreThanOneProduct
+                    } else {
+                        ErrorCode::TooManyProducts
+                    }),
+                );
             }
 
             for input in row.iter() {
                 // Is it a registered OLMC pin on a GAL22V10? If so, flip the negation.
                 let flip = self.needs_flip(input.pin);
-                at_line(term.line_num, self.set_and(bounds.start_row + bounds.row_offset, input.pin, input.neg ^ flip))?;
+                at_line(
+                    term.line_num,
+                    self.set_and(
+                        bounds.start_row + bounds.row_offset,
+                        input.pin,
+                        input.neg ^ flip,
+                    ),
+                )?;
             }
 
             // Go to next row.
@@ -260,7 +278,7 @@ impl GAL {
 pub fn true_term(line_num: u32) -> Term {
     // Empty row is always true (being the AND of nothing).
     Term {
-        line_num: line_num,
+        line_num,
         pins: vec![Vec::new()],
     }
 }
@@ -268,7 +286,7 @@ pub fn true_term(line_num: u32) -> Term {
 pub fn false_term(line_num: u32) -> Term {
     // No rows is always false (being the OR of nothing).
     Term {
-        line_num: line_num,
+        line_num,
         pins: Vec::new(),
     }
 }
