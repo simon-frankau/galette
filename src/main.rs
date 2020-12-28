@@ -13,7 +13,6 @@ use clap::{App, Arg};
 
 use std::process;
 
-use galette::errors;
 use galette::writer;
 
 fn main() {
@@ -67,7 +66,7 @@ fn main() {
     };
 
     if let Err(e) = galette::assemble(&file_name, &config) {
-        errors::print_error(e);
+        eprintln!("{}", e);
         process::exit(1);
     }
 }

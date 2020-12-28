@@ -7,132 +7,122 @@
 // error code with the line number.
 //
 
-#[derive(Clone, Copy, Debug)]
+use thiserror::Error;
+
+#[derive(Clone, Copy, Debug, Error)]
+#[error("Error in line {}: {}", line, code)]
 pub struct Error {
     pub code: ErrorCode,
     pub line: u32,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Error)]
 pub enum ErrorCode {
+    #[error("GAL22V10: AR and SP is not allowed as pinname")]
     ARSPAsPinName,
+    #[error("AR, SP: no suffix allowed")]
     ARSPSuffix,
+    #[error("internal error: analyse_mode should never let you use this pin as an input")]
     BadAnalysis,
+    #[error("use of AR and SP is not allowed in equations")]
     BadARSP,
+    #[error("bad character in input")]
     BadChar,
+    #[error("unexpected end of file")]
     BadEOF,
+    #[error("unexpected end of line")]
     BadEOL,
+    #[error("Line  1: type of GAL expected")]
     BadGALType,
+    #[error("pin declaration: expected GND at GND pin")]
     BadGND,
+    #[error("illegal VCC/GND assignment")]
     BadGNDLocation,
+    #[error("NC (Not Connected) is not allowed in logic equations")]
     BadNC,
+    #[error("illegal character in pin declaration")]
     BadPin,
+    #[error("wrong number of pins")]
     BadPinCount,
+    #[error("use of VCC and GND is not allowed in equations")]
     BadPower,
+    #[error("unknown suffix found")]
     BadSuffix,
+    #[error("unexpected token")]
     BadToken,
+    #[error("pin declaration: expected VCC at VCC pin")]
     BadVCC,
+    #[error("illegal VCC/GND assignment")]
     BadVCCLocation,
+    #[error(".APRST is not allowed when this type of GAL is used")]
     DisallowedAPRST,
+    #[error(".ARST is not allowed when this type of GAL is used")]
     DisallowedARST,
+    #[error(".CLK is not allowed when this type of GAL is used")]
     DisallowedCLK,
+    #[error("use of .CLK, .ARST, .APRST only allowed for registered outputs")]
     InvalidControl,
+    #[error("negation of AR and SP is not allowed")]
     InvertedARSP,
+    #[error(".E, .CLK, .ARST and .APRST is not allowed to be negated")]
     InvertedControl,
+    #[error("use GND, VCC instead of /VCC, /GND")]
     InvertedPower,
+    #[error("only one product term allowed (no OR)")]
     MoreThanOneProduct,
+    #[error("missing clock definition (.CLK) of registered output")]
     NoCLK,
+    #[error("'=' expected")]
     NoEquals,
+    #[error("pinname expected after '/'")]
     NoPinName,
+    #[error("GAL20RA10: pin 1 can't be used in equations")]
     NotAnInput1,
+    #[error("mode 3: pins 1,11 are reserved for 'Clock' and '/OE'")]
     NotAnInput111,
+    #[error("mode 3: pins 1,13 are reserved for 'Clock' and '/OE'")]
     NotAnInput113,
+    #[error("mode 2: pins 12, 19 can't be used as input")]
     NotAnInput1219,
+    #[error("GAL20RA10: pin 13 can't be used in equations")]
     NotAnInput13,
+    #[error("mode 2: pins 15, 22 can't be used as input")]
     NotAnInput1522,
+    #[error("this pin can't be used as output")]
     NotAnOutput,
+    #[error("several .APRST definitions for the same output found")]
     RepeatedAPRST,
+    #[error("AR or SP is defined twice")]
     RepeatedARSP,
+    #[error("several .ARST definitions for the same output found")]
     RepeatedARST,
+    #[error("several .CLK definitions for the same output found")]
     RepeatedCLK,
+    #[error("same pin is defined multible as output")]
     RepeatedOutput,
+    #[error("pinname defined twice")]
     RepeatedPinName,
+    #[error("tristate control is defined twice")]
     RepeatedTristate,
+    #[error("if using .APRST the output must be defined")]
     SoloAPRST,
+    #[error("if using .ARST, the output must be defined")]
     SoloARST,
+    #[error("if using .CLK, the output must be defined")]
     SoloCLK,
+    #[error("if using .E, the output must be defined")]
     SoloEnable,
+    #[error("too many product terms")]
     TooManyProducts,
+    #[error("GAL16V8/20V8: tri. control for reg. output is not allowed")]
     TristateReg,
+    #[error("unknown pinname")]
     UnknownPin,
+    #[error("tristate control without previous '.T'")]
     UnmatchedTristate,
-}
-
-fn error_string(err_code: ErrorCode) -> &'static str {
-    match err_code {
-        ErrorCode::ARSPAsPinName => "GAL22V10: AR and SP is not allowed as pinname",
-        ErrorCode::ARSPSuffix => "AR, SP: no suffix allowed",
-        ErrorCode::BadAnalysis => {
-            "internal error: analyse_mode should never let you use this pin as an input"
-        }
-        ErrorCode::BadARSP => "use of AR and SP is not allowed in equations",
-        ErrorCode::BadNC => "NC (Not Connected) is not allowed in logic equations",
-        ErrorCode::BadChar => "bad character in input",
-        ErrorCode::BadEOF => "unexpected end of file",
-        ErrorCode::BadEOL => "unexpected end of line",
-        ErrorCode::BadGALType => "Line  1: type of GAL expected",
-        ErrorCode::BadPin => "illegal character in pin declaration",
-        ErrorCode::BadPinCount => "wrong number of pins",
-        ErrorCode::BadPower => "use of VCC and GND is not allowed in equations",
-        ErrorCode::BadSuffix => "unknown suffix found",
-        ErrorCode::BadToken => "unexpected token",
-        ErrorCode::InvertedARSP => "negation of AR and SP is not allowed",
-        ErrorCode::InvalidControl => {
-            "use of .CLK, .ARST, .APRST only allowed for registered outputs"
-        }
-        ErrorCode::InvertedControl => ".E, .CLK, .ARST and .APRST is not allowed to be negated",
-        ErrorCode::InvertedPower => "use GND, VCC instead of /VCC, /GND",
-        ErrorCode::MoreThanOneProduct => "only one product term allowed (no OR)",
-        ErrorCode::NotAnInput1 => "GAL20RA10: pin 1 can't be used in equations",
-        ErrorCode::NotAnInput111 => "mode 3: pins 1,11 are reserved for 'Clock' and '/OE'",
-        ErrorCode::NotAnInput113 => "mode 3: pins 1,13 are reserved for 'Clock' and '/OE'",
-        ErrorCode::NotAnInput1219 => "mode 2: pins 12, 19 can't be used as input",
-        ErrorCode::NotAnInput13 => "GAL20RA10: pin 13 can't be used in equations",
-        ErrorCode::NotAnInput1522 => "mode 2: pins 15, 22 can't be used as input",
-        ErrorCode::NotAnOutput => "this pin can't be used as output",
-        ErrorCode::NoCLK => "missing clock definition (.CLK) of registered output",
-        ErrorCode::NoPinName => "pinname expected after '/'",
-        ErrorCode::NoEquals => "'=' expected",
-        ErrorCode::RepeatedAPRST => "several .APRST definitions for the same output found",
-        ErrorCode::RepeatedARST => "several .ARST definitions for the same output found",
-        ErrorCode::RepeatedARSP => "AR or SP is defined twice",
-        ErrorCode::RepeatedCLK => "several .CLK definitions for the same output found",
-        ErrorCode::RepeatedOutput => "same pin is defined multible as output",
-        ErrorCode::RepeatedPinName => "pinname defined twice",
-        ErrorCode::RepeatedTristate => "tristate control is defined twice",
-        ErrorCode::SoloAPRST => "if using .APRST the output must be defined",
-        ErrorCode::SoloARST => "if using .ARST, the output must be defined",
-        ErrorCode::SoloCLK => "if using .CLK, the output must be defined",
-        ErrorCode::SoloEnable => "if using .E, the output must be defined",
-        ErrorCode::TooManyProducts => "too many product terms",
-        ErrorCode::TristateReg => "GAL16V8/20V8: tri. control for reg. output is not allowed",
-        ErrorCode::UnknownPin => "unknown pinname",
-        ErrorCode::UnmatchedTristate => "tristate control without previous '.T'",
-        ErrorCode::BadVCC => "pin declaration: expected VCC at VCC pin",
-        ErrorCode::BadVCCLocation => "illegal VCC/GND assignment",
-        ErrorCode::BadGND => "pin declaration: expected GND at GND pin",
-        ErrorCode::BadGNDLocation => "illegal VCC/GND assignment",
-        ErrorCode::DisallowedCLK => ".CLK is not allowed when this type of GAL is used",
-        ErrorCode::DisallowedARST => ".ARST is not allowed when this type of GAL is used",
-        ErrorCode::DisallowedAPRST => ".APRST is not allowed when this type of GAL is used",
-    }
 }
 
 // Adapt an ErrorCode to an Error.
 pub fn at_line<Val>(line: u32, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
     res.map_err(|e| Error { code: e, line })
-}
-
-pub fn print_error(err: Error) {
-    println!("Error in line {}: {}", err.line, error_string(err.code));
 }
