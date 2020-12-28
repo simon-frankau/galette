@@ -108,12 +108,12 @@ Error in line 8: .CLK is not allowed to be negated
 === negena.pld
 Error in line 17: .E is not allowed to be negated
 === neggnd.pld
-Error in line 7: use GND, VCC instead of /VCC, /GND
+Error in line 7: GND cannot be negated, use VCC instead of /GND
 === negpin.pld
 === negsp.pld
 Error in line 25: negation of AR and SP is not allowed
 === negvcc.pld
-Error in line 7: use GND, VCC instead of /VCC, /GND
+Error in line 7: VCC cannot be negated, use GND instead of /VCC
 === noclk.pld
 Error in line 7: missing clock definition (.CLK) of registered output
 === noequals.pld

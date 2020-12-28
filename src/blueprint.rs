@@ -128,13 +128,19 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
         if pin.pin == chip.num_pins() {
             // VCC
             if pin.neg {
-                return Err(ErrorCode::InvertedPower);
+                return Err(ErrorCode::InvertedPower {
+                    name: "VCC",
+                    hint: "GND",
+                });
             }
             return Ok(gal::true_term(eqn.line_num));
         } else if pin.pin == chip.num_pins() / 2 {
             // GND
             if pin.neg {
-                return Err(ErrorCode::InvertedPower);
+                return Err(ErrorCode::InvertedPower {
+                    name: "GND",
+                    hint: "VCC",
+                });
             }
             return Ok(gal::false_term(eqn.line_num));
         }

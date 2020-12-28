@@ -64,8 +64,11 @@ pub enum ErrorCode {
     InvertedARSP,
     #[error(".{suffix} is not allowed to be negated")]
     InvertedControl { suffix: OutputSuffix },
-    #[error("use GND, VCC instead of /VCC, /GND")]
-    InvertedPower,
+    #[error("{name} cannot be negated, use {hint} instead of /{name}")]
+    InvertedPower {
+        name: &'static str,
+        hint: &'static str,
+    },
     #[error("only one product term allowed (no OR)")]
     MoreThanOneProduct,
     #[error("missing clock definition (.CLK) of registered output")]
