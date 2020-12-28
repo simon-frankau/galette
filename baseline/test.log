@@ -149,15 +149,15 @@ Error in line 8: GAL16V8/20V8: tri. control for reg. output is not allowed
 === repar.pld
 Error in line 25: AR or SP is defined twice
 === reparst.pld
-Error in line 26: several .APRST definitions for the same output found
+Error in line 26: multiple .APRST definitions for the same output
 === repclk.pld
-Error in line 9: several .CLK definitions for the same output found
+Error in line 9: multiple .CLK definitions for the same output
 === repena.pld
-Error in line 19: tristate control is defined twice
+Error in line 19: multiple .E definitions for the same output
 === reppin.pld
 Error in line 17: same pin is defined multible as output
 === reprst.pld
-Error in line 26: several .ARST definitions for the same output found
+Error in line 26: multiple .ARST definitions for the same output
 === repsp.pld
 Error in line 25: AR or SP is defined twice
 === security_bit.pld

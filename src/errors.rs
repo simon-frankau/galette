@@ -7,6 +7,8 @@
 // error code with the line number.
 //
 
+use std::fmt;
+
 use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
@@ -88,22 +90,16 @@ pub enum ErrorCode {
     NotAnComplexModeInput { pin: usize },
     #[error("this pin can't be used as output")]
     NotAnOutput,
-    #[error("several .APRST definitions for the same output found")]
-    RepeatedAPRST,
     #[error("AR or SP is defined twice")]
     RepeatedARSP,
-    #[error("several .ARST definitions for the same output found")]
-    RepeatedARST,
-    #[error("several .CLK definitions for the same output found")]
-    RepeatedCLK,
+    #[error("multiple .{suffix} definitions for the same output")]
+    RepeatedControl { suffix: OutputSuffix },
     #[error("same pin is defined multible as output")]
     RepeatedOutput,
     #[error("pinname defined twice")]
     RepeatedPinName,
-    #[error("tristate control is defined twice")]
-    RepeatedTristate,
     #[error("the output must be defined to use .{suffix}")]
-    UndefinedOutput { suffix: &'static str },
+    UndefinedOutput { suffix: OutputSuffix },
     #[error("too many product terms")]
     TooManyProducts,
     #[error("GAL16V8/20V8: tri. control for reg. output is not allowed")]
@@ -117,4 +113,23 @@ pub enum ErrorCode {
 // Adapt an ErrorCode to an Error.
 pub fn at_line<Val>(line: u32, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
     res.map_err(|e| Error { code: e, line })
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum OutputSuffix {
+    APRST,
+    ARST,
+    CLK,
+    E,
+}
+
+impl fmt::Display for OutputSuffix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::APRST => "APRST",
+            Self::ARST => "ARST",
+            Self::CLK => "CLK",
+            Self::E => "E",
+        })
+    }
 }

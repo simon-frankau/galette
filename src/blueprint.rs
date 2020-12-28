@@ -204,7 +204,9 @@ impl OLMC {
         }
 
         if self.tri_con != None {
-            return Err(ErrorCode::RepeatedTristate);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: errors::OutputSuffix::E,
+            });
         }
         self.tri_con = Some(term);
 
@@ -217,7 +219,9 @@ impl OLMC {
         }
 
         if self.clock.is_some() {
-            return Err(ErrorCode::RepeatedCLK);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: errors::OutputSuffix::CLK,
+            });
         }
         self.clock = Some(term);
 
@@ -230,7 +234,9 @@ impl OLMC {
         }
 
         if self.arst.is_some() {
-            return Err(ErrorCode::RepeatedARST);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: errors::OutputSuffix::ARST,
+            });
         }
         self.arst = Some(term);
 
@@ -243,7 +249,9 @@ impl OLMC {
         }
 
         if self.aprst.is_some() {
-            return Err(ErrorCode::RepeatedAPRST);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: errors::OutputSuffix::APRST,
+            });
         }
         self.aprst = Some(term);
 
