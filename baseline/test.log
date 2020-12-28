@@ -34,7 +34,7 @@ Error in line 9: pin 15 can't be used as input in complex mode
 Error in line 9: pin 22 can't be used as input in complex mode
 === GAL20V8_complex_feedback.pld
 === GAL20V8_complex_in.pld
-Error in line 5: pinname defined twice
+Error in line 5: pinname I8 is defined twice
 === GAL20V8_reg.pld
 === GAL20V8_reg_1.pld
 Error in line 7: pin 1 is reserved for 'Clock' in registered mode
@@ -141,7 +141,7 @@ Error in line 10: the output must be defined to use .ARST
 === pinbadneg.pld
 Error in line 4: pinname expected after '/'
 === pinrepeated.pld
-Error in line 4: pinname defined twice
+Error in line 4: pinname I5 is defined twice
 === plaintri.pld
 Error in line 8: tristate control without previous '.T'
 === regtri.pld

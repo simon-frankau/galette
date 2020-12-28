@@ -421,7 +421,9 @@ fn extend_pin_map(
         }
         if name != "NC" {
             if pin_map.contains_key(&name) {
-                return Err(ErrorCode::RepeatedPinName);
+                return Err(ErrorCode::RepeatedPinName {
+                    name: name.to_string(),
+                });
             }
 
             if chip == Chip::GAL22V10 && (name == "AR" || name == "SP") {

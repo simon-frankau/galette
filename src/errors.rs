@@ -95,8 +95,8 @@ pub enum ErrorCode {
     RepeatedControl { suffix: OutputSuffix },
     #[error("same pin is defined multible as output")]
     RepeatedOutput,
-    #[error("pinname defined twice")]
-    RepeatedPinName,
+    #[error("pinname {name} is defined twice")]
+    RepeatedPinName { name: String },
     #[error("the output must be defined to use .{suffix}")]
     UndefinedOutput { suffix: OutputSuffix },
     #[error("too many product terms")]
