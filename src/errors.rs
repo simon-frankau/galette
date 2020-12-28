@@ -102,14 +102,8 @@ pub enum ErrorCode {
     RepeatedPinName,
     #[error("tristate control is defined twice")]
     RepeatedTristate,
-    #[error("if using .APRST the output must be defined")]
-    SoloAPRST,
-    #[error("if using .ARST, the output must be defined")]
-    SoloARST,
-    #[error("if using .CLK, the output must be defined")]
-    SoloCLK,
-    #[error("if using .E, the output must be defined")]
-    SoloEnable,
+    #[error("the output must be defined to use .{suffix}")]
+    UndefinedOutput { suffix: &'static str },
     #[error("too many product terms")]
     TooManyProducts,
     #[error("GAL16V8/20V8: tri. control for reg. output is not allowed")]

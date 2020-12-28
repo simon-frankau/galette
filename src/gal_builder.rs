@@ -155,9 +155,9 @@ fn set_aux_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     for (olmc, i) in blueprint.olmcs.iter().zip(0..) {
         let bounds = gal.chip.get_bounds(i);
 
-        check_aux(&olmc.clock, olmc, ErrorCode::SoloCLK)?;
-        check_aux(&olmc.arst, olmc, ErrorCode::SoloARST)?;
-        check_aux(&olmc.aprst, olmc, ErrorCode::SoloAPRST)?;
+        check_aux(&olmc.clock, olmc, "CLK")?;
+        check_aux(&olmc.arst, olmc, "ARST")?;
+        check_aux(&olmc.aprst, olmc, "APRST")?;
 
         if let Some((PinMode::Registered, ref term)) = olmc.output {
             let arst_bounds = Bounds {
@@ -264,7 +264,7 @@ fn check_not_gal20ra10(blueprint: &Blueprint) -> Result<(), Error> {
 // Check that the main output is in the right mode to use a tristate.
 fn check_tristate(chip: Chip, olmc: &OLMC) -> Result<(), ErrorCode> {
     match olmc.output {
-        None => Err(ErrorCode::SoloEnable),
+        None => Err(ErrorCode::UndefinedOutput { suffix: "E" }),
         Some((PinMode::Registered, _)) if chip == Chip::GAL16V8 || chip == Chip::GAL20V8 => {
             Err(ErrorCode::TristateReg)
         }
@@ -273,12 +273,12 @@ fn check_tristate(chip: Chip, olmc: &OLMC) -> Result<(), ErrorCode> {
     }
 }
 
-fn check_aux(field: &Option<gal::Term>, olmc: &OLMC, missing_err: ErrorCode) -> Result<(), Error> {
+fn check_aux(field: &Option<gal::Term>, olmc: &OLMC, suffix: &'static str) -> Result<(), Error> {
     if let Some(ref term) = field {
         at_line(
             term.line_num,
             match olmc.output {
-                None => Err(missing_err),
+                None => Err(ErrorCode::UndefinedOutput { suffix }),
                 Some((PinMode::Registered, _)) => Ok(()),
                 _ => Err(ErrorCode::InvalidControl),
             },

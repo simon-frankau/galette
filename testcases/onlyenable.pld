@@ -1,0 +1,32 @@
+GAL20RA10
+CombTest
+
+/PL   I0    I1    I2    I3    I4    I5    I6    I7    I8    Clock   GND
+/OE   O0    O1    O2    O3    O4    O5    O6    O7    NC    NC      VCC
+
+O0.R = I0 * I1
+O0.CLK = Clock
+
+O1.E = Clock
+
+O2.R = I4 * /I5 + /I4 * I5
+O2.CLK = Clock
+
+O3.R = I0 * I1 * I2 * I3 * I4 * I5
+O3.CLK = Clock
+
+/O4.R = I0 + I1 + I2 + I3
+O4.CLK = Clock
+
+/O5.R = /I7 + I8
+O5.CLK = Clock
+
+O6.R = I6
+O6.CLK = Clock * O6
+
+O7.R = I7
+O7.CLK = /Clock
+
+DESCRIPTION
+
+Simple test of combinatorial logic.
