@@ -21,8 +21,8 @@ O4.CLK = Clock
 
 /O5.R = /I7 + I8
 O5.CLK = Clock
-O5.ARST = I0
-/O5.APRST = I1
+/O5.ARST = I0
+O5.APRST = I1
 
 O6.R = I6
 O6.CLK = Clock * O6

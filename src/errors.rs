@@ -56,18 +56,14 @@ pub enum ErrorCode {
     BadVCC,
     #[error("illegal VCC/GND assignment")]
     BadVCCLocation,
-    #[error(".APRST is not allowed when this type of GAL is used")]
-    DisallowedAPRST,
-    #[error(".ARST is not allowed when this type of GAL is used")]
-    DisallowedARST,
-    #[error(".CLK is not allowed when this type of GAL is used")]
-    DisallowedCLK,
-    #[error("use of .CLK, .ARST, .APRST only allowed for registered outputs")]
-    InvalidControl,
+    #[error(".{suffix} is not allowed when this type of GAL is used")]
+    DisallowedControl { suffix: OutputSuffix },
+    #[error("use of .{suffix} is only allowed for registered outputs")]
+    InvalidControl { suffix: OutputSuffix },
     #[error("negation of AR and SP is not allowed")]
     InvertedARSP,
-    #[error(".E, .CLK, .ARST and .APRST is not allowed to be negated")]
-    InvertedControl,
+    #[error(".{suffix} is not allowed to be negated")]
+    InvertedControl { suffix: OutputSuffix },
     #[error("use GND, VCC instead of /VCC, /GND")]
     InvertedPower,
     #[error("only one product term allowed (no OR)")]

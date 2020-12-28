@@ -1,3 +1,5 @@
+use errors::OutputSuffix;
+
 //
 // blueprint.rs: Assembly-ready representation
 //
@@ -200,12 +202,14 @@ impl OLMC {
 
     pub fn set_enable(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::E,
+            });
         }
 
         if self.tri_con != None {
             return Err(ErrorCode::RepeatedControl {
-                suffix: errors::OutputSuffix::E,
+                suffix: OutputSuffix::E,
             });
         }
         self.tri_con = Some(term);
@@ -215,12 +219,14 @@ impl OLMC {
 
     pub fn set_clock(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::CLK,
+            });
         }
 
         if self.clock.is_some() {
             return Err(ErrorCode::RepeatedControl {
-                suffix: errors::OutputSuffix::CLK,
+                suffix: OutputSuffix::CLK,
             });
         }
         self.clock = Some(term);
@@ -230,12 +236,14 @@ impl OLMC {
 
     pub fn set_arst(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::ARST,
+            });
         }
 
         if self.arst.is_some() {
             return Err(ErrorCode::RepeatedControl {
-                suffix: errors::OutputSuffix::ARST,
+                suffix: OutputSuffix::ARST,
             });
         }
         self.arst = Some(term);
@@ -245,12 +253,14 @@ impl OLMC {
 
     pub fn set_aprst(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::APRST,
+            });
         }
 
         if self.aprst.is_some() {
             return Err(ErrorCode::RepeatedControl {
-                suffix: errors::OutputSuffix::APRST,
+                suffix: OutputSuffix::APRST,
             });
         }
         self.aprst = Some(term);

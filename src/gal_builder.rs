@@ -249,13 +249,28 @@ fn adjust_main_bounds(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds: 
 fn check_not_gal20ra10(blueprint: &Blueprint) -> Result<(), Error> {
     for olmc in blueprint.olmcs.iter() {
         if let Some(term) = &olmc.clock {
-            return at_line(term.line_num, Err(ErrorCode::DisallowedCLK));
+            return at_line(
+                term.line_num,
+                Err(ErrorCode::DisallowedControl {
+                    suffix: OutputSuffix::CLK,
+                }),
+            );
         }
         if let Some(term) = &olmc.arst {
-            return at_line(term.line_num, Err(ErrorCode::DisallowedARST));
+            return at_line(
+                term.line_num,
+                Err(ErrorCode::DisallowedControl {
+                    suffix: OutputSuffix::ARST,
+                }),
+            );
         }
         if let Some(term) = &olmc.aprst {
-            return at_line(term.line_num, Err(ErrorCode::DisallowedAPRST));
+            return at_line(
+                term.line_num,
+                Err(ErrorCode::DisallowedControl {
+                    suffix: OutputSuffix::APRST,
+                }),
+            );
         }
     }
     Ok(())
@@ -282,7 +297,7 @@ fn check_aux(field: &Option<gal::Term>, olmc: &OLMC, suffix: OutputSuffix) -> Re
             match olmc.output {
                 None => Err(ErrorCode::UndefinedOutput { suffix }),
                 Some((PinMode::Registered, _)) => Ok(()),
-                _ => Err(ErrorCode::InvalidControl),
+                _ => Err(ErrorCode::InvalidControl { suffix }),
             },
         )
     } else {

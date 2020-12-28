@@ -97,19 +97,19 @@ Error in line 23: only one product term allowed (no OR)
 Error in line 17: NC (Not Connected) is not allowed in logic equations
 === ncpin.pld
 Error in line 9: NC (Not Connected) is not allowed in logic equations
+=== negaprst.pld
+Error in line 25: .APRST is not allowed to be negated
 === negar.pld
 Error in line 23: negation of AR and SP is not allowed
 === negarst.pld
-Error in line 25: .E, .CLK, .ARST and .APRST is not allowed to be negated
+Error in line 24: .ARST is not allowed to be negated
 === negclk.pld
-Error in line 8: .E, .CLK, .ARST and .APRST is not allowed to be negated
+Error in line 8: .CLK is not allowed to be negated
 === negena.pld
-Error in line 17: .E, .CLK, .ARST and .APRST is not allowed to be negated
+Error in line 17: .E is not allowed to be negated
 === neggnd.pld
 Error in line 7: use GND, VCC instead of /VCC, /GND
 === negpin.pld
-=== negrst.pld
-Error in line 24: .E, .CLK, .ARST and .APRST is not allowed to be negated
 === negsp.pld
 Error in line 25: negation of AR and SP is not allowed
 === negvcc.pld
@@ -178,9 +178,9 @@ Error in line 17: unknown pinname
 === unkpin.pld
 Error in line 9: unknown pinname
 === unregclk.pld
-Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+Error in line 11: use of .CLK is only allowed for registered outputs
 === unregprst.pld
-Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+Error in line 11: use of .APRST is only allowed for registered outputs
 === unregrst.pld
-Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+Error in line 11: use of .ARST is only allowed for registered outputs
 === vcc.pld
