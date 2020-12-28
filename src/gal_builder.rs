@@ -33,8 +33,8 @@ fn build_galxv8(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     set_sig(gal, blueprint);
     set_mode(gal, blueprint);
     // Are we implementing combinatorial expressions as tristate?
-    // Put combinatorial is only available in Mode 1.
-    let com_is_tri = gal.get_mode() != Mode::Mode1;
+    // Pure combinatorial is only available in simple mode.
+    let com_is_tri = gal.get_mode() != Mode::Simple;
     set_tristate(gal, blueprint, com_is_tri);
     set_core_eqns(gal, blueprint)?;
     set_xors(gal, blueprint);
@@ -220,9 +220,9 @@ fn adjust_main_bounds(gal: &GAL, output: &Option<(PinMode, gal::Term)>, bounds: 
     match gal.chip {
         Chip::GAL16V8 | Chip::GAL20V8 => {
             // Registered outputs don't have a tristate enable, or
-            // indeed any pins in Mode 1.
+            // indeed any pins in simple mode.
             let reg_out = matches!(output, Some((PinMode::Registered, _)));
-            if gal.get_mode() == Mode::Mode1 || reg_out {
+            if gal.get_mode() == Mode::Simple || reg_out {
                 *bounds
             } else {
                 // Skip the tristate enable row.
@@ -302,38 +302,38 @@ fn analyse_mode(olmcs: &[OLMC]) -> Mode {
         "analyse_mode must only be called for devices with 8 OLMCs"
     );
 
-    // If there's a registered pin, it's mode 3.
+    // If there's a registered pin, it's registered mode.
     if olmcs
         .iter()
         .any(|olmc| matches!(olmc.output, Some((PinMode::Registered, _))))
     {
-        return Mode::Mode3;
+        return Mode::Registered;
     }
 
-    // If there's a tristate, it's mode 2.
+    // If there's a tristate, it's complex mode.
     if olmcs
         .iter()
         .any(|olmc| matches!(olmc.output, Some((PinMode::Tristate, _))))
     {
-        return Mode::Mode2;
+        return Mode::Complex;
     }
 
-    // If we can't use mode 1, use mode 2.
+    // If we can't use simple mode, use complex mode.
     for (n, olmc) in olmcs.iter().enumerate().filter(|(_, olmc)| olmc.feedback) {
         match olmc.output {
-            // Some OLMCs cannot be configured as pure inputs in Mode 1.
+            // Some OLMCs cannot be configured as pure inputs in simple mode.
             None => {
                 if n == 3 || n == 4 {
-                    return Mode::Mode2;
+                    return Mode::Complex;
                 }
             }
-            // OLMC pins cannot be used as combinatorial feedback in Mode 1.
-            Some(_) => return Mode::Mode2,
+            // OLMC pins cannot be used as combinatorial feedback in simple mode.
+            Some(_) => return Mode::Complex,
         }
     }
 
-    // If there is still no mode defined, use mode 1.
-    Mode::Mode1
+    // If there is still no mode defined, use simple mode.
+    Mode::Simple
 }
 
 #[cfg(test)]
@@ -391,7 +391,7 @@ mod tests {
             olmc(PinMode::Combinatorial),
             olmc(PinMode::Combinatorial),
         ];
-        assert_eq!(analyse_mode(&olmcs), Mode::Mode1);
+        assert_eq!(analyse_mode(&olmcs), Mode::Simple);
     }
 
     #[test]
@@ -406,7 +406,7 @@ mod tests {
             olmc(PinMode::Tristate),
             olmc(PinMode::Combinatorial),
         ];
-        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+        assert_eq!(analyse_mode(&olmcs), Mode::Complex);
     }
 
     #[test]
@@ -421,7 +421,7 @@ mod tests {
             olmc(PinMode::Combinatorial),
             olmc(PinMode::Combinatorial),
         ];
-        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+        assert_eq!(analyse_mode(&olmcs), Mode::Complex);
     }
 
     #[test]
@@ -436,7 +436,7 @@ mod tests {
             olmc(PinMode::Combinatorial),
             olmc(PinMode::Combinatorial),
         ];
-        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+        assert_eq!(analyse_mode(&olmcs), Mode::Complex);
     }
 
     #[test]
@@ -451,7 +451,7 @@ mod tests {
             olmc_feedback_and_output(),
             olmc(PinMode::Combinatorial),
         ];
-        assert_eq!(analyse_mode(&olmcs), Mode::Mode2);
+        assert_eq!(analyse_mode(&olmcs), Mode::Complex);
     }
 
     #[test]
@@ -466,7 +466,7 @@ mod tests {
             olmc(PinMode::Registered),
             olmc(PinMode::Registered),
         ];
-        assert_eq!(analyse_mode(&olmcs), Mode::Mode3);
+        assert_eq!(analyse_mode(&olmcs), Mode::Registered);
     }
 
     #[test]
@@ -481,6 +481,6 @@ mod tests {
             olmc(PinMode::Registered),
             olmc(PinMode::Registered),
         ];
-        assert_eq!(analyse_mode(&olmcs), Mode::Mode3);
+        assert_eq!(analyse_mode(&olmcs), Mode::Registered);
     }
 }

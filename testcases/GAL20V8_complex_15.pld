@@ -1,12 +1,12 @@
 GAL20V8
-Mode2 ; Checking the forcing of Mode 2 by feedback on pin 18/19.
+Complex ; Check that pin 15 cannot be used as input in complex mode.
 
 Clock I0    I1    I2    I3    I4    I5    I6    I7    NC    NC   GND
 /OE   I8    O0    O1    O2    I9    O4    O5    NC    NC    NC   VCC
 
 O0 = I0 * I1 + I9
 
-O1 = I2 + I3
+O1 = I2 + I3 + O0 ; Can't use O0 as input.
 
 O2 = I4 * /I5 + /I4 * I5
 

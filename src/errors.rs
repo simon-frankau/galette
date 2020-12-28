@@ -78,15 +78,15 @@ pub enum ErrorCode {
     NoPinName,
     #[error("GAL20RA10: pin 1 can't be used in equations")]
     NotAnInput1,
-    #[error("mode 3: pins 1,11 are reserved for 'Clock' and '/OE'")]
+    #[error("pins 1,11 are reserved for 'Clock' and '/OE' in registered mode")]
     NotAnInput111,
-    #[error("mode 3: pins 1,13 are reserved for 'Clock' and '/OE'")]
+    #[error("pins 1,13 are reserved for 'Clock' and '/OE' in registered mode")]
     NotAnInput113,
-    #[error("mode 2: pins 12, 19 can't be used as input")]
+    #[error("pins 12, 19 can't be used as input in complex mode")]
     NotAnInput1219,
     #[error("GAL20RA10: pin 13 can't be used in equations")]
     NotAnInput13,
-    #[error("mode 2: pins 15, 22 can't be used as input")]
+    #[error("pins 15, 22 can't be used as input in complex mode")]
     NotAnInput1522,
     #[error("this pin can't be used as output")]
     NotAnOutput,

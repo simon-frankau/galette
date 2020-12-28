@@ -2,17 +2,17 @@
 === GAL16V8_badname.pld
 Error in line 1: Line  1: type of GAL expected
 === GAL16V8_combinatorial.pld
-=== GAL16V8_mode2_12.pld
-Error in line 9: mode 2: pins 12, 19 can't be used as input
-=== GAL16V8_mode2_19.pld
-Error in line 9: mode 2: pins 12, 19 can't be used as input
-=== GAL16V8_mode2_feedback.pld
-=== GAL16V8_mode2_in.pld
+=== GAL16V8_complex_12.pld
+Error in line 9: pins 12, 19 can't be used as input in complex mode
+=== GAL16V8_complex_19.pld
+Error in line 9: pins 12, 19 can't be used as input in complex mode
+=== GAL16V8_complex_feedback.pld
+=== GAL16V8_complex_in.pld
 === GAL16V8_reg.pld
 === GAL16V8_reg_1.pld
-Error in line 7: mode 3: pins 1,11 are reserved for 'Clock' and '/OE'
+Error in line 7: pins 1,11 are reserved for 'Clock' and '/OE' in registered mode
 === GAL16V8_reg_11.pld
-Error in line 7: mode 3: pins 1,11 are reserved for 'Clock' and '/OE'
+Error in line 7: pins 1,11 are reserved for 'Clock' and '/OE' in registered mode
 === GAL16V8_tri.pld
 === GAL20RA10_badname.pld
 Error in line 1: Line  1: type of GAL expected
@@ -27,19 +27,19 @@ Error in line 7: GAL20RA10: pin 13 can't be used in equations
 === GAL20V8_badname.pld
 Error in line 1: Line  1: type of GAL expected
 === GAL20V8_combinatorial.pld
-=== GAL20V8_mode2.pld
-=== GAL20V8_mode2_15.pld
-Error in line 9: mode 2: pins 15, 22 can't be used as input
-=== GAL20V8_mode2_22.pld
-Error in line 9: mode 2: pins 15, 22 can't be used as input
-=== GAL20V8_mode2_feedback.pld
-=== GAL20V8_mode2_in.pld
+=== GAL20V8_complex.pld
+=== GAL20V8_complex_15.pld
+Error in line 9: pins 15, 22 can't be used as input in complex mode
+=== GAL20V8_complex_22.pld
+Error in line 9: pins 15, 22 can't be used as input in complex mode
+=== GAL20V8_complex_feedback.pld
+=== GAL20V8_complex_in.pld
 Error in line 5: pinname defined twice
 === GAL20V8_reg.pld
 === GAL20V8_reg_1.pld
-Error in line 7: mode 3: pins 1,13 are reserved for 'Clock' and '/OE'
+Error in line 7: pins 1,13 are reserved for 'Clock' and '/OE' in registered mode
 === GAL20V8_reg_13.pld
-Error in line 7: mode 3: pins 1,13 are reserved for 'Clock' and '/OE'
+Error in line 7: pins 1,13 are reserved for 'Clock' and '/OE' in registered mode
 === GAL20V8_tri.pld
 === GAL22V10_arsp.pld
 === GAL22V10_badname.pld

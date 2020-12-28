@@ -291,9 +291,11 @@ fn pin_type(gal: &GAL, olmcs: &[OLMC], i: usize) -> &'static str {
         "VCC"
     } else {
         match chip {
-            Chip::GAL16V8 | Chip::GAL20V8 if gal.get_mode() == Mode::Mode3 && i == 1 => "Clock",
-            Chip::GAL16V8 if gal.get_mode() == Mode::Mode3 && i == 11 => "/OE",
-            Chip::GAL20V8 if gal.get_mode() == Mode::Mode3 && i == 13 => "/OE",
+            Chip::GAL16V8 | Chip::GAL20V8 if gal.get_mode() == Mode::Registered && i == 1 => {
+                "Clock"
+            }
+            Chip::GAL16V8 if gal.get_mode() == Mode::Registered && i == 11 => "/OE",
+            Chip::GAL20V8 if gal.get_mode() == Mode::Registered && i == 13 => "/OE",
             Chip::GAL22V10 if i == 1 => "Clock/Input",
             _ => "Input",
         }

@@ -1,5 +1,5 @@
 GAL20V8
-CombTest ; Check the forcing of Mode 2 by feedback on an output pin.
+CombTest ; Check the forcing of complex mode by feedback on an output pin.
 
 Clock I0    I1    I2    I3    I4    I5    I6    I7    NC    NC   GND
 /OE   I8    O0    O1    O2    O3    O4    O5    NC    NC    NC   VCC

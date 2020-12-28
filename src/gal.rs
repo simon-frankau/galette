@@ -53,11 +53,11 @@ pub struct GAL {
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum Mode {
     // Combinatorial outputs
-    Mode1,
+    Simple,
     // Tristate outputs
-    Mode2,
+    Complex,
     // Tristate or registered outputs
-    Mode3,
+    Registered,
 }
 
 // Map input pin number to column within the fuse table. The mappings
@@ -144,15 +144,15 @@ impl GAL {
     pub fn set_mode(&mut self, mode: Mode) {
         assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
         match mode {
-            Mode::Mode1 => {
+            Mode::Simple => {
                 self.syn = true;
                 self.ac0 = false;
             }
-            Mode::Mode2 => {
+            Mode::Complex => {
                 self.syn = true;
                 self.ac0 = true;
             }
-            Mode::Mode3 => {
+            Mode::Registered => {
                 self.syn = false;
                 self.ac0 = true;
             }
@@ -163,9 +163,9 @@ impl GAL {
     pub fn get_mode(&self) -> Mode {
         assert!(self.chip == Chip::GAL16V8 || self.chip == Chip::GAL20V8);
         match (self.syn, self.ac0) {
-            (true, false) => Mode::Mode1,
-            (true, true) => Mode::Mode2,
-            (false, true) => Mode::Mode3,
+            (true, false) => Mode::Simple,
+            (true, true) => Mode::Complex,
+            (false, true) => Mode::Registered,
             _ => panic!("Bad syn/ac0 mode"),
         }
     }
@@ -245,14 +245,14 @@ impl GAL {
     fn pin_to_column(&self, pin_num: usize) -> Result<usize, ErrorCode> {
         let column_lookup: &[Result<i32, ErrorCode>] = match self.chip {
             Chip::GAL16V8 => match self.get_mode() {
-                Mode::Mode1 => &PIN_TO_COL_16_MODE1,
-                Mode::Mode2 => &PIN_TO_COL_16_MODE2,
-                Mode::Mode3 => &PIN_TO_COL_16_MODE3,
+                Mode::Simple => &PIN_TO_COL_16_MODE1,
+                Mode::Complex => &PIN_TO_COL_16_MODE2,
+                Mode::Registered => &PIN_TO_COL_16_MODE3,
             },
             Chip::GAL20V8 => match self.get_mode() {
-                Mode::Mode1 => &PIN_TO_COL_20_MODE1,
-                Mode::Mode2 => &PIN_TO_COL_20_MODE2,
-                Mode::Mode3 => &PIN_TO_COL_20_MODE3,
+                Mode::Simple => &PIN_TO_COL_20_MODE1,
+                Mode::Complex => &PIN_TO_COL_20_MODE2,
+                Mode::Registered => &PIN_TO_COL_20_MODE3,
             },
             Chip::GAL22V10 => &PIN_TO_COL_22V10,
             Chip::GAL20RA10 => &PIN_TO_COL_20RA10,

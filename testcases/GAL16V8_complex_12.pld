@@ -1,12 +1,12 @@
 GAL16V8
-Mode2 ; Checking the forcing of Mode 2 by input on pin 15/16.
+Complex ; Check that pin 12 cannot be used as input in complex mode.
 
 Clock I0    I1    I2    I3    I4    I5    NC    NC   GND
-/OE   O0    O1    O2    I6    O4    NC    NC    O5   VCC
+/OE   O0    O1    O2    I6    O4    NC    NC    NC   VCC
 
 O0 = I0 * I1 + I6
 
-O1 = I2 + I3 + O5 ; Can't use O5 as input
+O1 = I2 + I3 + O0 ; Can't use O0 as input
 
 O2 = I4 * /I5 + /I4 * I5
 
