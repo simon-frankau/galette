@@ -80,14 +80,12 @@ pub enum ErrorCode {
     #[error("pinname expected after '/'")]
     NoPinName,
     #[error(
-        "pin {} is reserved for '{}' on GAL20RA10 devices and can't be used in equations",
-        pin,
-        name
+        "pin {pin} is reserved for '{name}' on GAL20RA10 devices and can't be used in equations"
     )]
     ReservedInputGAL20RA10 { pin: usize, name: &'static str },
-    #[error("pin {} is reserved for '{}' in registered mode", pin, name)]
+    #[error("pin {pin} is reserved for '{name}' in registered mode")]
     ReservedRegisteredInput { pin: usize, name: &'static str },
-    #[error("pin {} can't be used as input in complex mode", pin)]
+    #[error("pin {pin} can't be used as input in complex mode")]
     NotAnComplexModeInput { pin: usize },
     #[error("this pin can't be used as output")]
     NotAnOutput,
