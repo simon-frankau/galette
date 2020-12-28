@@ -9,14 +9,14 @@
 
 use thiserror::Error;
 
-#[derive(Clone, Copy, Debug, Error)]
+#[derive(Clone, Debug, Error)]
 #[error("Error in line {}: {}", line, code)]
 pub struct Error {
     pub code: ErrorCode,
     pub line: u32,
 }
 
-#[derive(Clone, Copy, Debug, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum ErrorCode {
     #[error("GAL22V10: AR and SP is not allowed as pinname")]
     ARSPAsPinName,
@@ -76,18 +76,16 @@ pub enum ErrorCode {
     NoEquals,
     #[error("pinname expected after '/'")]
     NoPinName,
-    #[error("GAL20RA10: pin 1 can't be used in equations")]
-    NotAnInput1,
-    #[error("pins 1,11 are reserved for 'Clock' and '/OE' in registered mode")]
-    NotAnInput111,
-    #[error("pins 1,13 are reserved for 'Clock' and '/OE' in registered mode")]
-    NotAnInput113,
-    #[error("pins 12, 19 can't be used as input in complex mode")]
-    NotAnInput1219,
-    #[error("GAL20RA10: pin 13 can't be used in equations")]
-    NotAnInput13,
-    #[error("pins 15, 22 can't be used as input in complex mode")]
-    NotAnInput1522,
+    #[error(
+        "pin {} is reserved for '{}' on GAL20RA10 devices and can't be used in equations",
+        pin,
+        name
+    )]
+    ReservedInputGAL20RA10 { pin: usize, name: &'static str },
+    #[error("pin {} is reserved for '{}' in registered mode", pin, name)]
+    ReservedRegisteredInput { pin: usize, name: &'static str },
+    #[error("pin {} can't be used as input in complex mode", pin)]
+    NotAnComplexModeInput { pin: usize },
     #[error("this pin can't be used as output")]
     NotAnOutput,
     #[error("several .APRST definitions for the same output found")]

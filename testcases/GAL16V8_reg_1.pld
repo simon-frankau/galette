@@ -4,7 +4,7 @@ CombTest
 Clock I0    I1    I2    I3    I4    I5    NC    NC   GND
 /OE   O0    O1    O2    O3    O4    NC    NC    NC   VCC
 
-O0.R = I0 * I1 + OE ; Can't is pin 11 as input
+O0.R = I0 * I1 + Clock ; Can't use pin 1 as input
 
 O1.R = I2 + I3
 

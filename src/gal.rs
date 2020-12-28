@@ -65,13 +65,34 @@ pub enum Mode {
 // than in chips.rs.
 
 const BAD: Result<i32, ErrorCode> = Err(ErrorCode::BadAnalysis);
-const O1: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1);
-const O113: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput113);
-const O111: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput111);
-const O1219: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1219);
-const O13: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput13);
-const O1522: Result<i32, ErrorCode> = Err(ErrorCode::NotAnInput1522);
 const PWR: Result<i32, ErrorCode> = Err(ErrorCode::BadPower);
+
+const REG_P1: Result<i32, ErrorCode> = Err(ErrorCode::ReservedRegisteredInput {
+    pin: 1,
+    name: "Clock",
+});
+const REG_P11: Result<i32, ErrorCode> = Err(ErrorCode::ReservedRegisteredInput {
+    pin: 11,
+    name: "/OE",
+});
+const REG_P13: Result<i32, ErrorCode> = Err(ErrorCode::ReservedRegisteredInput {
+    pin: 13,
+    name: "/OE",
+});
+
+const CPLX_P12: Result<i32, ErrorCode> = Err(ErrorCode::NotAnComplexModeInput { pin: 12 });
+const CPLX_P15: Result<i32, ErrorCode> = Err(ErrorCode::NotAnComplexModeInput { pin: 15 });
+const CPLX_P19: Result<i32, ErrorCode> = Err(ErrorCode::NotAnComplexModeInput { pin: 19 });
+const CPLX_P22: Result<i32, ErrorCode> = Err(ErrorCode::NotAnComplexModeInput { pin: 22 });
+
+const P1_20RA10: Result<i32, ErrorCode> = Err(ErrorCode::ReservedInputGAL20RA10 {
+    pin: 1,
+    name: "/PL",
+});
+const P13_20RA10: Result<i32, ErrorCode> = Err(ErrorCode::ReservedInputGAL20RA10 {
+    pin: 13,
+    name: "/OE",
+});
 
 // GAL16V8
 #[rustfmt::skip]
@@ -81,13 +102,13 @@ const PIN_TO_COL_16_SIMPLE: [Result<i32, ErrorCode>; 20] = [
 ];
 #[rustfmt::skip]
 const PIN_TO_COL_16_COMPLEX: [Result<i32, ErrorCode>; 20] = [
-    Ok(2),  Ok(0), Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
-    Ok(30), O1219, Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  O1219,  PWR,
+    Ok(2),  Ok(0),    Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28),   PWR,
+    Ok(30), CPLX_P12, Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  CPLX_P19, PWR,
 ];
 #[rustfmt::skip]
 const PIN_TO_COL_16_REGISTERED: [Result<i32, ErrorCode>; 20] = [
-    O111, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
-    O111, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
+    REG_P1,  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
+    REG_P11, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL20V8
@@ -98,13 +119,13 @@ const PIN_TO_COL_20_SIMPLE: [Result<i32, ErrorCode>; 24] = [
 ];
 #[rustfmt::skip]
 const PIN_TO_COL_20_COMPLEX: [Result<i32, ErrorCode>; 24] = [
-    Ok(2),  Ok(0),  Ok(4), Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
-    Ok(38), Ok(34), O1522, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), O1522,  Ok(6),  PWR,
+    Ok(2),  Ok(0),  Ok(4),    Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32),   Ok(36), PWR,
+    Ok(38), Ok(34), CPLX_P15, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), CPLX_P22, Ok(6),  PWR,
 ];
 #[rustfmt::skip]
 const PIN_TO_COL_20_REGISTERED: [Result<i32, ErrorCode>; 24] = [
-    O113, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
-    O113, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
+    REG_P1,  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    REG_P13, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL22V10
@@ -117,8 +138,8 @@ const PIN_TO_COL_22V10: [Result<i32, ErrorCode>; 24] = [
 // GAL20RA10
 #[rustfmt::skip]
 const PIN_TO_COL_20RA10: [Result<i32, ErrorCode>; 24] = [
-    O1,  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
-    O13, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
+    P1_20RA10,  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
+    P13_20RA10, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 impl GAL {
@@ -258,7 +279,7 @@ impl GAL {
             Chip::GAL20RA10 => &PIN_TO_COL_20RA10,
         };
 
-        let column = column_lookup[pin_num - 1]?;
+        let column = column_lookup[pin_num - 1].clone()?;
 
         Ok(column as usize)
     }
