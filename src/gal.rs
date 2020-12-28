@@ -75,34 +75,34 @@ const PWR: Result<i32, ErrorCode> = Err(ErrorCode::BadPower);
 
 // GAL16V8
 #[rustfmt::skip]
-const PIN_TO_COL_16_MODE1: [Result<i32, ErrorCode>; 20] = [
+const PIN_TO_COL_16_SIMPLE: [Result<i32, ErrorCode>; 20] = [
     Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
     Ok(30), Ok(26), Ok(22), Ok(18), BAD,    BAD,    Ok(14), Ok(10), Ok(6),  PWR,
 ];
 #[rustfmt::skip]
-const PIN_TO_COL_16_MODE2: [Result<i32, ErrorCode>; 20] = [
+const PIN_TO_COL_16_COMPLEX: [Result<i32, ErrorCode>; 20] = [
     Ok(2),  Ok(0), Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
     Ok(30), O1219, Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  O1219,  PWR,
 ];
 #[rustfmt::skip]
-const PIN_TO_COL_16_MODE3: [Result<i32, ErrorCode>; 20] = [
+const PIN_TO_COL_16_REGISTERED: [Result<i32, ErrorCode>; 20] = [
     O111, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), PWR,
     O111, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
 
 // GAL20V8
 #[rustfmt::skip]
-const PIN_TO_COL_20_MODE1: [Result<i32, ErrorCode>; 24] = [
+const PIN_TO_COL_20_SIMPLE: [Result<i32, ErrorCode>; 24] = [
     Ok(2),  Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
     Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), BAD,    BAD,    Ok(18), Ok(14), Ok(10), Ok(6),  PWR,
 ];
 #[rustfmt::skip]
-const PIN_TO_COL_20_MODE2: [Result<i32, ErrorCode>; 24] = [
+const PIN_TO_COL_20_COMPLEX: [Result<i32, ErrorCode>; 24] = [
     Ok(2),  Ok(0),  Ok(4), Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
     Ok(38), Ok(34), O1522, Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), O1522,  Ok(6),  PWR,
 ];
 #[rustfmt::skip]
-const PIN_TO_COL_20_MODE3: [Result<i32, ErrorCode>; 24] = [
+const PIN_TO_COL_20_REGISTERED: [Result<i32, ErrorCode>; 24] = [
     O113, Ok(0),  Ok(4),  Ok(8),  Ok(12), Ok(16), Ok(20), Ok(24), Ok(28), Ok(32), Ok(36), PWR,
     O113, Ok(38), Ok(34), Ok(30), Ok(26), Ok(22), Ok(18), Ok(14), Ok(10), Ok(6),  Ok(2),  PWR,
 ];
@@ -245,14 +245,14 @@ impl GAL {
     fn pin_to_column(&self, pin_num: usize) -> Result<usize, ErrorCode> {
         let column_lookup: &[Result<i32, ErrorCode>] = match self.chip {
             Chip::GAL16V8 => match self.get_mode() {
-                Mode::Simple => &PIN_TO_COL_16_MODE1,
-                Mode::Complex => &PIN_TO_COL_16_MODE2,
-                Mode::Registered => &PIN_TO_COL_16_MODE3,
+                Mode::Simple => &PIN_TO_COL_16_SIMPLE,
+                Mode::Complex => &PIN_TO_COL_16_COMPLEX,
+                Mode::Registered => &PIN_TO_COL_16_REGISTERED,
             },
             Chip::GAL20V8 => match self.get_mode() {
-                Mode::Simple => &PIN_TO_COL_20_MODE1,
-                Mode::Complex => &PIN_TO_COL_20_MODE2,
-                Mode::Registered => &PIN_TO_COL_20_MODE3,
+                Mode::Simple => &PIN_TO_COL_20_SIMPLE,
+                Mode::Complex => &PIN_TO_COL_20_COMPLEX,
+                Mode::Registered => &PIN_TO_COL_20_REGISTERED,
             },
             Chip::GAL22V10 => &PIN_TO_COL_22V10,
             Chip::GAL20RA10 => &PIN_TO_COL_20RA10,
