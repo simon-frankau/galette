@@ -7,7 +7,7 @@
 // error code with the line number.
 //
 
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 use thiserror::Error;
 
@@ -20,14 +20,14 @@ pub struct Error {
 
 #[derive(Clone, Debug, Error)]
 pub enum ErrorCode {
-    #[error("GAL22V10: AR and SP is not allowed as pinname")]
-    ARSPAsPinName,
-    #[error("AR, SP: no suffix allowed")]
-    ARSPSuffix,
+    #[error("GAL22V10: {term} is not allowed as pinname")]
+    ReservedPinName { term: SpecialProductTerm },
+    #[error("no suffix is allowed for {term}")]
+    SpecialSuffix { term: SpecialProductTerm },
     #[error("internal error: analyse_mode should never let you use this pin as an input")]
     BadAnalysis,
-    #[error("use of AR and SP is not allowed in equations")]
-    BadARSP,
+    #[error("use of {term} is not allowed in equations")]
+    BadSpecial { term: SpecialProductTerm },
     #[error("bad character in input")]
     BadChar,
     #[error("unexpected end of file")]
@@ -60,8 +60,8 @@ pub enum ErrorCode {
     DisallowedControl { suffix: OutputSuffix },
     #[error("use of .{suffix} is only allowed for registered outputs")]
     InvalidControl { suffix: OutputSuffix },
-    #[error("negation of AR and SP is not allowed")]
-    InvertedARSP,
+    #[error("negation of {term} is not allowed")]
+    InvertedSpecial { term: SpecialProductTerm },
     #[error(".{suffix} is not allowed to be negated")]
     InvertedControl { suffix: OutputSuffix },
     #[error("{name} cannot be negated, use {hint} instead of /{name}")]
@@ -89,8 +89,8 @@ pub enum ErrorCode {
     NotAnComplexModeInput { pin: usize },
     #[error("this pin can't be used as output")]
     NotAnOutput,
-    #[error("AR or SP is defined twice")]
-    RepeatedARSP,
+    #[error("{term} is defined twice")]
+    RepeatedSpecial { term: SpecialProductTerm },
     #[error("multiple .{suffix} definitions for the same output")]
     RepeatedControl { suffix: OutputSuffix },
     #[error("same pin is defined multible as output")]
@@ -129,6 +129,33 @@ impl fmt::Display for OutputSuffix {
             Self::ARST => "ARST",
             Self::CLK => "CLK",
             Self::E => "E",
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SpecialProductTerm {
+    AR,
+    SP,
+}
+
+impl FromStr for SpecialProductTerm {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "AR" => Self::AR,
+            "SP" => Self::SP,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl fmt::Display for SpecialProductTerm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::AR => "AR",
+            Self::SP => "SP",
         })
     }
 }

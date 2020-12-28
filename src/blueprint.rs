@@ -1,4 +1,4 @@
-use errors::OutputSuffix;
+use errors::{OutputSuffix, SpecialProductTerm};
 
 //
 // blueprint.rs: Assembly-ready representation
@@ -85,13 +85,17 @@ impl Blueprint {
         match eqn.lhs {
             LHS::Ar => {
                 if self.ar.is_some() {
-                    return Err(ErrorCode::RepeatedARSP);
+                    return Err(ErrorCode::RepeatedSpecial {
+                        term: SpecialProductTerm::AR,
+                    });
                 }
                 self.ar = Some(term);
             }
             LHS::Sp => {
                 if self.sp.is_some() {
-                    return Err(ErrorCode::RepeatedARSP);
+                    return Err(ErrorCode::RepeatedSpecial {
+                        term: SpecialProductTerm::SP,
+                    });
                 }
                 self.sp = Some(term);
             }

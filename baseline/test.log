@@ -48,12 +48,12 @@ Error in line 1: type of GAL expected
 === GAL22V10_reg.pld
 === GAL22V10_tri.pld
 === arbad.pld
-Error in line 5: GAL22V10: AR and SP is not allowed as pinname
+Error in line 5: GAL22V10: AR is not allowed as pinname
 === arspok.pld
 === badarext.pld
-Error in line 23: AR, SP: no suffix allowed
+Error in line 23: no suffix is allowed for AR
 === badarusage.pld
-Error in line 21: use of AR and SP is not allowed in equations
+Error in line 21: use of AR is not allowed in equations
 === badclk.pld
 Error in line 7: .CLK is not allowed when this type of GAL is used
 === badgnd.pld
@@ -67,9 +67,9 @@ Error in line 7: .APRST is not allowed when this type of GAL is used
 === badrst.pld
 Error in line 7: .ARST is not allowed when this type of GAL is used
 === badspext.pld
-Error in line 23: AR, SP: no suffix allowed
+Error in line 23: no suffix is allowed for SP
 === badspusage.pld
-Error in line 21: use of AR and SP is not allowed in equations
+Error in line 21: use of SP is not allowed in equations
 === badvcc.pld
 Error in line 4: illegal VCC/GND assignment
 === gnd.pld
@@ -100,7 +100,7 @@ Error in line 9: NC (Not Connected) is not allowed in logic equations
 === negaprst.pld
 Error in line 25: .APRST is not allowed to be negated
 === negar.pld
-Error in line 23: negation of AR and SP is not allowed
+Error in line 23: negation of AR is not allowed
 === negarst.pld
 Error in line 24: .ARST is not allowed to be negated
 === negclk.pld
@@ -111,7 +111,7 @@ Error in line 17: .E is not allowed to be negated
 Error in line 7: GND cannot be negated, use VCC instead of /GND
 === negpin.pld
 === negsp.pld
-Error in line 25: negation of AR and SP is not allowed
+Error in line 25: negation of SP is not allowed
 === negvcc.pld
 Error in line 7: VCC cannot be negated, use GND instead of /VCC
 === noclk.pld
@@ -147,7 +147,7 @@ Error in line 8: tristate control without previous '.T'
 === regtri.pld
 Error in line 8: GAL16V8/20V8: tri. control for reg. output is not allowed
 === repar.pld
-Error in line 25: AR or SP is defined twice
+Error in line 25: AR is defined twice
 === reparst.pld
 Error in line 26: multiple .APRST definitions for the same output
 === repclk.pld
@@ -159,10 +159,10 @@ Error in line 17: same pin is defined multible as output
 === reprst.pld
 Error in line 26: multiple .ARST definitions for the same output
 === repsp.pld
-Error in line 25: AR or SP is defined twice
+Error in line 25: SP is defined twice
 === security_bit.pld
 === spbad.pld
-Error in line 5: GAL22V10: AR and SP is not allowed as pinname
+Error in line 5: GAL22V10: SP is not allowed as pinname
 === threeline.pld
 Error in line 2: unexpected end of file
 === toofewpins.pld

@@ -298,8 +298,12 @@ fn lookup_pin(
         .get(pin_name.name.as_str())
         .ok_or_else(|| match pin_name.name.as_str() {
             "NC" => ErrorCode::BadNC,
-            "AR" if chip == Chip::GAL22V10 => ErrorCode::BadARSP,
-            "SP" if chip == Chip::GAL22V10 => ErrorCode::BadARSP,
+            "AR" if chip == Chip::GAL22V10 => ErrorCode::BadSpecial {
+                term: pin_name.name.parse().unwrap(),
+            },
+            "SP" if chip == Chip::GAL22V10 => ErrorCode::BadSpecial {
+                term: pin_name.name.parse().unwrap(),
+            },
             _ => ErrorCode::UnknownPin,
         })?;
 
@@ -336,11 +340,16 @@ where
         Some(Token::Item((named_pin, suffix))) => {
             if chip == Chip::GAL22V10 && (named_pin.name == "AR" || named_pin.name == "SP") {
                 if suffix != Suffix::None {
-                    return Err(ErrorCode::ARSPSuffix);
+                    return Err(ErrorCode::SpecialSuffix {
+                        term: named_pin.name.parse().unwrap(),
+                    });
                 }
                 if named_pin.neg {
-                    return Err(ErrorCode::InvertedARSP);
+                    return Err(ErrorCode::InvertedSpecial {
+                        term: named_pin.name.parse().unwrap(),
+                    });
                 }
+
                 if named_pin.name == "AR" {
                     LHS::Ar
                 } else {
@@ -426,8 +435,11 @@ fn extend_pin_map(
                 });
             }
 
-            if chip == Chip::GAL22V10 && (name == "AR" || name == "SP") {
-                return Err(ErrorCode::ARSPAsPinName);
+            if chip == Chip::GAL22V10 {
+                // parse returns Ok if name is "AR" or "SP"
+                if let Ok(term) = name.parse() {
+                    return Err(ErrorCode::ReservedPinName { term });
+                }
             }
 
             pin_map.insert(name, Pin { pin: pin_num, neg });
