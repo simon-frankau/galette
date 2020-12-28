@@ -417,16 +417,30 @@ fn extend_pin_map(
     let first_pin = 1 + row_num * num_pins / 2;
     for ((name, neg), pin_num) in pins.iter().cloned().zip(first_pin..) {
         if pin_num == num_pins && (name.as_str(), neg) != ("VCC", false) {
-            return Err(ErrorCode::BadVCC);
+            return Err(ErrorCode::InvalidPowerPinName {
+                pin: pin_num,
+                name: "VCC",
+            });
         }
         if pin_num == num_pins / 2 && (name.as_str(), neg) != ("GND", false) {
-            return Err(ErrorCode::BadGND);
+            return Err(ErrorCode::InvalidPowerPinName {
+                pin: pin_num,
+                name: "GND",
+            });
         }
         if name == "VCC" && pin_num != num_pins {
-            return Err(ErrorCode::BadVCCLocation);
+            return Err(ErrorCode::InvalidPowerPinLocation {
+                pin: pin_num,
+                name: "VCC",
+                expected_pin: num_pins,
+            });
         }
         if name == "GND" && pin_num != num_pins / 2 {
-            return Err(ErrorCode::BadGNDLocation);
+            return Err(ErrorCode::InvalidPowerPinLocation {
+                pin: pin_num,
+                name: "GND",
+                expected_pin: num_pins / 2,
+            });
         }
         if name != "NC" {
             if pin_map.contains_key(&name) {

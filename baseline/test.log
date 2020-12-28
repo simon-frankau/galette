@@ -57,7 +57,7 @@ Error in line 21: use of AR is not allowed in equations
 === badclk.pld
 Error in line 7: .CLK is not allowed when this type of GAL is used
 === badgnd.pld
-Error in line 4: illegal VCC/GND assignment
+Error in line 4: pin 8 cannot be named GND, because the name is reserved for pin 10
 === badname.pld
 Error in line 1: type of GAL expected
 === badpinstart.pld
@@ -71,7 +71,7 @@ Error in line 23: no suffix is allowed for SP
 === badspusage.pld
 Error in line 21: use of SP is not allowed in equations
 === badvcc.pld
-Error in line 4: illegal VCC/GND assignment
+Error in line 4: pin 8 cannot be named VCC, because the name is reserved for pin 20
 === gnd.pld
 === inputonly.pld
 Error in line 7: this pin can't be used as output
@@ -119,7 +119,7 @@ Error in line 7: missing clock definition (.CLK) of registered output
 === noequals.pld
 Error in line 7: bad character in input
 === nognd.pld
-Error in line 4: pin declaration: expected GND at GND pin
+Error in line 4: pin 10 must be named GND
 === norhs.pld
 Error in line 7: unexpected end of file
 === norhs2.pld
@@ -127,7 +127,7 @@ Error in line 7: unexpected end of file
 === norhs3.pld
 Error in line 7: unexpected end of line
 === novcc.pld
-Error in line 5: pin declaration: expected VCC at VCC pin
+Error in line 5: pin 20 must be named VCC
 === oneline.pld
 Error in line 1: unexpected end of file
 === onlyclk.pld

@@ -36,10 +36,6 @@ pub enum ErrorCode {
     BadEOL,
     #[error("type of GAL expected")]
     BadGALType,
-    #[error("pin declaration: expected GND at GND pin")]
-    BadGND,
-    #[error("illegal VCC/GND assignment")]
-    BadGNDLocation,
     #[error("NC (Not Connected) is not allowed in logic equations")]
     BadNC,
     #[error("illegal character in pin declaration")]
@@ -52,10 +48,16 @@ pub enum ErrorCode {
     BadSuffix,
     #[error("unexpected token")]
     BadToken,
-    #[error("pin declaration: expected VCC at VCC pin")]
-    BadVCC,
-    #[error("illegal VCC/GND assignment")]
-    BadVCCLocation,
+    #[error("pin {pin} must be named {name}")]
+    InvalidPowerPinName { pin: usize, name: &'static str },
+    #[error(
+        "pin {pin} cannot be named {name}, because the name is reserved for pin {expected_pin}"
+    )]
+    InvalidPowerPinLocation {
+        pin: usize,
+        name: &'static str,
+        expected_pin: usize,
+    },
     #[error(".{suffix} is not allowed when this type of GAL is used")]
     DisallowedControl { suffix: OutputSuffix },
     #[error("use of .{suffix} is only allowed for registered outputs")]
