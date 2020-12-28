@@ -62,7 +62,7 @@ pub enum ErrorCode {
     InvalidControl { suffix: OutputSuffix },
     #[error("negation of {term} is not allowed")]
     InvertedSpecial { term: SpecialProductTerm },
-    #[error(".{suffix} is not allowed to be negated")]
+    #[error("negation of .{suffix} is not allowed")]
     InvertedControl { suffix: OutputSuffix },
     #[error("{name} cannot be negated, use {hint} instead of /{name}")]
     InvertedPower {

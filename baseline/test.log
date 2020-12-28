@@ -98,15 +98,15 @@ Error in line 17: NC (Not Connected) is not allowed in logic equations
 === ncpin.pld
 Error in line 9: NC (Not Connected) is not allowed in logic equations
 === negaprst.pld
-Error in line 25: .APRST is not allowed to be negated
+Error in line 25: negation of .APRST is not allowed
 === negar.pld
 Error in line 23: negation of AR is not allowed
 === negarst.pld
-Error in line 24: .ARST is not allowed to be negated
+Error in line 24: negation of .ARST is not allowed
 === negclk.pld
-Error in line 8: .CLK is not allowed to be negated
+Error in line 8: negation of .CLK is not allowed
 === negena.pld
-Error in line 17: .E is not allowed to be negated
+Error in line 17: negation of .E is not allowed
 === neggnd.pld
 Error in line 7: GND cannot be negated, use VCC instead of /GND
 === negpin.pld
