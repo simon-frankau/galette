@@ -1,6 +1,6 @@
 === security_bit.pld
 === GAL16V8_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL16V8_combinatorial.pld
 === GAL16V8_complex_12.pld
 Error in line 9: pins 12, 19 can't be used as input in complex mode
@@ -15,7 +15,7 @@ Error in line 7: pins 1,11 are reserved for 'Clock' and '/OE' in registered mode
 Error in line 7: pins 1,11 are reserved for 'Clock' and '/OE' in registered mode
 === GAL16V8_tri.pld
 === GAL20RA10_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL20RA10_combinatorial.pld
 === GAL20RA10_pin1.pld
 Error in line 7: GAL20RA10: pin 1 can't be used in equations
@@ -25,7 +25,7 @@ Error in line 7: GAL20RA10: pin 13 can't be used in equations
 === GAL20RA10_rst.pld
 === GAL20RA10_tri.pld
 === GAL20V8_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL20V8_combinatorial.pld
 === GAL20V8_complex.pld
 === GAL20V8_complex_15.pld
@@ -43,7 +43,7 @@ Error in line 7: pins 1,13 are reserved for 'Clock' and '/OE' in registered mode
 === GAL20V8_tri.pld
 === GAL22V10_arsp.pld
 === GAL22V10_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL22V10_combinatorial.pld
 === GAL22V10_reg.pld
 === GAL22V10_tri.pld
@@ -59,7 +59,7 @@ Error in line 7: .CLK is not allowed when this type of GAL is used
 === badgnd.pld
 Error in line 4: illegal VCC/GND assignment
 === badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === badpinstart.pld
 Error in line 4: illegal character in pin declaration
 === badprst.pld

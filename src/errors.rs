@@ -32,7 +32,7 @@ pub enum ErrorCode {
     BadEOF,
     #[error("unexpected end of line")]
     BadEOL,
-    #[error("Line  1: type of GAL expected")]
+    #[error("type of GAL expected")]
     BadGALType,
     #[error("pin declaration: expected GND at GND pin")]
     BadGND,
