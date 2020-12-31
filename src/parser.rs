@@ -298,8 +298,12 @@ fn lookup_pin(
         .get(pin_name.name.as_str())
         .ok_or_else(|| match pin_name.name.as_str() {
             "NC" => ErrorCode::BadNC,
-            "AR" if chip == Chip::GAL22V10 => ErrorCode::BadARSP,
-            "SP" if chip == Chip::GAL22V10 => ErrorCode::BadARSP,
+            "AR" if chip == Chip::GAL22V10 => ErrorCode::BadSpecial {
+                term: pin_name.name.parse().unwrap(),
+            },
+            "SP" if chip == Chip::GAL22V10 => ErrorCode::BadSpecial {
+                term: pin_name.name.parse().unwrap(),
+            },
             _ => ErrorCode::UnknownPin,
         })?;
 
@@ -336,11 +340,16 @@ where
         Some(Token::Item((named_pin, suffix))) => {
             if chip == Chip::GAL22V10 && (named_pin.name == "AR" || named_pin.name == "SP") {
                 if suffix != Suffix::None {
-                    return Err(ErrorCode::ARSPSuffix);
+                    return Err(ErrorCode::SpecialSuffix {
+                        term: named_pin.name.parse().unwrap(),
+                    });
                 }
                 if named_pin.neg {
-                    return Err(ErrorCode::InvertedARSP);
+                    return Err(ErrorCode::InvertedSpecial {
+                        term: named_pin.name.parse().unwrap(),
+                    });
                 }
+
                 if named_pin.name == "AR" {
                     LHS::Ar
                 } else {
@@ -408,24 +417,43 @@ fn extend_pin_map(
     let first_pin = 1 + row_num * num_pins / 2;
     for ((name, neg), pin_num) in pins.iter().cloned().zip(first_pin..) {
         if pin_num == num_pins && (name.as_str(), neg) != ("VCC", false) {
-            return Err(ErrorCode::BadVCC);
+            return Err(ErrorCode::InvalidPowerPinName {
+                pin: pin_num,
+                name: "VCC",
+            });
         }
         if pin_num == num_pins / 2 && (name.as_str(), neg) != ("GND", false) {
-            return Err(ErrorCode::BadGND);
+            return Err(ErrorCode::InvalidPowerPinName {
+                pin: pin_num,
+                name: "GND",
+            });
         }
         if name == "VCC" && pin_num != num_pins {
-            return Err(ErrorCode::BadVCCLocation);
+            return Err(ErrorCode::InvalidPowerPinLocation {
+                pin: pin_num,
+                name: "VCC",
+                expected_pin: num_pins,
+            });
         }
         if name == "GND" && pin_num != num_pins / 2 {
-            return Err(ErrorCode::BadGNDLocation);
+            return Err(ErrorCode::InvalidPowerPinLocation {
+                pin: pin_num,
+                name: "GND",
+                expected_pin: num_pins / 2,
+            });
         }
         if name != "NC" {
             if pin_map.contains_key(&name) {
-                return Err(ErrorCode::RepeatedPinName);
+                return Err(ErrorCode::RepeatedPinName {
+                    name: name.to_string(),
+                });
             }
 
-            if chip == Chip::GAL22V10 && (name == "AR" || name == "SP") {
-                return Err(ErrorCode::ARSPAsPinName);
+            if chip == Chip::GAL22V10 {
+                // parse returns Ok if name is "AR" or "SP"
+                if let Ok(term) = name.parse() {
+                    return Err(ErrorCode::ReservedPinName { term });
+                }
             }
 
             pin_map.insert(name, Pin { pin: pin_num, neg });

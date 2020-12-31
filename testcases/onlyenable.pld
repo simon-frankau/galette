@@ -7,8 +7,7 @@ CombTest
 O0.R = I0 * I1
 O0.CLK = Clock
 
-O1.R = I2 + I3
-O1.CLK = Clock
+O1.E = Clock
 
 O2.R = I4 * /I5 + /I4 * I5
 O2.CLK = Clock
@@ -21,16 +20,12 @@ O4.CLK = Clock
 
 /O5.R = /I7 + I8
 O5.CLK = Clock
-/O5.ARST = I0
-O5.APRST = I1
 
 O6.R = I6
 O6.CLK = Clock * O6
-O6.ARST = I0 * I1
 
 O7.R = I7
 O7.CLK = /Clock
-O7.APRST = I1 * I2
 
 DESCRIPTION
 

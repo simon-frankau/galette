@@ -1,3 +1,5 @@
+use errors::{OutputSuffix, SpecialProductTerm};
+
 //
 // blueprint.rs: Assembly-ready representation
 //
@@ -83,13 +85,17 @@ impl Blueprint {
         match eqn.lhs {
             LHS::Ar => {
                 if self.ar.is_some() {
-                    return Err(ErrorCode::RepeatedARSP);
+                    return Err(ErrorCode::RepeatedSpecial {
+                        term: SpecialProductTerm::AR,
+                    });
                 }
                 self.ar = Some(term);
             }
             LHS::Sp => {
                 if self.sp.is_some() {
-                    return Err(ErrorCode::RepeatedARSP);
+                    return Err(ErrorCode::RepeatedSpecial {
+                        term: SpecialProductTerm::SP,
+                    });
                 }
                 self.sp = Some(term);
             }
@@ -126,13 +132,19 @@ fn eqn_to_term(chip: Chip, eqn: &Equation) -> Result<Term, ErrorCode> {
         if pin.pin == chip.num_pins() {
             // VCC
             if pin.neg {
-                return Err(ErrorCode::InvertedPower);
+                return Err(ErrorCode::InvertedPower {
+                    name: "VCC",
+                    hint: "GND",
+                });
             }
             return Ok(gal::true_term(eqn.line_num));
         } else if pin.pin == chip.num_pins() / 2 {
             // GND
             if pin.neg {
-                return Err(ErrorCode::InvertedPower);
+                return Err(ErrorCode::InvertedPower {
+                    name: "GND",
+                    hint: "VCC",
+                });
             }
             return Ok(gal::false_term(eqn.line_num));
         }
@@ -200,11 +212,15 @@ impl OLMC {
 
     pub fn set_enable(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::E,
+            });
         }
 
         if self.tri_con != None {
-            return Err(ErrorCode::RepeatedTristate);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: OutputSuffix::E,
+            });
         }
         self.tri_con = Some(term);
 
@@ -213,11 +229,15 @@ impl OLMC {
 
     pub fn set_clock(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::CLK,
+            });
         }
 
         if self.clock.is_some() {
-            return Err(ErrorCode::RepeatedCLK);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: OutputSuffix::CLK,
+            });
         }
         self.clock = Some(term);
 
@@ -226,11 +246,15 @@ impl OLMC {
 
     pub fn set_arst(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::ARST,
+            });
         }
 
         if self.arst.is_some() {
-            return Err(ErrorCode::RepeatedARST);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: OutputSuffix::ARST,
+            });
         }
         self.arst = Some(term);
 
@@ -239,11 +263,15 @@ impl OLMC {
 
     pub fn set_aprst(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
         if pin.neg {
-            return Err(ErrorCode::InvertedControl);
+            return Err(ErrorCode::InvertedControl {
+                suffix: OutputSuffix::APRST,
+            });
         }
 
         if self.aprst.is_some() {
-            return Err(ErrorCode::RepeatedAPRST);
+            return Err(ErrorCode::RepeatedControl {
+                suffix: OutputSuffix::APRST,
+            });
         }
         self.aprst = Some(term);
 

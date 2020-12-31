@@ -1,5 +1,5 @@
 GAL16V8
-Mode2 ; Checking the forcing of Mode 2 by input on pin 15/16.
+Complex ; Checking the forcing of complex mode by input on pin 15/16.
 
 Clock I0    I1    I2    I3    I4    I5    NC    NC   GND
 /OE   O0    O1    O2    I6    O4    NC    NC    NC   VCC

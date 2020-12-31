@@ -1,65 +1,65 @@
 === security_bit.pld
 === GAL16V8_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL16V8_combinatorial.pld
-=== GAL16V8_mode2_12.pld
-Error in line 9: mode 2: pins 12, 19 can't be used as input
-=== GAL16V8_mode2_19.pld
-Error in line 9: mode 2: pins 12, 19 can't be used as input
-=== GAL16V8_mode2_feedback.pld
-=== GAL16V8_mode2_in.pld
+=== GAL16V8_complex_12.pld
+Error in line 9: pin 12 can't be used as input in complex mode
+=== GAL16V8_complex_19.pld
+Error in line 9: pin 19 can't be used as input in complex mode
+=== GAL16V8_complex_feedback.pld
+=== GAL16V8_complex_in.pld
 === GAL16V8_reg.pld
 === GAL16V8_reg_1.pld
-Error in line 7: mode 3: pins 1,11 are reserved for 'Clock' and '/OE'
+Error in line 7: pin 1 is reserved for 'Clock' in registered mode
 === GAL16V8_reg_11.pld
-Error in line 7: mode 3: pins 1,11 are reserved for 'Clock' and '/OE'
+Error in line 7: pin 11 is reserved for '/OE' in registered mode
 === GAL16V8_tri.pld
 === GAL20RA10_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL20RA10_combinatorial.pld
 === GAL20RA10_pin1.pld
-Error in line 7: GAL20RA10: pin 1 can't be used in equations
+Error in line 7: pin 1 is reserved for '/PL' on GAL20RA10 devices and can't be used in equations
 === GAL20RA10_pin13.pld
-Error in line 7: GAL20RA10: pin 13 can't be used in equations
+Error in line 7: pin 13 is reserved for '/OE' on GAL20RA10 devices and can't be used in equations
 === GAL20RA10_reg.pld
 === GAL20RA10_rst.pld
 === GAL20RA10_tri.pld
 === GAL20V8_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL20V8_combinatorial.pld
-=== GAL20V8_mode2.pld
-=== GAL20V8_mode2_15.pld
-Error in line 9: mode 2: pins 15, 22 can't be used as input
-=== GAL20V8_mode2_22.pld
-Error in line 9: mode 2: pins 15, 22 can't be used as input
-=== GAL20V8_mode2_feedback.pld
-=== GAL20V8_mode2_in.pld
-Error in line 5: pinname defined twice
+=== GAL20V8_complex.pld
+=== GAL20V8_complex_15.pld
+Error in line 9: pin 15 can't be used as input in complex mode
+=== GAL20V8_complex_22.pld
+Error in line 9: pin 22 can't be used as input in complex mode
+=== GAL20V8_complex_feedback.pld
+=== GAL20V8_complex_in.pld
+Error in line 5: pinname I8 is defined twice
 === GAL20V8_reg.pld
 === GAL20V8_reg_1.pld
-Error in line 7: mode 3: pins 1,13 are reserved for 'Clock' and '/OE'
+Error in line 7: pin 1 is reserved for 'Clock' in registered mode
 === GAL20V8_reg_13.pld
-Error in line 7: mode 3: pins 1,13 are reserved for 'Clock' and '/OE'
+Error in line 7: pin 13 is reserved for '/OE' in registered mode
 === GAL20V8_tri.pld
 === GAL22V10_arsp.pld
 === GAL22V10_badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === GAL22V10_combinatorial.pld
 === GAL22V10_reg.pld
 === GAL22V10_tri.pld
 === arbad.pld
-Error in line 5: GAL22V10: AR and SP is not allowed as pinname
+Error in line 5: GAL22V10: AR is not allowed as pinname
 === arspok.pld
 === badarext.pld
-Error in line 23: AR, SP: no suffix allowed
+Error in line 23: no suffix is allowed for AR
 === badarusage.pld
-Error in line 21: use of AR and SP is not allowed in equations
+Error in line 21: use of AR is not allowed in equations
 === badclk.pld
 Error in line 7: .CLK is not allowed when this type of GAL is used
 === badgnd.pld
-Error in line 4: illegal VCC/GND assignment
+Error in line 4: pin 8 cannot be named GND, because the name is reserved for pin 10
 === badname.pld
-Error in line 1: Line  1: type of GAL expected
+Error in line 1: type of GAL expected
 === badpinstart.pld
 Error in line 4: illegal character in pin declaration
 === badprst.pld
@@ -67,11 +67,11 @@ Error in line 7: .APRST is not allowed when this type of GAL is used
 === badrst.pld
 Error in line 7: .ARST is not allowed when this type of GAL is used
 === badspext.pld
-Error in line 23: AR, SP: no suffix allowed
+Error in line 23: no suffix is allowed for SP
 === badspusage.pld
-Error in line 21: use of AR and SP is not allowed in equations
+Error in line 21: use of SP is not allowed in equations
 === badvcc.pld
-Error in line 4: illegal VCC/GND assignment
+Error in line 4: pin 8 cannot be named VCC, because the name is reserved for pin 20
 === gnd.pld
 === inputonly.pld
 Error in line 7: this pin can't be used as output
@@ -97,29 +97,29 @@ Error in line 23: only one product term allowed (no OR)
 Error in line 17: NC (Not Connected) is not allowed in logic equations
 === ncpin.pld
 Error in line 9: NC (Not Connected) is not allowed in logic equations
+=== negaprst.pld
+Error in line 25: negation of .APRST is not allowed
 === negar.pld
-Error in line 23: negation of AR and SP is not allowed
+Error in line 23: negation of AR is not allowed
 === negarst.pld
-Error in line 25: .E, .CLK, .ARST and .APRST is not allowed to be negated
+Error in line 24: negation of .ARST is not allowed
 === negclk.pld
-Error in line 8: .E, .CLK, .ARST and .APRST is not allowed to be negated
+Error in line 8: negation of .CLK is not allowed
 === negena.pld
-Error in line 17: .E, .CLK, .ARST and .APRST is not allowed to be negated
+Error in line 17: negation of .E is not allowed
 === neggnd.pld
-Error in line 7: use GND, VCC instead of /VCC, /GND
+Error in line 7: GND cannot be negated, use VCC instead of /GND
 === negpin.pld
-=== negrst.pld
-Error in line 24: .E, .CLK, .ARST and .APRST is not allowed to be negated
 === negsp.pld
-Error in line 25: negation of AR and SP is not allowed
+Error in line 25: negation of SP is not allowed
 === negvcc.pld
-Error in line 7: use GND, VCC instead of /VCC, /GND
+Error in line 7: VCC cannot be negated, use GND instead of /VCC
 === noclk.pld
 Error in line 7: missing clock definition (.CLK) of registered output
 === noequals.pld
 Error in line 7: bad character in input
 === nognd.pld
-Error in line 4: pin declaration: expected GND at GND pin
+Error in line 4: pin 10 must be named GND
 === norhs.pld
 Error in line 7: unexpected end of file
 === norhs2.pld
@@ -127,40 +127,42 @@ Error in line 7: unexpected end of file
 === norhs3.pld
 Error in line 7: unexpected end of line
 === novcc.pld
-Error in line 5: pin declaration: expected VCC at VCC pin
+Error in line 5: pin 20 must be named VCC
 === oneline.pld
 Error in line 1: unexpected end of file
 === onlyclk.pld
-Error in line 10: if using .CLK, the output must be defined
+Error in line 10: the output must be defined to use .CLK
+=== onlyenable.pld
+Error in line 10: the output must be defined to use .E
 === onlyprst.pld
-Error in line 10: if using .APRST the output must be defined
+Error in line 10: the output must be defined to use .APRST
 === onlyrst.pld
-Error in line 10: if using .ARST, the output must be defined
+Error in line 10: the output must be defined to use .ARST
 === pinbadneg.pld
 Error in line 4: pinname expected after '/'
 === pinrepeated.pld
-Error in line 4: pinname defined twice
+Error in line 4: pinname I5 is defined twice
 === plaintri.pld
 Error in line 8: tristate control without previous '.T'
 === regtri.pld
 Error in line 8: GAL16V8/20V8: tri. control for reg. output is not allowed
 === repar.pld
-Error in line 25: AR or SP is defined twice
+Error in line 25: AR is defined twice
 === reparst.pld
-Error in line 26: several .APRST definitions for the same output found
+Error in line 26: multiple .APRST definitions for the same output
 === repclk.pld
-Error in line 9: several .CLK definitions for the same output found
+Error in line 9: multiple .CLK definitions for the same output
 === repena.pld
-Error in line 19: tristate control is defined twice
+Error in line 19: multiple .E definitions for the same output
 === reppin.pld
 Error in line 17: same pin is defined multible as output
 === reprst.pld
-Error in line 26: several .ARST definitions for the same output found
+Error in line 26: multiple .ARST definitions for the same output
 === repsp.pld
-Error in line 25: AR or SP is defined twice
+Error in line 25: SP is defined twice
 === security_bit.pld
 === spbad.pld
-Error in line 5: GAL22V10: AR and SP is not allowed as pinname
+Error in line 5: GAL22V10: SP is not allowed as pinname
 === threeline.pld
 Error in line 2: unexpected end of file
 === toofewpins.pld
@@ -176,9 +178,9 @@ Error in line 17: unknown pinname
 === unkpin.pld
 Error in line 9: unknown pinname
 === unregclk.pld
-Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+Error in line 11: use of .CLK is only allowed for registered outputs
 === unregprst.pld
-Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+Error in line 11: use of .APRST is only allowed for registered outputs
 === unregrst.pld
-Error in line 11: use of .CLK, .ARST, .APRST only allowed for registered outputs
+Error in line 11: use of .ARST is only allowed for registered outputs
 === vcc.pld
