@@ -1,8 +1,15 @@
 [package]
 name = "galette"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Simon Frankau <sgf@arbitrary.name>"]
 edition = "2018"
+license = "MIT"
+description = "A GAL assembler, largely galasm-compatible and written in Rust."
+readme = "README.md"
+homepage = "https://github.com/simon-frankau/galette"
+repository = "https://github.com/simon-frankau/galette"
+keywords = ["cli", "gal", "pal", "jed", "jedec"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = "2.33.3"
