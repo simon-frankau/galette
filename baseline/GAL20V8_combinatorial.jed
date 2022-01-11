@@ -1,5 +1,5 @@
 
-GAL-Assembler:  Galette 0.2.0
+GAL-Assembler:  Galette 0.3.0
 Device:         GAL20V8
 
 *F0
@@ -28,4 +28,4 @@ Device:         GAL20V8
 *L2705 0
 *C56c1
 *
-bf6b
+bf6c

@@ -1,5 +1,5 @@
 
-GAL-Assembler:  Galette 0.2.0
+GAL-Assembler:  Galette 0.3.0
 Device:         GAL20RA10
 
 *F0
@@ -34,4 +34,4 @@ Device:         GAL20RA10
 *L3210 0100001101101111011011010110001001010100011001010111001101110100
 *C8078
 *
-06d7
+06d8
