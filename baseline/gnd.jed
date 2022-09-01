@@ -1,5 +1,5 @@
 
-GAL-Assembler:  Galette 0.2.0
+GAL-Assembler:  Galette 0.3.0
 Device:         GAL16V8
 
 *F0
@@ -24,4 +24,4 @@ Device:         GAL16V8
 *L2193 0
 *C3893
 *
-8a5f
+8a60
