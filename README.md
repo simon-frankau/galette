@@ -75,7 +75,7 @@ the output's the same.
 
 So, if you're wondering why there's no unit tests, that's why.
 
-To run the tests, `./run_tests.sh`.
+The integration tests can be run with the usual `cargo test`.
 
 ## Licensing
 
