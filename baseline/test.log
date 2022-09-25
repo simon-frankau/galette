@@ -1,55 +1,36 @@
 === security_bit.pld
 === GAL16V8_badname.pld
 Error in line 1: type of GAL expected
-=== GAL16V8_combinatorial.pld
 === GAL16V8_complex_12.pld
 Error in line 9: pin 12 can't be used as input in complex mode
 === GAL16V8_complex_19.pld
 Error in line 9: pin 19 can't be used as input in complex mode
-=== GAL16V8_complex_feedback.pld
-=== GAL16V8_complex_in.pld
-=== GAL16V8_reg.pld
 === GAL16V8_reg_1.pld
 Error in line 7: pin 1 is reserved for 'Clock' in registered mode
 === GAL16V8_reg_11.pld
 Error in line 7: pin 11 is reserved for '/OE' in registered mode
-=== GAL16V8_tri.pld
 === GAL20RA10_badname.pld
 Error in line 1: type of GAL expected
-=== GAL20RA10_combinatorial.pld
 === GAL20RA10_pin1.pld
 Error in line 7: pin 1 is reserved for '/PL' on GAL20RA10 devices and can't be used in equations
 === GAL20RA10_pin13.pld
 Error in line 7: pin 13 is reserved for '/OE' on GAL20RA10 devices and can't be used in equations
-=== GAL20RA10_reg.pld
-=== GAL20RA10_rst.pld
-=== GAL20RA10_tri.pld
 === GAL20V8_badname.pld
 Error in line 1: type of GAL expected
-=== GAL20V8_combinatorial.pld
-=== GAL20V8_complex.pld
 === GAL20V8_complex_15.pld
 Error in line 9: pin 15 can't be used as input in complex mode
 === GAL20V8_complex_22.pld
 Error in line 9: pin 22 can't be used as input in complex mode
-=== GAL20V8_complex_feedback.pld
 === GAL20V8_complex_in.pld
 Error in line 5: pinname I8 is defined twice
-=== GAL20V8_reg.pld
 === GAL20V8_reg_1.pld
 Error in line 7: pin 1 is reserved for 'Clock' in registered mode
 === GAL20V8_reg_13.pld
 Error in line 7: pin 13 is reserved for '/OE' in registered mode
-=== GAL20V8_tri.pld
-=== GAL22V10_arsp.pld
 === GAL22V10_badname.pld
 Error in line 1: type of GAL expected
-=== GAL22V10_combinatorial.pld
-=== GAL22V10_reg.pld
-=== GAL22V10_tri.pld
 === arbad.pld
 Error in line 5: GAL22V10: AR is not allowed as pinname
-=== arspok.pld
 === badarext.pld
 Error in line 23: no suffix is allowed for AR
 === badarusage.pld
@@ -72,7 +53,6 @@ Error in line 23: no suffix is allowed for SP
 Error in line 21: use of SP is not allowed in equations
 === badvcc.pld
 Error in line 4: pin 8 cannot be named VCC, because the name is reserved for pin 20
-=== gnd.pld
 === inputonly.pld
 Error in line 7: this pin can't be used as output
 === logicgnd.pld
@@ -109,7 +89,6 @@ Error in line 8: negation of .CLK is not allowed
 Error in line 17: negation of .E is not allowed
 === neggnd.pld
 Error in line 7: GND cannot be negated, use VCC instead of /GND
-=== negpin.pld
 === negsp.pld
 Error in line 25: negation of SP is not allowed
 === negvcc.pld
@@ -183,4 +162,3 @@ Error in line 11: use of .CLK is only allowed for registered outputs
 Error in line 11: use of .APRST is only allowed for registered outputs
 === unregrst.pld
 Error in line 11: use of .ARST is only allowed for registered outputs
-=== vcc.pld

@@ -18,14 +18,14 @@ use std::process::Command;
 use anyhow::Result;
 use test_bin::get_test_bin;
 
-const TEST_TEMP_DIR: &str = "test_tmp2/";
+const TEST_TEMP_DIR: &str = "test_tmp";
 
 // Yes, we re-open each time. Minimal change from the shell.
 fn log_str(s: &str) -> Result<()> {
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open("test_tmp2/test.log")?;
+        .open("test_tmp/test.log")?;
     file.write_all(s.as_bytes())?;
     Ok(())
 }
@@ -50,7 +50,7 @@ fn test_regression_old_school() -> Result<()> {
     Command::new("sh")
         .args([
             "-c",
-            &format!("cp test_tmp2/GAL16V8_combinatorial.pld test_tmp2/security_bit.pld"),
+            &format!("cp testcases_success/GAL16V8_combinatorial.pld test_tmp/security_bit.pld"),
         ])
         .spawn()?
         .wait()?;
@@ -79,7 +79,7 @@ fn test_regression_old_school() -> Result<()> {
         let log_file = OpenOptions::new()
             .append(true)
             .create(true)
-            .open("test_tmp2/test.log")?;
+            .open("test_tmp/test.log")?;
         let log_file2 = log_file.try_clone().unwrap();
 
         get_test_bin("galette")
@@ -94,7 +94,65 @@ fn test_regression_old_school() -> Result<()> {
     }
 
     let diff_res = Command::new("diff")
-        .args(["-ru", "baseline", "test_tmp2"])
+        .args(["-ru", "baseline", "test_tmp"])
+        .status()?;
+
+    assert!(diff_res.success(), "Output generation differs");
+
+    Ok(())
+}
+
+#[test]
+fn test_successful_generation() -> Result<()> {
+    if Path::new("test_temp_success").exists() {
+        remove_dir_all("test_temp_success")?;
+    }
+    create_dir_all("test_temp_success")?;
+
+    Command::new("sh")
+        .args([
+            "-c",
+            &format!("cp testcases_success/*.pld {}", "test_temp_success"),
+        ])
+        .spawn()?
+        .wait()?;
+
+    let mut names = Vec::new();
+    for entry in fs::read_dir("test_temp_success")? {
+        let name = entry?.file_name().to_str().unwrap().to_string();
+        if name.ends_with(".pld") {
+            names.push(name);
+        }
+    }
+    names.sort();
+
+    for name in names.iter() {
+        let results = get_test_bin("galette")
+            .current_dir("test_temp_success")
+            .arg(name)
+            .output()?;
+
+        assert!(results.status.success(), "'{:?}' did not succeed", name);
+        assert_eq!(
+            results.stdout.len(),
+            0,
+            "'{:?}' produced unexpected output to stdout: {:?}",
+            name,
+            results.stdout
+        );
+        assert_eq!(
+            results.stderr.len(),
+            0,
+            "'{:?}' produced unexpected output to stderr: {:?}",
+            name,
+            results.stderr
+        );
+
+        remove_file(&format!("{}/{}", "test_temp_success", name))?;
+    }
+
+    let diff_res = Command::new("diff")
+        .args(["-ru", "baseline_success", "test_temp_success"])
         .status()?;
 
     assert!(diff_res.success(), "Output generation differs");
