@@ -10,14 +10,12 @@
 // TODO: Absolutely minimal-quality replacement for the shell script,
 // since I want to rather rewrite how this works.
 
-use std::env::set_current_dir;
-use std::fs::{create_dir_all, remove_dir_all, remove_file, OpenOptions};
+use std::fs::{self, create_dir_all, remove_dir_all, remove_file, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
 use anyhow::Result;
-use glob::glob;
 use test_bin::get_test_bin;
 
 const TEST_TEMP_DIR: &str = "test_tmp2/";
@@ -27,7 +25,7 @@ fn log_str(s: &str) -> Result<()> {
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open("test.log")?;
+        .open("test_tmp2/test.log")?;
     file.write_all(s.as_bytes())?;
     Ok(())
 }
@@ -39,7 +37,7 @@ fn log_name(s: &str) -> Result<()> {
 #[test]
 fn test_regression_old_school() -> Result<()> {
     if Path::new(TEST_TEMP_DIR).exists() {
-	remove_dir_all(TEST_TEMP_DIR)?;
+        remove_dir_all(TEST_TEMP_DIR)?;
     }
     create_dir_all(TEST_TEMP_DIR)?;
 
@@ -48,13 +46,11 @@ fn test_regression_old_school() -> Result<()> {
         .spawn()?
         .wait()?;
 
-    set_current_dir(TEST_TEMP_DIR)?;
-
     // Special pass for security bit flag test:
     Command::new("sh")
         .args([
             "-c",
-            &format!("cp GAL16V8_combinatorial.pld security_bit.pld"),
+            &format!("cp test_tmp2/GAL16V8_combinatorial.pld test_tmp2/security_bit.pld"),
         ])
         .spawn()?
         .wait()?;
@@ -62,26 +58,40 @@ fn test_regression_old_school() -> Result<()> {
     log_name("security_bit.pld")?;
 
     get_test_bin("galette")
+        .current_dir(TEST_TEMP_DIR)
         .arg("-s")
         .arg("security_bit.pld")
         .spawn()?
         .wait()?;
 
-    for file in glob("*.pld").unwrap() {
-        let file = file.unwrap();
-        log_name(&file.as_os_str().to_str().unwrap())?;
+    let mut names = Vec::new();
+    for entry in fs::read_dir(TEST_TEMP_DIR)? {
+        let name = entry?.file_name().to_str().unwrap().to_string();
+        if name.ends_with(".pld") {
+            names.push(name);
+        }
+    }
+    names.sort();
 
-	let log_file = OpenOptions::new()
+    for name in names.iter() {
+        log_name(&name)?;
+
+        let log_file = OpenOptions::new()
             .append(true)
             .create(true)
-            .open("test.log")?;
-	let log_file2 = log_file.try_clone().unwrap();
-	
-        get_test_bin("galette").arg(&file).stdout(log_file).stderr(log_file2).spawn()?.wait()?;
-        remove_file(&file)?;
-    }
+            .open("test_tmp2/test.log")?;
+        let log_file2 = log_file.try_clone().unwrap();
 
-    set_current_dir("..")?;
+        get_test_bin("galette")
+            .arg(&name)
+            .current_dir(TEST_TEMP_DIR)
+            .stdout(log_file)
+            .stderr(log_file2)
+            .spawn()?
+            .wait()?;
+
+        remove_file(&format!("{}/{}", TEST_TEMP_DIR, name))?;
+    }
 
     let diff_res = Command::new("diff")
         .args(["-ru", "baseline", "test_tmp2"])
