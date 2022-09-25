@@ -86,9 +86,9 @@ fn check_output_matches(before_dir: &str, after_dir: &str) -> Result<()> {
 fn test_successful_generation() -> Result<()> {
     ensure_dir_exists("test_temp_success")?;
 
-    for name in get_plds("testcases_success")?.iter() {
+    for name in get_plds("testcases/success")?.iter() {
         std::fs::copy(
-            format!("testcases_success/{}", name),
+            format!("testcases/success/{}", name),
             format!("test_temp_success/{}", name),
         )?;
 
@@ -99,7 +99,7 @@ fn test_successful_generation() -> Result<()> {
         check_invocation_succeeded(name, results);
     }
 
-    check_output_matches("testcases_success", "test_temp_success")?;
+    check_output_matches("testcases/success", "test_temp_success")?;
 
     remove_dir_all("test_temp_success")?;
     Ok(())
@@ -110,7 +110,7 @@ fn test_security_bit() -> Result<()> {
     ensure_dir_exists("test_temp_security")?;
 
     std::fs::copy(
-        "testcases_security/security_bit.pld",
+        "testcases/security/security_bit.pld",
         "test_temp_security/security_bit.pld",
     )?;
 
@@ -120,7 +120,7 @@ fn test_security_bit() -> Result<()> {
         .output()?;
     check_invocation_succeeded("security.pld", results);
 
-    check_output_matches("testcases_security", "test_temp_security")?;
+    check_output_matches("testcases/security", "test_temp_security")?;
 
     remove_dir_all("test_temp_security")?;
     Ok(())
@@ -214,9 +214,9 @@ const FAILURE_MESSAGES: [(&str, &str); 81] = [
 fn test_failing_generation() -> Result<()> {
     let mut failure_messages = HashMap::from(FAILURE_MESSAGES);
 
-    for name in get_plds("testcases_failure")?.iter() {
+    for name in get_plds("testcases/failure")?.iter() {
         let results = get_test_bin("galette")
-            .current_dir("testcases_failure")
+            .current_dir("testcases/failure")
             .arg(name)
             .output()?;
         check_invocation_failed(name, &failure_messages, results);
