@@ -100,12 +100,15 @@ fn test_successful_generation() -> Result<()> {
     }
 
     check_output_matches("testcases_success", "test_temp_success")?;
+
+    remove_dir_all("test_temp_success")?;
     Ok(())
 }
 
 #[test]
 fn test_security_bit() -> Result<()> {
     ensure_dir_exists("test_temp_security")?;
+
     std::fs::copy(
         "testcases_security/security_bit.pld",
         "test_temp_security/security_bit.pld",
@@ -118,6 +121,8 @@ fn test_security_bit() -> Result<()> {
     check_invocation_succeeded("security.pld", results);
 
     check_output_matches("testcases_security", "test_temp_security")?;
+
+    remove_dir_all("test_temp_security")?;
     Ok(())
 }
 
