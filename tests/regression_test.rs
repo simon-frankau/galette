@@ -46,24 +46,6 @@ fn test_regression_old_school() -> Result<()> {
         .spawn()?
         .wait()?;
 
-    // Special pass for security bit flag test:
-    Command::new("sh")
-        .args([
-            "-c",
-            &format!("cp testcases_success/GAL16V8_combinatorial.pld test_tmp/security_bit.pld"),
-        ])
-        .spawn()?
-        .wait()?;
-
-    log_name("security_bit.pld")?;
-
-    get_test_bin("galette")
-        .current_dir(TEST_TEMP_DIR)
-        .arg("-s")
-        .arg("security_bit.pld")
-        .spawn()?
-        .wait()?;
-
     let mut names = Vec::new();
     for entry in fs::read_dir(TEST_TEMP_DIR)? {
         let name = entry?.file_name().to_str().unwrap().to_string();
@@ -111,7 +93,7 @@ fn ensure_dir_exists(name: &str) -> Result<()> {
 }
 
 fn get_plds(dir: &str) -> Result<Vec<String>> {
-   let mut names = Vec::new();
+    let mut names = Vec::new();
     for entry in fs::read_dir(dir)? {
         let name = entry?.file_name().to_str().unwrap().to_string();
         if name.ends_with(".pld") {
@@ -129,21 +111,32 @@ fn check_invocation_succeeded(name: &str, res: std::process::Output) {
         0,
         "'{:?}' produced unexpected output to stdout: {:?}",
         name,
-        res.stdout
+        std::str::from_utf8(&res.stdout).unwrap()
     );
     assert_eq!(
         res.stderr.len(),
         0,
         "'{:?}' produced unexpected output to stderr: {:?}",
         name,
-        res.stderr
+        std::str::from_utf8(&res.stderr).unwrap()
     );
+}
+
+fn check_output_matches(before_dir: &str, after_dir: &str) -> Result<()> {
+    let diff_res = Command::new("diff")
+        .args(["-ru", before_dir, after_dir])
+        .status()?;
+    assert!(
+        diff_res.success(),
+        "Output generation differs (run with --nocapture for details)"
+    );
+    Ok(())
 }
 
 #[test]
 fn test_successful_generation() -> Result<()> {
     ensure_dir_exists("test_temp_success")?;
- 
+
     for name in get_plds("testcases_success")?.iter() {
         std::fs::copy(
             format!("testcases_success/{}", name),
@@ -157,13 +150,24 @@ fn test_successful_generation() -> Result<()> {
         check_invocation_succeeded(name, results);
     }
 
-    let diff_res = Command::new("diff")
-        .args(["-ru", "testcases_success", "test_temp_success"])
-        .status()?;
-    assert!(
-        diff_res.success(),
-        "Output generation differs (run with --nocapture for details)"
-    );
+    check_output_matches("testcases_success", "test_temp_success")?;
+    Ok(())
+}
 
+#[test]
+fn test_security_bit() -> Result<()> {
+    ensure_dir_exists("test_temp_security")?;
+    std::fs::copy(
+        "testcases_security/security_bit.pld",
+        "test_temp_security/security_bit.pld",
+    )?;
+
+    let results = get_test_bin("galette")
+        .current_dir("test_temp_security")
+        .args(["-s", "security_bit.pld"])
+        .output()?;
+    check_invocation_succeeded("security.pld", results);
+
+    check_output_matches("testcases_security", "test_temp_security")?;
     Ok(())
 }

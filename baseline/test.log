@@ -1,4 +1,3 @@
-=== security_bit.pld
 === GAL16V8_badname.pld
 Error in line 1: type of GAL expected
 === GAL16V8_complex_12.pld
@@ -139,7 +138,6 @@ Error in line 17: same pin is defined multible as output
 Error in line 26: multiple .ARST definitions for the same output
 === repsp.pld
 Error in line 25: SP is defined twice
-=== security_bit.pld
 === spbad.pld
 Error in line 5: GAL22V10: SP is not allowed as pinname
 === threeline.pld
