@@ -102,60 +102,68 @@ fn test_regression_old_school() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_successful_generation() -> Result<()> {
-    if Path::new("test_temp_success").exists() {
-        remove_dir_all("test_temp_success")?;
+fn ensure_dir_exists(name: &str) -> Result<()> {
+    if Path::new(name).exists() {
+        remove_dir_all(name)?;
     }
-    create_dir_all("test_temp_success")?;
+    create_dir_all(name)?;
+    Ok(())
+}
 
-    Command::new("sh")
-        .args([
-            "-c",
-            &format!("cp testcases_success/*.pld {}", "test_temp_success"),
-        ])
-        .spawn()?
-        .wait()?;
-
-    let mut names = Vec::new();
-    for entry in fs::read_dir("test_temp_success")? {
+fn get_plds(dir: &str) -> Result<Vec<String>> {
+   let mut names = Vec::new();
+    for entry in fs::read_dir(dir)? {
         let name = entry?.file_name().to_str().unwrap().to_string();
         if name.ends_with(".pld") {
             names.push(name);
         }
     }
     names.sort();
+    Ok(names)
+}
 
-    for name in names.iter() {
+fn check_invocation_succeeded(name: &str, res: std::process::Output) {
+    assert!(res.status.success(), "'{:?}' did not succeed", name);
+    assert_eq!(
+        res.stdout.len(),
+        0,
+        "'{:?}' produced unexpected output to stdout: {:?}",
+        name,
+        res.stdout
+    );
+    assert_eq!(
+        res.stderr.len(),
+        0,
+        "'{:?}' produced unexpected output to stderr: {:?}",
+        name,
+        res.stderr
+    );
+}
+
+#[test]
+fn test_successful_generation() -> Result<()> {
+    ensure_dir_exists("test_temp_success")?;
+ 
+    for name in get_plds("testcases_success")?.iter() {
+        std::fs::copy(
+            format!("testcases_success/{}", name),
+            format!("test_temp_success/{}", name),
+        )?;
+
         let results = get_test_bin("galette")
             .current_dir("test_temp_success")
             .arg(name)
             .output()?;
-
-        assert!(results.status.success(), "'{:?}' did not succeed", name);
-        assert_eq!(
-            results.stdout.len(),
-            0,
-            "'{:?}' produced unexpected output to stdout: {:?}",
-            name,
-            results.stdout
-        );
-        assert_eq!(
-            results.stderr.len(),
-            0,
-            "'{:?}' produced unexpected output to stderr: {:?}",
-            name,
-            results.stderr
-        );
-
-        remove_file(&format!("{}/{}", "test_temp_success", name))?;
+        check_invocation_succeeded(name, results);
     }
 
     let diff_res = Command::new("diff")
-        .args(["-ru", "baseline_success", "test_temp_success"])
+        .args(["-ru", "testcases_success", "test_temp_success"])
         .status()?;
-
-    assert!(diff_res.success(), "Output generation differs");
+    assert!(
+        diff_res.success(),
+        "Output generation differs (run with --nocapture for details)"
+    );
 
     Ok(())
 }
