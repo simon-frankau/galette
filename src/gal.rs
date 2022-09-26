@@ -8,7 +8,7 @@
 
 use crate::{
     chips::Chip,
-    errors::{at_line, Error, ErrorCode},
+    errors::{at_line, Error, ErrorCode, LineNum},
 };
 
 pub use crate::chips::Bounds;
@@ -28,7 +28,7 @@ pub struct Pin {
 // Terms are programmed into the GAL structure.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Term {
-    pub line_num: usize,
+    pub line_num: LineNum,
     // Each inner Vec represents an AND term. The overall term is the
     // OR of the inner terms.
     pub pins: Vec<Vec<Pin>>,
@@ -296,7 +296,7 @@ impl GAL {
 }
 
 // Basic terms
-pub fn true_term(line_num: usize) -> Term {
+pub fn true_term(line_num: LineNum) -> Term {
     // Empty row is always true (being the AND of nothing).
     Term {
         line_num,
@@ -304,7 +304,7 @@ pub fn true_term(line_num: usize) -> Term {
     }
 }
 
-pub fn false_term(line_num: usize) -> Term {
+pub fn false_term(line_num: LineNum) -> Term {
     // No rows is always false (being the OR of nothing).
     Term {
         line_num,

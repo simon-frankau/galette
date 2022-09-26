@@ -11,11 +11,13 @@ use std::{fmt, str::FromStr};
 
 use thiserror::Error;
 
+pub type LineNum = usize;
+
 #[derive(Clone, Debug, Error)]
 #[error("Error in line {}: {}", line, code)]
 pub struct Error {
     pub code: ErrorCode,
-    pub line: usize,
+    pub line: LineNum,
 }
 
 #[derive(Clone, Debug, Error)]
@@ -110,7 +112,7 @@ pub enum ErrorCode {
 }
 
 // Adapt an ErrorCode to an Error.
-pub fn at_line<Val>(line: usize, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
+pub fn at_line<Val>(line: LineNum, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
     res.map_err(|e| Error { code: e, line })
 }
 

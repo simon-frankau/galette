@@ -11,7 +11,7 @@ use std::{collections::HashMap, fs, iter::Peekable};
 
 use crate::{
     chips::Chip,
-    errors::{at_line, Error, ErrorCode},
+    errors::{at_line, Error, ErrorCode, LineNum},
     gal::Pin,
 };
 
@@ -28,7 +28,7 @@ pub struct Content {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Equation {
-    pub line_num: usize,
+    pub line_num: LineNum,
     pub lhs: LHS,
     pub rhs: Vec<Pin>,
     pub is_or: Vec<bool>,
@@ -59,7 +59,7 @@ pub enum Suffix {
 // Bit of a hack, since we can't get the line number once we've fallen
 // off the end of the file. Use a special value that gets filled in
 // correctly at the top level.
-const EOF_LINE: usize = 0;
+const EOF_LINE: LineNum = 0;
 
 #[derive(Debug)]
 enum Token {
@@ -188,9 +188,9 @@ fn remove_comment(s: &str) -> &str {
     }
 }
 
-fn next_or_fail<'a, I>(line_iter: &mut I, err_code: ErrorCode) -> Result<(usize, &'a str), Error>
+fn next_or_fail<'a, I>(line_iter: &mut I, err_code: ErrorCode) -> Result<(LineNum, &'a str), Error>
 where
-    I: Iterator<Item = (usize, &'a str)>,
+    I: Iterator<Item = (LineNum, &'a str)>,
 {
     match line_iter.next() {
         Some(x) => Ok(x),
@@ -200,7 +200,7 @@ where
 
 fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
 where
-    I: Iterator<Item = (usize, &'a str)>,
+    I: Iterator<Item = (LineNum, &'a str)>,
 {
     let (i, name) = next_or_fail(line_iter, ErrorCode::BadGALType)?;
     at_line(i, Chip::from_name(name.trim()))
@@ -208,7 +208,7 @@ where
 
 fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, Error>
 where
-    I: Iterator<Item = (usize, &'a str)>,
+    I: Iterator<Item = (LineNum, &'a str)>,
 {
     let (_, sig) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
     Ok(sig.bytes().take(8).collect::<Vec<u8>>())
@@ -222,7 +222,7 @@ fn parse_pins<'a, I>(
     line_iter: &mut I,
 ) -> Result<Vec<(String, bool)>, Error>
 where
-    I: Iterator<Item = (usize, &'a str)>,
+    I: Iterator<Item = (LineNum, &'a str)>,
 {
     let mut pins = Vec::new();
     let (line_num, line) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
@@ -330,7 +330,7 @@ fn parse_equation<I>(
     chip: Chip,
     pin_map: &HashMap<String, Pin>,
     tokens: &mut I,
-    line_num: usize,
+    line_num: LineNum,
 ) -> Result<Equation, ErrorCode>
 where
     I: Iterator<Item = Token>,
@@ -426,7 +426,7 @@ fn extend_pin_map(
 
 fn parse_core<'a, I>(mut line_iter: I) -> Result<Content, Error>
 where
-    I: Iterator<Item = (usize, &'a str)>,
+    I: Iterator<Item = (LineNum, &'a str)>,
 {
     let chip = parse_chip(&mut line_iter)?;
     let signature = parse_signature(&mut line_iter)?;
@@ -481,7 +481,7 @@ where
     })
 }
 
-fn err<T>(line_num: usize, error_code: ErrorCode) -> Result<T, Error> {
+fn err<T>(line_num: LineNum, error_code: ErrorCode) -> Result<T, Error> {
     Err(Error {
         code: error_code,
         line: line_num,
