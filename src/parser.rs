@@ -71,8 +71,8 @@ enum Token {
 
 #[derive(Debug)]
 struct NamedPin {
-    pub name: String,
-    pub neg: bool,
+    name: String,
+    neg: bool,
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ where
     }
 }
 
-pub fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
+fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
 where
     I: Iterator<Item = (usize, &'a str)>,
 {
@@ -206,7 +206,7 @@ where
     at_line(i, Chip::from_name(name.trim()))
 }
 
-pub fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, Error>
+fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, Error>
 where
     I: Iterator<Item = (usize, &'a str)>,
 {
@@ -215,7 +215,7 @@ where
 }
 
 // Parse one line of pins
-pub fn parse_pins<'a, I>(
+fn parse_pins<'a, I>(
     pin_map: &mut HashMap<String, Pin>,
     chip: Chip,
     row_num: usize,
@@ -326,34 +326,35 @@ where
     })
 }
 
-pub fn parse_equation(
+fn parse_equation<I>(
     chip: Chip,
     pin_map: &HashMap<String, Pin>,
-    line: &str,
+    tokens: &mut I,
     line_num: usize,
-) -> Result<Equation, ErrorCode> {
-    let mut iter = tokenise(line)?.into_iter();
+) -> Result<Equation, ErrorCode>
+where
+    I: Iterator<Item = Token>,
+{
+    let lhs = parse_lhs(chip, pin_map, tokens)?;
 
-    let lhs = parse_lhs(chip, pin_map, &mut iter)?;
-
-    match iter.next() {
+    match tokens.next() {
         Some(Token::Equals) => (),
         Some(_) => return Err(ErrorCode::NoEquals),
         None => return Err(ErrorCode::BadEOF),
     }
 
-    let mut rhs = vec![parse_pin(chip, pin_map, &mut iter)?];
+    let mut rhs = vec![parse_pin(chip, pin_map, tokens)?];
     let mut is_or = vec![false];
 
     loop {
-        match iter.next() {
+        match tokens.next() {
             Some(Token::And) => {
                 is_or.push(false);
-                rhs.push(parse_pin(chip, pin_map, &mut iter)?);
+                rhs.push(parse_pin(chip, pin_map, tokens)?);
             }
             Some(Token::Or) => {
                 is_or.push(true);
-                rhs.push(parse_pin(chip, pin_map, &mut iter)?);
+                rhs.push(parse_pin(chip, pin_map, tokens)?);
             }
             None => break,
             _ => return Err(ErrorCode::BadToken),
@@ -446,9 +447,17 @@ where
     let mut pins2 = parse_pins(&mut pin_map, chip, 1, &mut line_iter)?;
     pins.append(&mut pins2);
 
-    let equations = line_iter
-        .map(|(i, s)| at_line(i, parse_equation(chip, &pin_map, s, i)))
-        .collect::<Result<Vec<Equation>, Error>>()?;
+    // We tokenise the lines first, as the equation parser will want
+    // to look ahead onto the token starting the next line (not yet
+    // implemented).
+    let mut equations = Vec::new();
+    for (line_num, line) in line_iter {
+	let tokens = at_line(line_num, tokenise(line))?;
+        equations.push(at_line(
+            line_num,
+            parse_equation(chip, &pin_map, &mut tokens.into_iter(), line_num),
+        )?);
+    }
 
     // The rest of the pipeline just wants string names.
     let pin_names = pins
