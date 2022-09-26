@@ -328,7 +328,7 @@ where
         return Err(ErrorCode::BadPin);
     }
 
-    lookup_pin(chip, &pin_map, &named_pin)
+    lookup_pin(chip, pin_map, &named_pin)
 }
 
 // Parse and check the LHS (where suffices are allowed, but there are other constraints)
@@ -356,7 +356,7 @@ where
                     LHS::Sp
                 }
             } else {
-                let pin = lookup_pin(chip, &pin_map, &named_pin)?;
+                let pin = lookup_pin(chip, pin_map, &named_pin)?;
                 LHS::Pin((pin, suffix))
             }
         }
@@ -372,7 +372,7 @@ pub fn parse_equation(
 ) -> Result<Equation, ErrorCode> {
     let mut iter = tokenise(line)?.into_iter();
 
-    let lhs = parse_lhs(chip, &pin_map, &mut iter)?;
+    let lhs = parse_lhs(chip, pin_map, &mut iter)?;
 
     match iter.next() {
         Some(Token::Equals) => (),
@@ -380,18 +380,18 @@ pub fn parse_equation(
         None => return Err(ErrorCode::BadEOF),
     }
 
-    let mut rhs = vec![parse_pin(chip, &pin_map, &mut iter)?];
+    let mut rhs = vec![parse_pin(chip, pin_map, &mut iter)?];
     let mut is_or = vec![false];
 
     loop {
         match iter.next() {
             Some(Token::And) => {
                 is_or.push(false);
-                rhs.push(parse_pin(chip, &pin_map, &mut iter)?);
+                rhs.push(parse_pin(chip, pin_map, &mut iter)?);
             }
             Some(Token::Or) => {
                 is_or.push(true);
-                rhs.push(parse_pin(chip, &pin_map, &mut iter)?);
+                rhs.push(parse_pin(chip, pin_map, &mut iter)?);
             }
             None => break,
             _ => return Err(ErrorCode::BadToken),
@@ -445,7 +445,7 @@ fn extend_pin_map(
         if name != "NC" {
             if pin_map.contains_key(&name) {
                 return Err(ErrorCode::RepeatedPinName {
-                    name: name.to_string(),
+                    name,
                 });
             }
 

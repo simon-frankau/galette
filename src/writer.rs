@@ -7,9 +7,10 @@
 
 use itertools::Itertools;
 use std::{
+    fmt::Write as Write2,
     fs::File,
     io::{Error, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use crate::{
@@ -30,7 +31,7 @@ pub struct Config {
 // Main entry point for writing all the files is 'write_files'.
 //
 
-fn write_file(base: &PathBuf, ext: &str, buf: &str) -> Result<(), Error> {
+fn write_file(base: &Path, ext: &str, buf: &str) -> Result<(), Error> {
     let mut file = File::create(base.with_extension(ext).to_str().unwrap())?;
     file.write_all(buf.as_bytes())?;
     Ok(())
@@ -125,7 +126,7 @@ impl<'a> FuseBuilder<'a> {
     where
         I: Iterator<Item = &'b bool>,
     {
-        self.buf.push_str(&format!("*L{:04} ", self.idx));
+        let _ = write!(self.buf, "*L{:04} ", self.idx);
         for bit in data {
             self.buf.push_str(if *bit { "1" } else { "0" });
             self.checksum.add(*bit);
@@ -146,8 +147,7 @@ impl<'a> FuseBuilder<'a> {
     }
 
     fn checksum(&mut self) {
-        self.buf
-            .push_str(&format!("*C{:04x}\n", self.checksum.get()));
+        let _ = writeln!(self.buf, "*C{:04x}", self.checksum.get());
     }
 }
 
@@ -163,11 +163,8 @@ pub fn make_jedec(config: &Config, gal: &GAL) -> String {
 
     buf.push_str("\x02\n");
 
-    buf.push_str(&format!(
-        "GAL-Assembler:  Galette {}\n",
-        env!("CARGO_PKG_VERSION")
-    ));
-    buf.push_str(&format!("Device:         {}\n\n", chip.name()));
+    let _ = writeln!(buf, "GAL-Assembler:  Galette {}", env!("CARGO_PKG_VERSION"));
+    let _ = writeln!(buf, "Device:         {}\n", chip.name());
     // Default value of gal_fuses
     buf.push_str("*F0\n");
 
@@ -179,7 +176,7 @@ pub fn make_jedec(config: &Config, gal: &GAL) -> String {
     });
 
     // Number of fuses.
-    buf.push_str(&format!("*QF{}\n", chip.total_size()));
+    let _ = writeln!(buf, "*QF{}", chip.total_size());
 
     {
         // Construct fuse matrix.
@@ -224,7 +221,7 @@ pub fn make_jedec(config: &Config, gal: &GAL) -> String {
     buf.push('\x03');
 
     // File checksum.
-    buf.push_str(&format!("{:04x}\n", file_checksum(buf.as_bytes())));
+    let _ = writeln!(buf, "{:04x}", file_checksum(buf.as_bytes()));
 
     buf
 }
@@ -244,26 +241,27 @@ fn make_chip(chip: Chip, pin_names: &[String]) -> String {
     let mut buf = String::new();
 
     buf.push_str(format!("\n\n{:^72}", chip.name()).trim_end());
-    buf.push_str(&format!("\n\n{:25} -------\\___/-------", ""));
+    let _ = write!(buf, "\n\n{:25} -------\\___/-------", "");
 
     let mut started = false;
     for n in 0..num_of_pins / 2 {
         if started {
-            buf.push_str(&format!("\n{:25} |                 |", ""));
+            let _ = write!(buf, "\n{:25} |                 |", "");
         } else {
             started = true;
         }
 
-        buf.push_str(&format!(
+        let _ = write!(
+            buf,
             "\n{:>25} | {:>2}           {:>2} | {}",
             pin_names[n],
             n + 1,
             num_of_pins - n,
             pin_names[num_of_pins - n - 1]
-        ));
+        );
     }
 
-    buf.push_str(&format!("\n{:25} -------------------\n", ""));
+    let _ = writeln!(buf, "\n{:25} -------------------", "");
 
     buf
 }
@@ -309,12 +307,13 @@ fn make_pin(gal: &GAL, pin_names: &[String], olmcs: &[OLMC]) -> String {
     buf.push_str("-----------------------------\n");
 
     for (name, i) in pin_names.iter().zip(1..) {
-        buf.push_str(&format!(
-            "  {:>2}   | {:<8} | {}\n",
+        let _ = writeln!(
+            buf,
+            "  {:>2}   | {:<8} | {}",
             i,
             name,
             pin_type(gal, olmcs, i)
-        ));
+        );
     }
     buf.push('\n');
 
@@ -326,7 +325,7 @@ fn make_pin(gal: &GAL, pin_names: &[String], olmcs: &[OLMC]) -> String {
 //
 
 fn make_row(buf: &mut String, row: &mut usize, num_of_col: usize, data: &[bool]) {
-    buf.push_str(&format!("\n{:>3} ", row));
+    let _ = write!(buf, "\n{:>3} ", row);
 
     for col in 0..num_of_col {
         if col % 4 == 0 {
@@ -380,12 +379,13 @@ fn make_fuse(pin_names: &[String], gal: &GAL) -> String {
             Chip::GAL22V10 => format!("S0 = {:>1}   S1 = {:>1}", xor, ac1),
             Chip::GAL20RA10 => format!("S0 = {:>1}", xor),
         };
-        buf.push_str(&format!(
+        let _ = write!(
+            buf,
             "\n\nPin {:>2} = {:<12} {}",
             pin,
             pin_names[pin - 1],
             &flags
-        ));
+        );
 
         for _ in 0..chip.num_rows_for_olmc(olmc) {
             // Print all fuses of an OLMC

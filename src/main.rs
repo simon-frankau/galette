@@ -65,7 +65,7 @@ fn main() {
         jedec_sec_bit: matches.is_present("secure"),
     };
 
-    if let Err(e) = galette::assemble(&file_name, &config) {
+    if let Err(e) = galette::assemble(file_name, &config) {
         eprintln!("{}", e);
         process::exit(1);
     }

@@ -108,7 +108,7 @@ fn set_core_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
         match &olmc.output {
             Some((_, term)) => {
                 let bounds = adjust_main_bounds(gal, &olmc.output, &bounds);
-                gal.add_term(&term, &bounds)?;
+                gal.add_term(term, &bounds)?;
             }
             None => gal.add_term(&gal::false_term(0), &bounds)?,
         }
@@ -116,7 +116,7 @@ fn set_core_eqns(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
         if let Some(term) = &olmc.tri_con {
             at_line(term.line_num, check_tristate(gal.chip, olmc))?;
             gal.add_term(
-                &term,
+                term,
                 &Bounds {
                     row_offset: 0,
                     max_row: 1,

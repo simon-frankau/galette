@@ -79,7 +79,7 @@ impl Blueprint {
             }
         }
 
-        let term = eqn_to_term(self.chip, &eqn)?;
+        let term = eqn_to_term(self.chip, eqn)?;
 
         // AR/SP special cases:
         match eqn.lhs {
