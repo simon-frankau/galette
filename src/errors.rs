@@ -15,7 +15,7 @@ use thiserror::Error;
 #[error("Error in line {}: {}", line, code)]
 pub struct Error {
     pub code: ErrorCode,
-    pub line: u32,
+    pub line: usize,
 }
 
 #[derive(Clone, Debug, Error)]
@@ -110,7 +110,7 @@ pub enum ErrorCode {
 }
 
 // Adapt an ErrorCode to an Error.
-pub fn at_line<Val>(line: u32, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
+pub fn at_line<Val>(line: usize, res: Result<Val, ErrorCode>) -> Result<Val, Error> {
     res.map_err(|e| Error { code: e, line })
 }
 

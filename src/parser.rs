@@ -7,11 +7,11 @@
 // present, but try to leave other checks for later in the pipeline.
 //
 
-use std::{cell::RefCell, collections::HashMap, fs, iter::Peekable, rc::Rc};
+use std::{collections::HashMap, fs, iter::Peekable};
 
 use crate::{
     chips::Chip,
-    errors::{Error, ErrorCode},
+    errors::{at_line, Error, ErrorCode},
     gal::Pin,
 };
 
@@ -28,7 +28,7 @@ pub struct Content {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Equation {
-    pub line_num: u32,
+    pub line_num: usize,
     pub lhs: LHS,
     pub rhs: Vec<Pin>,
     pub is_or: Vec<bool>,
@@ -56,6 +56,11 @@ pub enum Suffix {
 // Internal parsing structures
 //
 
+// Bit of a hack, since we can't get the line number once we've fallen
+// off the end of the file. Use a special value that gets filled in
+// correctly at the top level.
+const EOF_LINE: usize = 0;
+
 #[derive(Debug)]
 enum Token {
     Item((NamedPin, Suffix)),
@@ -68,56 +73,6 @@ enum Token {
 struct NamedPin {
     pub name: String,
     pub neg: bool,
-}
-
-////////////////////////////////////////////////////////////////////////
-// Iterator with line number tracking.
-//
-
-struct LineTrackingIterator<I> {
-    iter: I,
-    // I can't think of a better way to keep access to this once this
-    // iterator gets wrapped in others, than to use a RefCell.
-    line_num_ref: Rc<RefCell<u32>>,
-}
-
-impl<I: Iterator> Iterator for LineTrackingIterator<I> {
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<I::Item> {
-        let res = self.iter.next();
-
-        if res.is_some() {
-            *self.line_num_ref.borrow_mut() += 1;
-        }
-
-        res
-    }
-}
-
-impl<I: Iterator> LineTrackingIterator<I> {
-    fn new(iter: I) -> LineTrackingIterator<I> {
-        LineTrackingIterator {
-            iter,
-            line_num_ref: Rc::new(RefCell::new(0)),
-        }
-    }
-
-    fn line_num(&self) -> LineNumber {
-        LineNumber {
-            line_num_ref: self.line_num_ref.clone(),
-        }
-    }
-}
-
-struct LineNumber {
-    line_num_ref: Rc<RefCell<u32>>,
-}
-
-impl LineNumber {
-    fn get(&self) -> u32 {
-        *self.line_num_ref.borrow()
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -233,58 +188,65 @@ fn remove_comment(s: &str) -> &str {
     }
 }
 
-pub fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, ErrorCode>
+fn next_or_fail<'a, I>(line_iter: &mut I, err_code: ErrorCode) -> Result<(usize, &'a str), Error>
 where
-    I: Iterator<Item = &'a str>,
+    I: Iterator<Item = (usize, &'a str)>,
 {
     match line_iter.next() {
-        Some(name) => Chip::from_name(name.trim()),
-        None => Err(ErrorCode::BadGALType),
+        Some(x) => Ok(x),
+        None => err(EOF_LINE, err_code),
     }
 }
 
-pub fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, ErrorCode>
+pub fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
 where
-    I: Iterator<Item = &'a str>,
+    I: Iterator<Item = (usize, &'a str)>,
 {
-    match line_iter.next() {
-        Some(sig) => Ok(sig.bytes().take(8).collect::<Vec<u8>>()),
-        None => Err(ErrorCode::BadEOF),
-    }
+    let (i, name) = next_or_fail(line_iter, ErrorCode::BadGALType)?;
+    at_line(i, Chip::from_name(name.trim()))
+}
+
+pub fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, Error>
+where
+    I: Iterator<Item = (usize, &'a str)>,
+{
+    let (_, sig) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
+    Ok(sig.bytes().take(8).collect::<Vec<u8>>())
 }
 
 // Parse one line of pins
-pub fn parse_pins<'a, I>(chip: Chip, line_iter: &mut I) -> Result<Vec<(String, bool)>, ErrorCode>
+pub fn parse_pins<'a, I>(
+    pin_map: &mut HashMap<String, Pin>,
+    chip: Chip,
+    row_num: usize,
+    line_iter: &mut I,
+) -> Result<Vec<(String, bool)>, Error>
 where
-    I: Iterator<Item = &'a str>,
+    I: Iterator<Item = (usize, &'a str)>,
 {
     let mut pins = Vec::new();
-    match line_iter.next() {
-        Some(s) => {
-            let tokens = tokenise(s)?;
-            let len = tokens.len();
-            for token in tokens.into_iter() {
-                match token {
-                    Token::Item((name, suffix)) => {
-                        if suffix == Suffix::None {
-                            pins.push((name.name, name.neg));
-                        } else {
-                            return Err(ErrorCode::BadPin);
-                        }
-                    }
-                    _ => return Err(ErrorCode::BadPin),
-                }
+    let (line_num, line) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
+    let tokens = at_line(line_num, tokenise(line))?;
+    let len = tokens.len();
+    for token in tokens.into_iter() {
+        match token {
+            Token::Item((name, suffix)) if suffix == Suffix::None => {
+                pins.push((name.name, name.neg))
             }
-
-            // We test this afterwards in case there was a bad token
-            // causing us to miscount. In that case, the earlier error
-            // message willl be more useful.
-            if len != chip.num_pins() / 2 {
-                return Err(ErrorCode::BadPinCount);
-            }
+            Token::Item(_) => return err(line_num, ErrorCode::BadPin),
+            _ => return err(line_num, ErrorCode::BadPin),
         }
-        None => return Err(ErrorCode::BadEOF),
     }
+
+    // We test this afterwards in case there was a bad token
+    // causing us to miscount. In that case, the earlier error
+    // message willl be more useful.
+    if len != chip.num_pins() / 2 {
+        return err(line_num, ErrorCode::BadPinCount);
+    }
+
+    // Extend the pin map with the pins we've just defined.
+    at_line(line_num, extend_pin_map(pin_map, chip, row_num, &pins))?;
 
     Ok(pins)
 }
@@ -368,7 +330,7 @@ pub fn parse_equation(
     chip: Chip,
     pin_map: &HashMap<String, Pin>,
     line: &str,
-    line_num: u32,
+    line_num: usize,
 ) -> Result<Equation, ErrorCode> {
     let mut iter = tokenise(line)?.into_iter();
 
@@ -444,9 +406,7 @@ fn extend_pin_map(
         }
         if name != "NC" {
             if pin_map.contains_key(&name) {
-                return Err(ErrorCode::RepeatedPinName {
-                    name,
-                });
+                return Err(ErrorCode::RepeatedPinName { name });
             }
 
             if chip == Chip::GAL22V10 {
@@ -463,9 +423,9 @@ fn extend_pin_map(
     Ok(())
 }
 
-fn parse_core<'a, I>(mut line_iter: I, line_num: &LineNumber) -> Result<Content, ErrorCode>
+fn parse_core<'a, I>(mut line_iter: I) -> Result<Content, Error>
 where
-    I: Iterator<Item = &'a str>,
+    I: Iterator<Item = (usize, &'a str)>,
 {
     let chip = parse_chip(&mut line_iter)?;
     let signature = parse_signature(&mut line_iter)?;
@@ -474,24 +434,21 @@ where
     // whitespace. Unlike galasm, we don't *require* a DESCRIPTION line,
     // but if we encounter one we stop there.
     let mut line_iter = line_iter
-        .map(remove_comment)
-        .map(str::trim)
-        .filter(|x| !x.is_empty())
-        .take_while(|x| *x != "DESCRIPTION");
+        .map(|(i, x)| (i, str::trim(remove_comment(x))))
+        .filter(|(_, x)| !x.is_empty())
+        .take_while(|(_, x)| *x != "DESCRIPTION");
 
     // This is complicated because we want to process one line at a
     // time so that if there's an error it's reported on the
     // appropriate line of input.
     let mut pin_map = HashMap::new();
-    let mut pins = parse_pins(chip, &mut line_iter)?;
-    extend_pin_map(&mut pin_map, chip, 0, &pins)?;
-    let mut pins2 = parse_pins(chip, &mut line_iter)?;
-    extend_pin_map(&mut pin_map, chip, 1, &pins2)?;
+    let mut pins = parse_pins(&mut pin_map, chip, 0, &mut line_iter)?;
+    let mut pins2 = parse_pins(&mut pin_map, chip, 1, &mut line_iter)?;
     pins.append(&mut pins2);
 
     let equations = line_iter
-        .map(|s| parse_equation(chip, &pin_map, s, line_num.get()))
-        .collect::<Result<Vec<Equation>, ErrorCode>>()?;
+        .map(|(i, s)| at_line(i, parse_equation(chip, &pin_map, s, i)))
+        .collect::<Result<Vec<Equation>, Error>>()?;
 
     // The rest of the pipeline just wants string names.
     let pin_names = pins
@@ -515,12 +472,23 @@ where
     })
 }
 
+fn err<T>(line_num: usize, error_code: ErrorCode) -> Result<T, Error> {
+    Err(Error {
+        code: error_code,
+        line: line_num,
+    })
+}
+
 pub fn parse(file_name: &str) -> Result<Content, Error> {
     let data = fs::read_to_string(file_name).expect("Unable to read file");
-    let line_iter = LineTrackingIterator::new(data.lines());
-    let line_num = line_iter.line_num();
-    parse_core(line_iter, &line_num).map_err(|e| Error {
-        code: e,
-        line: line_num.get(),
+    parse_core((1..).zip(data.lines())).map_err(|e| {
+        if e.line == EOF_LINE {
+            Error {
+                line: data.lines().count(),
+                ..e
+            }
+        } else {
+            e
+        }
     })
 }
