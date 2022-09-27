@@ -41,7 +41,7 @@ pub enum LHS {
     Sp,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Suffix {
     None,
     T,
@@ -61,7 +61,7 @@ pub enum Suffix {
 // correctly at the top level.
 const EOF_LINE: LineNum = 0;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum Token {
     Item((NamedPin, Suffix)),
     Equals,
@@ -69,7 +69,7 @@ enum Token {
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 struct NamedPin {
     name: String,
     neg: bool,
@@ -188,11 +188,11 @@ fn remove_comment(s: &str) -> &str {
     }
 }
 
-fn next_or_fail<'a, I>(line_iter: &mut I, err_code: ErrorCode) -> Result<(LineNum, &'a str), Error>
+fn next_or_fail<I, T>(iter: &mut I, err_code: ErrorCode) -> Result<(LineNum, T), Error>
 where
-    I: Iterator<Item = (LineNum, &'a str)>,
+    I: Iterator<Item = (LineNum, T)>,
 {
-    match line_iter.next() {
+    match iter.next() {
         Some(x) => Ok(x),
         None => err(EOF_LINE, err_code),
     }
@@ -202,8 +202,8 @@ fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
 where
     I: Iterator<Item = (LineNum, &'a str)>,
 {
-    let (i, name) = next_or_fail(line_iter, ErrorCode::BadGALType)?;
-    at_line(i, Chip::from_name(name.trim()))
+    let (line_num, name) = next_or_fail(line_iter, ErrorCode::BadGALType)?;
+    at_line(line_num, Chip::from_name(name.trim()))
 }
 
 fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, Error>
@@ -276,40 +276,44 @@ fn lookup_pin(
 }
 
 // Read a pin on the RHS (where suffices are not allowed), and convert to pin number.
-fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<Pin, ErrorCode>
+fn parse_pin<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<Pin, Error>
 where
-    I: Iterator<Item = Token>,
+    I: Iterator<Item = (LineNum, Token)>,
 {
-    let (named_pin, suffix) = match iter.next() {
-        Some(Token::Item(item)) => item,
-        Some(_) => return Err(ErrorCode::BadToken),
-        None => return Err(ErrorCode::BadEOL),
-    };
-
-    if suffix != Suffix::None {
-        return Err(ErrorCode::BadPin);
+    let (line_num, token) = next_or_fail(iter, ErrorCode::BadEOL)?;
+    if let Token::Item((named_pin, suffix)) = token {
+	if suffix != Suffix::None {
+	    return err(line_num, ErrorCode::BadPin);
+	}
+	at_line(line_num, lookup_pin(chip, pin_map, &named_pin))
+    } else {
+	return err(line_num, ErrorCode::BadToken)
     }
-
-    lookup_pin(chip, pin_map, &named_pin)
 }
 
 // Parse and check the LHS (where suffices are allowed, but there are other constraints)
-fn parse_lhs<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<LHS, ErrorCode>
+fn parse_lhs<I>(chip: Chip, pin_map: &HashMap<String, Pin>, iter: &mut I) -> Result<LHS, Error>
 where
-    I: Iterator<Item = Token>,
+    I: Iterator<Item = (LineNum, Token)>,
 {
     Ok(match iter.next() {
-        Some(Token::Item((named_pin, suffix))) => {
+        Some((line_num, Token::Item((named_pin, suffix)))) => {
             if chip == Chip::GAL22V10 && (named_pin.name == "AR" || named_pin.name == "SP") {
                 if suffix != Suffix::None {
-                    return Err(ErrorCode::SpecialSuffix {
-                        term: named_pin.name.parse().unwrap(),
-                    });
+                    return err(
+                        line_num,
+                        ErrorCode::SpecialSuffix {
+                            term: named_pin.name.parse().unwrap(),
+                        },
+                    );
                 }
                 if named_pin.neg {
-                    return Err(ErrorCode::InvertedSpecial {
-                        term: named_pin.name.parse().unwrap(),
-                    });
+                    return err(
+                        line_num,
+                        ErrorCode::InvertedSpecial {
+                            term: named_pin.name.parse().unwrap(),
+                        },
+                    );
                 }
 
                 if named_pin.name == "AR" {
@@ -318,11 +322,11 @@ where
                     LHS::Sp
                 }
             } else {
-                let pin = lookup_pin(chip, pin_map, &named_pin)?;
+                let pin = at_line(line_num, lookup_pin(chip, pin_map, &named_pin))?;
                 LHS::Pin((pin, suffix))
             }
         }
-        _ => return Err(ErrorCode::BadToken),
+        _ => return err(EOF_LINE, ErrorCode::BadToken),
     })
 }
 
@@ -330,17 +334,15 @@ fn parse_equation<I>(
     chip: Chip,
     pin_map: &HashMap<String, Pin>,
     tokens: &mut I,
-    line_num: LineNum,
-) -> Result<Equation, ErrorCode>
+) -> Result<Equation, Error>
 where
-    I: Iterator<Item = Token>,
+    I: Iterator<Item = (LineNum, Token)>,
 {
     let lhs = parse_lhs(chip, pin_map, tokens)?;
 
-    match tokens.next() {
-        Some(Token::Equals) => (),
-        Some(_) => return Err(ErrorCode::NoEquals),
-        None => return Err(ErrorCode::BadEOF),
+    let (line_num, eq_token) = next_or_fail(tokens, ErrorCode::BadEOF)?;
+    if eq_token != Token::Equals {
+	return err(line_num, ErrorCode::NoEquals);
     }
 
     let mut rhs = vec![parse_pin(chip, pin_map, tokens)?];
@@ -348,16 +350,16 @@ where
 
     loop {
         match tokens.next() {
-            Some(Token::And) => {
+            Some((_, Token::And)) => {
                 is_or.push(false);
                 rhs.push(parse_pin(chip, pin_map, tokens)?);
             }
-            Some(Token::Or) => {
+            Some((_, Token::Or)) => {
                 is_or.push(true);
                 rhs.push(parse_pin(chip, pin_map, tokens)?);
             }
+            Some((token_line_num, _)) => return err(token_line_num, ErrorCode::BadToken),
             None => break,
-            _ => return Err(ErrorCode::BadToken),
         }
     }
 
@@ -439,9 +441,6 @@ where
         .filter(|(_, x)| !x.is_empty())
         .take_while(|(_, x)| *x != "DESCRIPTION");
 
-    // This is complicated because we want to process one line at a
-    // time so that if there's an error it's reported on the
-    // appropriate line of input.
     let mut pin_map = HashMap::new();
     let mut pins = parse_pins(&mut pin_map, chip, 0, &mut line_iter)?;
     let mut pins2 = parse_pins(&mut pin_map, chip, 1, &mut line_iter)?;
@@ -452,10 +451,11 @@ where
     // implemented).
     let mut equations = Vec::new();
     for (line_num, line) in line_iter {
-	let tokens = at_line(line_num, tokenise(line))?;
-        equations.push(at_line(
-            line_num,
-            parse_equation(chip, &pin_map, &mut tokens.into_iter(), line_num),
+        let tokens = at_line(line_num, tokenise(line))?;
+        equations.push(parse_equation(
+            chip,
+            &pin_map,
+            &mut tokens.into_iter().map(|t| (line_num, t)),
         )?);
     }
 
