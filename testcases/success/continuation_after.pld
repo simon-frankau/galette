@@ -1,0 +1,21 @@
+GAL16V8
+ContAfterTest
+
+Clock I0    I1    I2    I3    I4    I5    NC    NC   GND
+/OE   O0    O1    O2    O3    O4    I6    NC    NC   VCC
+
+O0 = I0 * I1
+
+O1 = I2 + I3 + I6
+
+O2 = I4 * /I5
+     + /I4 * I5
+
+O3 = I0 * I1 * I2 * I3 * I4 * I5
+
+/O4 = I0 + I1 + I2 + I3 + I4 + I5
+
+DESCRIPTION
+
+Check that continuation lines where the operator is after the line
+break works.

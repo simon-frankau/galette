@@ -188,9 +188,6 @@ where
 {
     type TokItem = Result<Vec<(LineNum, Token)>, Error>;
 
-    // TODO: Currently only checks continuation lines that have and/or
-    // before the continuation line, not at the start of the
-    // continuation line.
     fn has_continuation(v: &Vec<(LineNum, Token)>) -> bool {
         match v.last() {
             Some((_, Token::And)) => true,
@@ -199,11 +196,26 @@ where
         }
     }
 
+    fn is_continuation<I>(iter: &mut Peekable<I>) -> bool
+    where
+        I: Iterator<Item = TokItem>,
+    {
+        if let Some(Ok(line)) = iter.peek() {
+            match line.first() {
+                Some((_, Token::And)) => true,
+                Some((_, Token::Or)) => true,
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
+
     struct ConcatIterator<T>
     where
         T: Iterator<Item = TokItem>,
     {
-        iter: T,
+        iter: Peekable<T>,
     }
 
     impl<T> Iterator for ConcatIterator<T>
@@ -215,7 +227,7 @@ where
         fn next(&mut self) -> Option<Self::Item> {
             match self.iter.next() {
                 Some(Ok(mut line)) => {
-                    while has_continuation(&line) {
+                    while has_continuation(&line) || is_continuation(&mut self.iter) {
                         match self.iter.next() {
                             Some(Ok(mut next)) => line.append(&mut next),
                             e @ Some(Err(_)) => return e,
