@@ -16,12 +16,10 @@ format. Differences include:
    output files lose alignment.
  * Tristate enables etc. no longer need to be defined after the main
    output definition (as long as that definition is present somewhere).
- * Newlines are important.
-   * We assume one line per equation.
-   * The list of pins must be split equally across two lines.
-   * This is much less free-form than galasm, but hopefully makes
-     understanding syntax errors a lot easier.
-   * Maybe I'll change my mind!
+ * Equations must start after a newline, but continuation lines are
+   now supported.
+ * The list of pins must be split equally across two lines, not just
+   listed in freeform.
 
 `galette --help` gives you a summary of the (GALasm-compatible)
 command-line options.
