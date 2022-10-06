@@ -188,12 +188,8 @@ where
 {
     type TokItem = Result<Vec<(LineNum, Token)>, Error>;
 
-    fn has_continuation(v: &Vec<(LineNum, Token)>) -> bool {
-        match v.last() {
-            Some((_, Token::And)) => true,
-            Some((_, Token::Or)) => true,
-            _ => false,
-        }
+    fn has_continuation(v: &[(LineNum, Token)]) -> bool {
+        matches!(v.last(), Some((_, Token::And)) | Some((_, Token::Or)))
     }
 
     fn is_continuation<I>(iter: &mut Peekable<I>) -> bool
@@ -201,11 +197,7 @@ where
         I: Iterator<Item = TokItem>,
     {
         if let Some(Ok(line)) = iter.peek() {
-            match line.first() {
-                Some((_, Token::And)) => true,
-                Some((_, Token::Or)) => true,
-                _ => false,
-            }
+            matches!(line.first(), Some((_, Token::And)) | Some((_, Token::Or)))
         } else {
             false
         }
@@ -244,7 +236,7 @@ where
     }
 
     ConcatIterator {
-        iter: lines.map(|line| tokenise(line)).peekable(),
+        iter: lines.map(tokenise).peekable(),
     }
 }
 
@@ -353,11 +345,12 @@ where
     let (line_num, token) = next_or_fail(iter, ErrorCode::BadEOL)?;
     if let Token::Item((named_pin, suffix)) = token {
         if suffix != Suffix::None {
-            return err(line_num, ErrorCode::BadPin);
+            err(line_num, ErrorCode::BadPin)
+        } else {
+            at_line(line_num, lookup_pin(chip, pin_map, &named_pin))
         }
-        at_line(line_num, lookup_pin(chip, pin_map, &named_pin))
     } else {
-        return err(line_num, ErrorCode::BadToken);
+        err(line_num, ErrorCode::BadToken)
     }
 }
 
