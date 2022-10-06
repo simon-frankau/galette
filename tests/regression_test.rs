@@ -36,7 +36,6 @@ fn get_plds(dir: &str) -> Result<Vec<String>> {
 }
 
 fn check_invocation_succeeded(name: &str, res: std::process::Output) {
-    assert!(res.status.success(), "'{:?}' did not succeed", name);
     assert!(
         res.stdout.is_empty(),
         "'{:?}' produced unexpected output to stdout: {:?}",
@@ -49,6 +48,8 @@ fn check_invocation_succeeded(name: &str, res: std::process::Output) {
         name,
         std::str::from_utf8(&res.stderr).unwrap()
     );
+    // Do this last, so we can see useful error output if it exists.
+    assert!(res.status.success(), "'{:?}' did not succeed", name);
 }
 
 fn check_invocation_failed(name: &str, messages: &HashMap<&str, &str>, res: std::process::Output) {
@@ -65,7 +66,9 @@ fn check_invocation_failed(name: &str, messages: &HashMap<&str, &str>, res: std:
     );
     assert_eq!(
         std::str::from_utf8(&res.stderr).unwrap(),
-        *messages.get(name).unwrap(),
+        *messages
+            .get(name)
+            .expect(&format!("No known error message for '{}'", name)),
         "'{:?}' produced unexpected output to stderr",
         name
     );
@@ -126,7 +129,7 @@ fn test_security_bit() -> Result<()> {
     Ok(())
 }
 
-const FAILURE_MESSAGES: [(&str, &str); 81] = [
+const FAILURE_MESSAGES: [(&str, &str); 82] = [
     ("GAL16V8_badname.pld", "Error in line 1: type of GAL expected\n"),
     ("GAL16V8_complex_12.pld", "Error in line 9: pin 12 can't be used as input in complex mode\n"),
     ("GAL16V8_complex_19.pld", "Error in line 9: pin 19 can't be used as input in complex mode\n"),
@@ -154,6 +157,7 @@ const FAILURE_MESSAGES: [(&str, &str); 81] = [
     ("badspext.pld", "Error in line 23: no suffix is allowed for SP\n"),
     ("badspusage.pld", "Error in line 21: use of SP is not allowed in equations\n"),
     ("badvcc.pld", "Error in line 4: pin 8 cannot be named VCC, because the name is reserved for pin 20\n"),
+    ("continuation_bad.pld", "Error in line 12: unexpected token\n"),
     ("inputonly.pld", "Error in line 7: this pin can't be used as output\n"),
     ("logicgnd.pld", "Error in line 7: use of VCC and GND is not allowed in equations\n"),
     ("logicvcc.pld", "Error in line 7: use of VCC and GND is not allowed in equations\n"),

@@ -178,6 +178,64 @@ fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
     })
 }
 
+// Take an iterator that returns lines, convert it to an iterator that
+// converts lines and concatenates continuation lines.
+fn tokenised_lines<'a, I>(
+    lines: I,
+) -> impl Iterator<Item = Result<Vec<(LineNum, Token)>, Error>> + 'a
+where
+    I: Iterator<Item = (LineNum, &'a str)> + 'a,
+{
+    type TokItem = Result<Vec<(LineNum, Token)>, Error>;
+
+    // TODO: Currently only checks continuation lines that have and/or
+    // before the continuation line, not at the start of the
+    // continuation line.
+    fn has_continuation(v: &Vec<(LineNum, Token)>) -> bool {
+        match v.last() {
+            Some((_, Token::And)) => true,
+            Some((_, Token::Or)) => true,
+            _ => false,
+        }
+    }
+
+    struct ConcatIterator<T>
+    where
+        T: Iterator<Item = TokItem>,
+    {
+        iter: T,
+    }
+
+    impl<T> Iterator for ConcatIterator<T>
+    where
+        T: Iterator<Item = TokItem>,
+    {
+        type Item = TokItem;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            match self.iter.next() {
+                Some(Ok(mut line)) => {
+                    while has_continuation(&line) {
+                        match self.iter.next() {
+                            Some(Ok(mut next)) => line.append(&mut next),
+                            e @ Some(Err(_)) => return e,
+                            // EOF? Let the error get handled later.
+                            None => return Some(Ok(line)),
+                        }
+                    }
+                    Some(Ok(line))
+                }
+                e @ Some(Err(_)) => e,
+                none @ None => none,
+            }
+        }
+    }
+
+    ConcatIterator {
+        iter: lines.map(|line| tokenise(line)).peekable(),
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Functions to extract specific elements.
 
@@ -450,8 +508,8 @@ where
     // to look ahead onto the token starting the next line (not yet
     // implemented).
     let mut equations = Vec::new();
-    for line in line_iter {
-        let tokens = tokenise(line)?;
+    for tokens_or_err in tokenised_lines(line_iter) {
+        let tokens = tokens_or_err?;
         equations.push(parse_equation(chip, &pin_map, &mut tokens.into_iter())?);
     }
 
