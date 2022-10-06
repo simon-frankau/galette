@@ -80,7 +80,7 @@ struct NamedPin {
 //
 
 // Tokenise a full line.
-fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
+fn tokenise((line_num, s): (LineNum, &str)) -> Result<Vec<(LineNum, Token)>, Error> {
     let mut res = Vec::new();
     let mut chars = s.chars().peekable();
     loop {
@@ -88,22 +88,22 @@ fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
             Some(c) => match c {
                 '=' => {
                     chars.next();
-                    res.push(Token::Equals);
+                    res.push((line_num, Token::Equals));
                 }
                 '+' | '#' => {
                     chars.next();
-                    res.push(Token::Or);
+                    res.push((line_num, Token::Or));
                 }
                 '*' | '&' => {
                     chars.next();
-                    res.push(Token::And);
+                    res.push((line_num, Token::And));
                 }
-                '/' => res.push(tokenise_pin(&mut chars)?),
-                c if c.is_ascii_alphabetic() => res.push(tokenise_pin(&mut chars)?),
+                '/' => res.push(tokenise_pin(line_num, &mut chars)?),
+                c if c.is_ascii_alphabetic() => res.push(tokenise_pin(line_num, &mut chars)?),
                 c if c.is_whitespace() => {
                     chars.next();
                 }
-                _ => return Err(ErrorCode::BadChar),
+                _ => return err(line_num, ErrorCode::BadChar),
             },
             None => return Ok(res),
         }
@@ -111,7 +111,7 @@ fn tokenise(s: &str) -> Result<Vec<Token>, ErrorCode> {
 }
 
 // Tokenise a single pin name.
-fn tokenise_pin<I>(chars: &mut Peekable<I>) -> Result<Token, ErrorCode>
+fn tokenise_pin<I>(line_num: LineNum, chars: &mut Peekable<I>) -> Result<(LineNum, Token), Error>
 where
     I: Iterator<Item = char>,
 {
@@ -130,7 +130,7 @@ where
             chars.next();
             name.push(c);
         }
-        _ => return Err(ErrorCode::NoPinName),
+        _ => return err(line_num, ErrorCode::NoPinName),
     }
 
     // Body is alphanumeric
@@ -160,10 +160,10 @@ where
                 _ => break,
             }
         }
-        suffix = ext_to_suffix(&ext)?;
+        suffix = at_line(line_num, ext_to_suffix(&ext))?;
     }
 
-    Ok(Token::Item((named_pin, suffix)))
+    Ok((line_num, Token::Item((named_pin, suffix))))
 }
 
 fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
@@ -225,16 +225,16 @@ where
     I: Iterator<Item = (LineNum, &'a str)>,
 {
     let mut pins = Vec::new();
-    let (line_num, line) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
-    let tokens = at_line(line_num, tokenise(line))?;
+    let line @ (line_num, _) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
+    let tokens = tokenise(line)?;
     let len = tokens.len();
     for token in tokens.into_iter() {
         match token {
-            Token::Item((name, suffix)) if suffix == Suffix::None => {
+            (_, Token::Item((name, suffix))) if suffix == Suffix::None => {
                 pins.push((name.name, name.neg))
             }
-            Token::Item(_) => return err(line_num, ErrorCode::BadPin),
-            _ => return err(line_num, ErrorCode::BadPin),
+            (line_num, Token::Item(_)) => return err(line_num, ErrorCode::BadPin),
+            (line_num, _) => return err(line_num, ErrorCode::BadPin),
         }
     }
 
@@ -282,12 +282,12 @@ where
 {
     let (line_num, token) = next_or_fail(iter, ErrorCode::BadEOL)?;
     if let Token::Item((named_pin, suffix)) = token {
-	if suffix != Suffix::None {
-	    return err(line_num, ErrorCode::BadPin);
-	}
-	at_line(line_num, lookup_pin(chip, pin_map, &named_pin))
+        if suffix != Suffix::None {
+            return err(line_num, ErrorCode::BadPin);
+        }
+        at_line(line_num, lookup_pin(chip, pin_map, &named_pin))
     } else {
-	return err(line_num, ErrorCode::BadToken)
+        return err(line_num, ErrorCode::BadToken);
     }
 }
 
@@ -342,7 +342,7 @@ where
 
     let (line_num, eq_token) = next_or_fail(tokens, ErrorCode::BadEOF)?;
     if eq_token != Token::Equals {
-	return err(line_num, ErrorCode::NoEquals);
+        return err(line_num, ErrorCode::NoEquals);
     }
 
     let mut rhs = vec![parse_pin(chip, pin_map, tokens)?];
@@ -450,13 +450,9 @@ where
     // to look ahead onto the token starting the next line (not yet
     // implemented).
     let mut equations = Vec::new();
-    for (line_num, line) in line_iter {
-        let tokens = at_line(line_num, tokenise(line))?;
-        equations.push(parse_equation(
-            chip,
-            &pin_map,
-            &mut tokens.into_iter().map(|t| (line_num, t)),
-        )?);
+    for line in line_iter {
+        let tokens = tokenise(line)?;
+        equations.push(parse_equation(chip, &pin_map, &mut tokens.into_iter())?);
     }
 
     // The rest of the pipeline just wants string names.
