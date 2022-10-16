@@ -21,11 +21,17 @@ pub mod gal_builder;
 pub mod parser;
 pub mod writer;
 
-pub fn assemble(file_name: &str, config: &writer::Config) -> Result<(), errors::Error> {
-    let content = parser::parse(file_name)?;
-    let blueprint = blueprint::Blueprint::from(&content)?;
-    let gal = gal_builder::build(&blueprint)?;
-    writer::write_files(file_name, config, &blueprint.pins, &blueprint.olmcs, &gal).unwrap();
+pub fn assemble(file_name: &str, config: &writer::Config) -> Result<(), errors::FileError> {
+    (|| {
+        let content = parser::parse(file_name)?;
+        let blueprint = blueprint::Blueprint::from(&content)?;
+        let gal = gal_builder::build(&blueprint)?;
+        writer::write_files(file_name, config, &blueprint.pins, &blueprint.olmcs, &gal).unwrap();
 
-    Ok(())
+        Ok(())
+    })()
+    .map_err(|err| errors::FileError {
+        file: file_name.into(),
+        err,
+    })
 }

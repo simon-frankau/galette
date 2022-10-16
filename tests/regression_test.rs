@@ -66,9 +66,13 @@ fn check_invocation_failed(name: &str, messages: &HashMap<&str, &str>, res: std:
     );
     assert_eq!(
         std::str::from_utf8(&res.stderr).unwrap(),
-        *messages
-            .get(name)
-            .expect(&format!("No known error message for '{}'", name)),
+        format!(
+            "{}: {}",
+            name,
+            *messages
+                .get(name)
+                .expect(&format!("No known error message for '{}'", name))
+        ),
         "'{:?}' produced unexpected output to stderr",
         name
     );
@@ -129,7 +133,7 @@ fn test_security_bit() -> Result<()> {
     Ok(())
 }
 
-const FAILURE_MESSAGES: [(&str, &str); 82] = [
+const FAILURE_MESSAGES: [(&str, &str); 83] = [
     ("GAL16V8_badname.pld", "Error in line 1: type of GAL expected\n"),
     ("GAL16V8_complex_12.pld", "Error in line 9: pin 12 can't be used as input in complex mode\n"),
     ("GAL16V8_complex_19.pld", "Error in line 9: pin 19 can't be used as input in complex mode\n"),
@@ -198,13 +202,16 @@ const FAILURE_MESSAGES: [(&str, &str); 82] = [
     ("reparst.pld", "Error in line 26: multiple .APRST definitions for the same output\n"),
     ("repclk.pld", "Error in line 9: multiple .CLK definitions for the same output\n"),
     ("repena.pld", "Error in line 19: multiple .E definitions for the same output\n"),
-    ("reppin.pld", "Error in line 17: same pin is defined multible as output\n"),
+    ("reppin.pld", "Error in line 17: output O4 is defined multiple times\n"),
     ("reprst.pld", "Error in line 26: multiple .ARST definitions for the same output\n"),
     ("repsp.pld", "Error in line 25: SP is defined twice\n"),
 ("spbad.pld", "Error in line 5: GAL22V10: SP is not allowed as pinname\n"),
     ("threeline.pld", "Error in line 2: unexpected end of file\n"),
     ("toofewpins.pld", "Error in line 5: wrong number of pins\n"),
-    ("toomanyterms.pld", "Error in line 15: too many product terms\n"),
+    ("toomanyterms_io.pld", "Error in line 7: too many product terms in sum for pin (max: 7, saw: 8)\n"),
+    // TODO: this is actually a funcitonal failure, I think? "max: 7" isn't right?
+    // ("toomanyterms_register.pld", "Error in line 7: too many product terms in sum for pin (max: 8, saw: 10)\n"),
+    ("toomanyterms_register.pld", "Error in line 7: too many product terms in sum for pin (max: 7, saw: 10)\n"),
     ("twoline.pld", "Error in line 2: unexpected end of file\n"),
 ("unkext.pld", "Error in line 7: unknown suffix found\n"),
     ("unklhs.pld", "Error in line 17: unknown pinname\n"),

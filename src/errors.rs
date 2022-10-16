@@ -14,6 +14,13 @@ use thiserror::Error;
 pub type LineNum = usize;
 
 #[derive(Clone, Debug, Error)]
+#[error("{}: {}", file, err)]
+pub struct FileError {
+    pub file: String,
+    pub err: Error,
+}
+
+#[derive(Clone, Debug, Error)]
 #[error("Error in line {}: {}", line, code)]
 pub struct Error {
     pub code: ErrorCode,
@@ -95,14 +102,14 @@ pub enum ErrorCode {
     RepeatedSpecial { term: SpecialProductTerm },
     #[error("multiple .{suffix} definitions for the same output")]
     RepeatedControl { suffix: OutputSuffix },
-    #[error("same pin is defined multible as output")]
-    RepeatedOutput,
+    #[error("output {name} is defined multiple times")]
+    RepeatedOutput { name: String },
     #[error("pinname {name} is defined twice")]
     RepeatedPinName { name: String },
     #[error("the output must be defined to use .{suffix}")]
     UndefinedOutput { suffix: OutputSuffix },
-    #[error("too many product terms")]
-    TooManyProducts,
+    #[error("too many product terms in sum for pin (max: {max}, saw: {seen})")]
+    TooManyProducts { max: usize, seen: usize },
     #[error("GAL16V8/20V8: tri. control for reg. output is not allowed")]
     TristateReg,
     #[error("unknown pinname")]

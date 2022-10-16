@@ -56,13 +56,13 @@ impl Blueprint {
     pub fn from(content: &Content) -> Result<Self, Error> {
         let mut blueprint = Blueprint::new(content.chip);
 
+        blueprint.sig = content.sig.clone();
+        blueprint.pins = content.pins.clone();
+
         // Convert equations into data on the OLMCs.
         for eqn in content.eqns.iter() {
             errors::at_line(eqn.line_num, blueprint.add_equation(eqn))?;
         }
-
-        blueprint.sig = content.sig.clone();
-        blueprint.pins = content.pins.clone();
 
         Ok(blueprint)
     }
@@ -105,12 +105,23 @@ impl Blueprint {
                     .chip
                     .pin_to_olmc(pin.pin)
                     .ok_or(ErrorCode::NotAnOutput)?;
+                let pins = &self.pins;
                 let olmc = &mut olmcs[olmc_num];
 
+                let repeated_err = |_| ErrorCode::RepeatedOutput {
+                    name: pins[pin.pin - 1].clone(),
+                };
+
                 match suffix {
-                    Suffix::R => olmc.set_base(&pin, term, PinMode::Registered),
-                    Suffix::None => olmc.set_base(&pin, term, PinMode::Combinatorial),
-                    Suffix::T => olmc.set_base(&pin, term, PinMode::Tristate),
+                    Suffix::R => olmc
+                        .set_base(&pin, term, PinMode::Registered)
+                        .map_err(repeated_err),
+                    Suffix::None => olmc
+                        .set_base(&pin, term, PinMode::Combinatorial)
+                        .map_err(repeated_err),
+                    Suffix::T => olmc
+                        .set_base(&pin, term, PinMode::Tristate)
+                        .map_err(repeated_err),
                     Suffix::E => olmc.set_enable(&pin, term),
                     Suffix::CLK => olmc.set_clock(&pin, term),
                     Suffix::ARST => olmc.set_arst(&pin, term),
@@ -197,11 +208,18 @@ pub enum PinMode {
     Registered,
 }
 
+type AlreadyDefined = ();
+
 impl OLMC {
-    pub fn set_base(&mut self, pin: &Pin, term: Term, pin_mode: PinMode) -> Result<(), ErrorCode> {
+    pub fn set_base(
+        &mut self,
+        pin: &Pin,
+        term: Term,
+        pin_mode: PinMode,
+    ) -> Result<(), AlreadyDefined> {
         if self.output.is_some() {
             // Previously defined, so error out.
-            return Err(ErrorCode::RepeatedOutput);
+            return Err(());
         }
         self.output = Some((pin_mode, term));
 
