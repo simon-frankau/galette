@@ -108,20 +108,20 @@ impl Blueprint {
                 let pins = &self.pins;
                 let olmc = &mut olmcs[olmc_num];
 
-                let repeated_err = |_| ErrorCode::RepeatedOutput {
+                let repeated_err = || ErrorCode::RepeatedOutput {
                     name: pins[pin.pin - 1].clone(),
                 };
 
                 match suffix {
                     Suffix::R => olmc
                         .set_base(&pin, term, PinMode::Registered)
-                        .map_err(repeated_err),
+                        .ok_or_else(repeated_err),
                     Suffix::None => olmc
                         .set_base(&pin, term, PinMode::Combinatorial)
-                        .map_err(repeated_err),
+                        .ok_or_else(repeated_err),
                     Suffix::T => olmc
                         .set_base(&pin, term, PinMode::Tristate)
-                        .map_err(repeated_err),
+                        .ok_or_else(repeated_err),
                     Suffix::E => olmc.set_enable(&pin, term),
                     Suffix::CLK => olmc.set_clock(&pin, term),
                     Suffix::ARST => olmc.set_arst(&pin, term),
@@ -208,24 +208,17 @@ pub enum PinMode {
     Registered,
 }
 
-type AlreadyDefined = ();
-
 impl OLMC {
-    pub fn set_base(
-        &mut self,
-        pin: &Pin,
-        term: Term,
-        pin_mode: PinMode,
-    ) -> Result<(), AlreadyDefined> {
+    pub fn set_base(&mut self, pin: &Pin, term: Term, pin_mode: PinMode) -> Option<()> {
         if self.output.is_some() {
             // Previously defined, so error out.
-            return Err(());
+            return None;
         }
         self.output = Some((pin_mode, term));
 
         self.active = if pin.neg { Active::Low } else { Active::High };
 
-        Ok(())
+        Some(())
     }
 
     pub fn set_enable(&mut self, pin: &Pin, term: Term) -> Result<(), ErrorCode> {
