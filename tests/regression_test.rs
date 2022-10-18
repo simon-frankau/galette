@@ -133,7 +133,7 @@ fn test_security_bit() -> Result<()> {
     Ok(())
 }
 
-const FAILURE_MESSAGES: [(&str, &str); 83] = [
+const FAILURE_MESSAGES: [(&str, &str); 82] = [
     ("GAL16V8_badname.pld", "Error in line 1: type of GAL expected\n"),
     ("GAL16V8_complex_12.pld", "Error in line 9: pin 12 can't be used as input in complex mode\n"),
     ("GAL16V8_complex_19.pld", "Error in line 9: pin 19 can't be used as input in complex mode\n"),
@@ -209,9 +209,6 @@ const FAILURE_MESSAGES: [(&str, &str); 83] = [
     ("threeline.pld", "Error in line 2: unexpected end of file\n"),
     ("toofewpins.pld", "Error in line 5: wrong number of pins\n"),
     ("toomanyterms_io.pld", "Error in line 7: too many product terms in sum for pin (max: 7, saw: 8)\n"),
-    // TODO: this is actually a funcitonal failure, I think? "max: 7" isn't right?
-    // ("toomanyterms_register.pld", "Error in line 7: too many product terms in sum for pin (max: 8, saw: 10)\n"),
-    ("toomanyterms_register.pld", "Error in line 7: too many product terms in sum for pin (max: 7, saw: 10)\n"),
     ("twoline.pld", "Error in line 2: unexpected end of file\n"),
 ("unkext.pld", "Error in line 7: unknown suffix found\n"),
     ("unklhs.pld", "Error in line 17: unknown pinname\n"),
