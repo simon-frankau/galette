@@ -216,7 +216,10 @@ impl GAL {
                     Err(if single_row {
                         ErrorCode::MoreThanOneProduct
                     } else {
-                        ErrorCode::TooManyProducts
+                        ErrorCode::TooManyProducts {
+                            max: bounds.max_row - 1,
+                            seen: term.pins.len(),
+                        }
                     }),
                 );
             }
