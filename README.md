@@ -24,6 +24,20 @@ format. Differences include:
 `galette --help` gives you a summary of the (GALasm-compatible)
 command-line options.
 
+### Example
+
+The files in `testcases/success` provide examples of
+appropriately-formatted input. For example, you can copy of of the
+files into the current directory and assemble it:
+
+```
+$ cp testcases/success/GAL16V8_combinatorial.pld ./example.pld
+$ cargo run ./example.pld
+```
+
+The resulting `example.jed` file should be usable by your favourite
+PAL programmer (I have had success with a MiniPro TL866).
+
 ## More docs
 
 For more docs, refer to [galasm](https://github.com/daveho/GALasm)'s
