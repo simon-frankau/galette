@@ -7,12 +7,12 @@
 // so that's what we do here.
 //
 
-use std::collections::HashMap;
-use std::fs::{self, create_dir_all, remove_dir_all};
+use std::collections::{HashMap, HashSet};
+use std::fs::{self, create_dir_all, read_to_string, remove_dir_all};
 use std::path::Path;
 use std::process::Command;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use test_bin::get_test_bin;
 
 fn ensure_dir_exists(name: &str) -> Result<()> {
@@ -78,14 +78,63 @@ fn check_invocation_failed(name: &str, messages: &HashMap<&str, &str>, res: std:
     );
 }
 
-fn check_output_matches(before_dir: &str, after_dir: &str) -> Result<()> {
-    let diff_res = Command::new("diff")
-        .args(["-ru", before_dir, after_dir])
-        .status()?;
-    assert!(
-        diff_res.success(),
-        "Output generation differs (run with --nocapture for details)"
+// Ensure the list of files present in one directory are all present in the other.
+fn ensure_contains(
+    containing_dir: &str,
+    containing_names: &HashSet<String>,
+    contained_dir: &str,
+    contained_names: &HashSet<String>,
+) -> Result<()> {
+    if contained_names.is_subset(containing_names) {
+        return Ok(());
+    }
+
+    let mut missing_names = contained_names
+        .difference(&containing_names)
+        .collect::<Vec<_>>();
+    missing_names.sort();
+
+    bail!(
+        "Missing expected files, present in '{}', but not in '{}': {:?}",
+        contained_dir,
+        containing_dir,
+        missing_names
     );
+}
+
+fn check_output_matches(before_dir: &str, after_dir: &str) -> Result<()> {
+    // Get lists of files.
+    let befores = fs::read_dir(before_dir)?
+        .map(|name| name.map(|name| name.file_name().to_str().unwrap().to_string()))
+        .collect::<std::result::Result<HashSet<String>, _>>()?;
+    let afters = fs::read_dir(after_dir)?
+        .map(|name| name.map(|name| name.file_name().to_str().unwrap().to_string()))
+        .collect::<std::result::Result<HashSet<String>, _>>()?;
+
+    // Check they match.
+    ensure_contains(before_dir, &befores, after_dir, &afters)?;
+    ensure_contains(after_dir, &afters, before_dir, &befores)?;
+
+    // Check the contents match.
+    for file in befores.iter() {
+        let before_name = format!("{}/{}", before_dir, file);
+        let after_name = format!("{}/{}", after_dir, file);
+        let before_data = read_to_string(&before_name)?;
+        let after_data = read_to_string(&after_name)?;
+        if before_data != after_data {
+            // Try to run diff on platforms that support it.
+            let _ = Command::new("diff")
+                .args(["-u", "--", &before_name, &after_name])
+                .status();
+
+            bail!(
+                "Output generation differs between '{}' and '{}'.",
+                before_name,
+                after_name
+            );
+        }
+    }
+
     Ok(())
 }
 
