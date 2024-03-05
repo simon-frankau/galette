@@ -1,0 +1,17 @@
+GAL16V8 ; Comments here
+Comments ; Comments there
+
+Clock I0    I1    I2    I3    I4    I5    NC    NC   GND ;They're...
+/OE   O0    O1    O2    O3    O4    NC    NC    NC   VCC
+
+O0 = VCC ; Everywhere.
+
+O1 = I2 + I3
+
+O2 = I4 * /I5 + /I4 * I5
+
+O3 = I0 * I1 * I2 * I3 * I4 * I5
+
+/O4 = I0 + I1 + I2 + I3 + I4 + I5
+
+; Well, not /everywhere/.

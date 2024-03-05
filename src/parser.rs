@@ -489,18 +489,21 @@ fn extend_pin_map(
     Ok(())
 }
 
-fn parse_core<'a, I>(mut line_iter: I) -> Result<Content, Error>
+fn parse_core<'a, I>(line_iter: I) -> Result<Content, Error>
 where
     I: Iterator<Item = (LineNum, &'a str)>,
 {
+    // Ignore comments (and start/end-of-line whitespace) on all lines.
+    let mut line_iter = line_iter
+        .map(|(i, x)| (i, str::trim(remove_comment(x))));
+
+    // Chip type and signature must be on first two lines.
     let chip = parse_chip(&mut line_iter)?;
     let signature = parse_signature(&mut line_iter)?;
 
-    // After the first couple of lines we remove comments and
-    // whitespace. Unlike galasm, we don't *require* a DESCRIPTION line,
-    // but if we encounter one we stop there.
+    // We now ignore blank lines. Unlike galasm, we don't *require* a
+    // DESCRIPTION line, but if we encounter one we stop there.
     let mut line_iter = line_iter
-        .map(|(i, x)| (i, str::trim(remove_comment(x))))
         .filter(|(_, x)| !x.is_empty())
         .take_while(|(_, x)| *x != "DESCRIPTION");
 
