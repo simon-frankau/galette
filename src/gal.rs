@@ -191,14 +191,23 @@ impl GAL {
         }
     }
 
-    // Horrible special-case test for registered outputs on the GAL22V10.
+    // Horrible special-case test for registered outputs on the GAL22V10:
+    //
+    // For all other chips and modes, the output and feedback lines
+    // match, and that's how we've arranged the equations. However,
+    // the 22V10 in registered mode *always* inverts the feedback, and
+    // only inverts the output in active low mode. Hence, in active
+    // high mode we must flip the negation.
     fn needs_flip(&self, pin_num: usize) -> bool {
         if self.chip != Chip::GAL22V10 {
             return false;
         }
 
         if let Some(i) = self.chip.pin_to_olmc(pin_num) {
-            return !self.ac1[self.chip.num_olmcs() - 1 - i];
+	    let olmc_idx = self.chip.num_olmcs() - 1 - i;
+	    let registered = !self.ac1[olmc_idx];
+	    let active_high = self.xor[olmc_idx];
+            return registered && active_high;
         }
 
         false

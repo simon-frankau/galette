@@ -36,8 +36,8 @@ fn build_galxv8(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     // Pure combinatorial is only available in simple mode.
     let com_is_tri = gal.get_mode() != Mode::Simple;
     set_tristate(gal, blueprint, com_is_tri);
-    set_core_eqns(gal, blueprint)?;
     set_xors(gal, blueprint);
+    set_core_eqns(gal, blueprint)?;
     set_pts(gal);
     Ok(())
 }
@@ -50,17 +50,18 @@ fn build_gal22v10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     //
     // For the 22V10, we always implement combintorial expressions as tristate.
     set_tristate(gal, blueprint, true);
+    // Must come before core_eqns, for "needs_flip".
+    set_xors(gal, blueprint);
     set_core_eqns(gal, blueprint)?;
     set_arsp_eqns(gal, blueprint)?;
-    set_xors(gal, blueprint);
     Ok(())
 }
 
 fn build_gal20ra10(gal: &mut GAL, blueprint: &Blueprint) -> Result<(), Error> {
     set_sig(gal, blueprint);
+    set_xors(gal, blueprint);
     set_core_eqns(gal, blueprint)?;
     set_aux_eqns(gal, blueprint)?;
-    set_xors(gal, blueprint);
     Ok(())
 }
 

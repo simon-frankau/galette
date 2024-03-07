@@ -1,0 +1,21 @@
+GAL22V10
+InvReg
+
+; This tests that inversion of registered outputs is done correctly,
+; since it is something of a special case (See function "needs_flip"
+; in gal.rs).
+
+CLK  A    B    NC   NC   NC   NC   NC   NC   NC   NC   GND
+/CS  Q1   Q2   Q3   Q4   Q5   Q6   Q7   Q8   NC   NC   VCC
+
+/Q2.R = A * B
+/Q1.R = /Q2
+
+/Q4.R = A * B
+/Q3.R = Q4
+
+Q6.R = A * B
+/Q5.R = /Q6
+
+Q8.R = A * B
+/Q7.R = Q8

@@ -1,5 +1,5 @@
 GAL22V10
-CombTest
+RegTest
 
 Clock I0    I1    I2    I3    I4    NC    I5    I6    I7    I8   GND
 /OE   O0    O1    O2    O3    O4    NC    O5    O6    O7    NC   VCC
@@ -22,4 +22,4 @@ O7.R = I7
 
 DESCRIPTION
 
-Simple test of combinatorial logic.
+Simple test of registered logic.
