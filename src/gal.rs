@@ -204,9 +204,9 @@ impl GAL {
         }
 
         if let Some(i) = self.chip.pin_to_olmc(pin_num) {
-	    let olmc_idx = self.chip.num_olmcs() - 1 - i;
-	    let registered = !self.ac1[olmc_idx];
-	    let active_high = self.xor[olmc_idx];
+            let olmc_idx = self.chip.num_olmcs() - 1 - i;
+            let registered = !self.ac1[olmc_idx];
+            let active_high = self.xor[olmc_idx];
             return registered && active_high;
         }
 

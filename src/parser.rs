@@ -103,7 +103,7 @@ fn tokenise((line_num, s): (LineNum, &str)) -> Result<Vec<(LineNum, Token)>, Err
                 c if c.is_whitespace() => {
                     chars.next();
                 }
-                _ => return err(line_num, ErrorCode::BadChar),
+                c => return err(line_num, ErrorCode::BadChar { c }),
             },
             None => return Ok(res),
         }
@@ -130,7 +130,8 @@ where
             chars.next();
             name.push(c);
         }
-        _ => return err(line_num, ErrorCode::NoPinName),
+        Some(c) => return err(line_num, ErrorCode::NoPinName { c }),
+        None => return err(line_num, ErrorCode::NoPinNameEOL),
     }
 
     // Body is alphanumeric
@@ -174,7 +175,11 @@ fn ext_to_suffix(s: &str) -> Result<Suffix, ErrorCode> {
         "CLK" => Suffix::CLK,
         "APRST" => Suffix::APRST,
         "ARST" => Suffix::ARST,
-        _ => return Err(ErrorCode::BadSuffix),
+        _ => {
+            return Err(ErrorCode::BadSuffix {
+                suffix: s.to_string(),
+            })
+        }
     })
 }
 
@@ -264,7 +269,12 @@ fn parse_chip<'a, I>(line_iter: &mut I) -> Result<Chip, Error>
 where
     I: Iterator<Item = (LineNum, &'a str)>,
 {
-    let (line_num, name) = next_or_fail(line_iter, ErrorCode::BadGALType)?;
+    let (line_num, name) = next_or_fail(
+        line_iter,
+        ErrorCode::BadGALType {
+            gal: "<eof>".to_string(),
+        },
+    )?;
     at_line(line_num, Chip::from_name(name.trim()))
 }
 
@@ -272,7 +282,7 @@ fn parse_signature<'a, I>(line_iter: &mut I) -> Result<Vec<u8>, Error>
 where
     I: Iterator<Item = (LineNum, &'a str)>,
 {
-    let (_, sig) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
+    let (_, sig) = next_or_fail(line_iter, ErrorCode::BadSigEOF)?;
     Ok(sig.bytes().take(8).collect::<Vec<u8>>())
 }
 
@@ -287,7 +297,7 @@ where
     I: Iterator<Item = (LineNum, &'a str)>,
 {
     let mut pins = Vec::new();
-    let line @ (line_num, _) = next_or_fail(line_iter, ErrorCode::BadEOF)?;
+    let line @ (line_num, _) = next_or_fail(line_iter, ErrorCode::BadPinEOF)?;
     let tokens = tokenise(line)?;
     let len = tokens.len();
     for token in tokens.into_iter() {
@@ -295,8 +305,8 @@ where
             (_, Token::Item((name, suffix))) if suffix == Suffix::None => {
                 pins.push((name.name, name.neg))
             }
-            (line_num, Token::Item(_)) => return err(line_num, ErrorCode::BadPin),
-            (line_num, _) => return err(line_num, ErrorCode::BadPin),
+            (line_num, Token::Item(_)) => return err(line_num, ErrorCode::BadPinSuffix),
+            (line_num, _) => return err(line_num, ErrorCode::BadToken { expected: "pin" }),
         }
     }
 
@@ -304,7 +314,13 @@ where
     // causing us to miscount. In that case, the earlier error
     // message willl be more useful.
     if len != chip.num_pins() / 2 {
-        return err(line_num, ErrorCode::BadPinCount);
+        return err(
+            line_num,
+            ErrorCode::BadPinCount {
+                found: len,
+                expected: chip.num_pins() / 2,
+            },
+        );
     }
 
     // Extend the pin map with the pins we've just defined.
@@ -328,7 +344,9 @@ fn lookup_pin(
             "SP" if chip == Chip::GAL22V10 => ErrorCode::BadSpecial {
                 term: pin_name.name.parse().unwrap(),
             },
-            _ => ErrorCode::UnknownPin,
+            _ => ErrorCode::UnknownPin {
+                name: pin_name.name.clone(),
+            },
         })?;
 
     Ok(Pin {
@@ -345,12 +363,12 @@ where
     let (line_num, token) = next_or_fail(iter, ErrorCode::BadEOL)?;
     if let Token::Item((named_pin, suffix)) = token {
         if suffix != Suffix::None {
-            err(line_num, ErrorCode::BadPin)
+            err(line_num, ErrorCode::BadPinSuffix)
         } else {
             at_line(line_num, lookup_pin(chip, pin_map, &named_pin))
         }
     } else {
-        err(line_num, ErrorCode::BadToken)
+        err(line_num, ErrorCode::BadToken { expected: "pin" })
     }
 }
 
@@ -389,7 +407,7 @@ where
                 LHS::Pin((pin, suffix))
             }
         }
-        _ => return err(EOF_LINE, ErrorCode::BadToken),
+        _ => return err(EOF_LINE, ErrorCode::BadToken { expected: "pin" }),
     })
 }
 
@@ -403,7 +421,7 @@ where
 {
     let lhs = parse_lhs(chip, pin_map, tokens)?;
 
-    let (line_num, eq_token) = next_or_fail(tokens, ErrorCode::BadEOF)?;
+    let (line_num, eq_token) = next_or_fail(tokens, ErrorCode::BadEquationEOF)?;
     if eq_token != Token::Equals {
         return err(line_num, ErrorCode::NoEquals);
     }
@@ -421,7 +439,14 @@ where
                 is_or.push(true);
                 rhs.push(parse_pin(chip, pin_map, tokens)?);
             }
-            Some((token_line_num, _)) => return err(token_line_num, ErrorCode::BadToken),
+            Some((token_line_num, _)) => {
+                return err(
+                    token_line_num,
+                    ErrorCode::BadToken {
+                        expected: "+, #, * or &",
+                    },
+                )
+            }
             None => break,
         }
     }
@@ -494,8 +519,7 @@ where
     I: Iterator<Item = (LineNum, &'a str)>,
 {
     // Ignore comments (and start/end-of-line whitespace) on all lines.
-    let mut line_iter = line_iter
-        .map(|(i, x)| (i, str::trim(remove_comment(x))));
+    let mut line_iter = line_iter.map(|(i, x)| (i, str::trim(remove_comment(x))));
 
     // Chip type and signature must be on first two lines.
     let chip = parse_chip(&mut line_iter)?;

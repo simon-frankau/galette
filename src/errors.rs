@@ -37,26 +37,30 @@ pub enum ErrorCode {
     BadAnalysis,
     #[error("use of {term} is not allowed in equations")]
     BadSpecial { term: SpecialProductTerm },
-    #[error("bad character in input")]
-    BadChar,
-    #[error("unexpected end of file")]
-    BadEOF,
-    #[error("unexpected end of line")]
+    #[error("unexpected character in input: '{c}'")]
+    BadChar { c: char },
+    #[error("expected right-hand side of equation, found end of file")]
+    BadEquationEOF,
+    #[error("expected pin name, found end of line")]
     BadEOL,
-    #[error("type of GAL expected")]
-    BadGALType,
+    #[error("unexpected GAL type found: '{gal}'")]
+    BadGALType { gal: String },
     #[error("NC (Not Connected) is not allowed in logic equations")]
     BadNC,
-    #[error("illegal character in pin declaration")]
-    BadPin,
-    #[error("wrong number of pins")]
-    BadPinCount,
+    #[error("wrong number of pins on pin definition line - expected {expected}, found {found}")]
+    BadPinCount { found: usize, expected: usize },
+    #[error("expected pin definitions, found end of file")]
+    BadPinEOF,
+    #[error("expected plain pin name, found pin with suffix")]
+    BadPinSuffix,
     #[error("use of VCC and GND is not allowed in equations")]
     BadPower,
-    #[error("unknown suffix found")]
-    BadSuffix,
-    #[error("unexpected token")]
-    BadToken,
+    #[error("expected signature, found end of file")]
+    BadSigEOF,
+    #[error("unknown suffix found: '{suffix}'")]
+    BadSuffix { suffix: String },
+    #[error("expected {expected}, found other token")]
+    BadToken { expected: &'static str },
     #[error("pin {pin} must be named {name}")]
     InvalidPowerPinName { pin: usize, name: &'static str },
     #[error(
@@ -86,8 +90,10 @@ pub enum ErrorCode {
     NoCLK,
     #[error("'=' expected")]
     NoEquals,
-    #[error("pinname expected after '/'")]
-    NoPinName,
+    #[error("pin name expected after '/', found non-alphabetic character '{c}'")]
+    NoPinName { c: char },
+    #[error("pin name expected after '/', found end-of-line")]
+    NoPinNameEOL,
     #[error(
         "pin {pin} is reserved for '{name}' on GAL20RA10 devices and can't be used in equations"
     )]
@@ -112,8 +118,8 @@ pub enum ErrorCode {
     TooManyProducts { max: usize, seen: usize },
     #[error("GAL16V8/20V8: tri. control for reg. output is not allowed")]
     TristateReg,
-    #[error("unknown pinname")]
-    UnknownPin,
+    #[error("unknown pinname '{name}'")]
+    UnknownPin { name: String },
     #[error("tristate control without previous '.T'")]
     UnmatchedTristate,
 }
